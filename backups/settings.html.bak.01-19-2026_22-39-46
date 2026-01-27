@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .white-square {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    /* TOP SIDEBAR */
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 200px;
+      background-image: url('/static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      z-index: 5;
+    }
+
+    /* TAKO */
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: calc(var(--sidebar-width) / 2);
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('/static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    /* MAIN SIDEBAR */
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0px;
+      width: var(--sidebar-width);
+      height: 900px;
+      background-image: url('/static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-right-radius: 30px;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    /* RECTANGLE */
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ACTIVE WHITE SQUARE */
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    /* SIDEBAR NAV (your exact styling) */
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 40;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* SEARCH BAR (your exact sizing) */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS (your exact positions) */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* PAGE TITLE */
+    .page-title {
+      position: absolute;
+      top: 100px;
+      left: var(--content-left);
+      font-size: 44px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.4px;
+    }
+
+    .page-subtitle {
+      position: absolute;
+      top: 160px;
+      left: var(--content-left);
+      font-size: 16px;
+      font-weight: 500;
+      color: #7A7D8C;
+      max-width: 820px;
+      line-height: 1.35;
+    }
+
+    /* ==============================
+       SETTINGS CONTENT (aligned)
+       ============================== */
+    .settings-wrap {
+      position: absolute;
+      top: 220px;
+      left: var(--content-left);
+      width: var(--content-width);
+      max-height: 750px;
+      overflow-y: auto;
+      padding-right: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.06);
+      padding: 26px 28px;
+      margin-bottom: 26px;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(124,58,237,0.12);
+      color: #7C3AED;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .badge.pink {
+      background: rgba(236,72,153,0.12);
+      color: #EC4899;
+    }
+
+    .badge.red {
+      background: rgba(239,68,68,0.12);
+      color: #EF4444;
+    }
+
+    .card-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0;
+      color: #111;
+    }
+
+    .card-desc {
+      margin: 6px 0 0 0;
+      font-size: 16px;
+      color: #7A7D8C;
+      font-weight: 500;
+    }
+
+    .label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111;
+      margin: 18px 0 12px 0;
+    }
+
+    .upload-box {
+      border: 2px dashed #D6D9E6;
+      border-radius: 14px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 12px;
+      background: #FBFBFE;
+      color: #5B6476;
+      font-weight: 600;
+    }
+
+    .upload-box input { display: none; }
+
+    .upload-box .click-area {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .upload-box .up-icon {
+      width: 22px;
+      height: 22px;
+      opacity: 0.9;
+    }
+
+    .select {
+      width: 100%;
+      height: 58px;
+      border: 1px solid #D6D9E6;
+      border-radius: 14px;
+      padding: 0 18px;
+      font-size: 18px;
+      font-weight: 500;
+      color: #111;
+      background: #fff;
+      outline: none;
+    }
+
+    .save-row {
+      width: var(--content-width);
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
+      padding-right: 20px;
+    }
+
+    .save-btn {
+      height: 64px;
+      min-width: 260px;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      box-shadow: 0 18px 30px rgba(124,58,237,0.18);
+      background: linear-gradient(90deg, #7C3AED, #EC4899);
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 40px rgba(124,58,237,0.25);
+    }
+
+    .save-btn:active {
+      transform: translateY(0);
+    }
+
+    /* DANGER ZONE */
+    .danger-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+
+    .danger-info-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .danger-info-text {
+      flex: 1;
+    }
+
+    .danger-info-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #991B1B;
+      margin: 0 0 6px 0;
+    }
+
+    .danger-info-desc {
+      font-size: 14px;
+      color: #7F1D1D;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .danger-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-count {
+      font-size: 15px;
+      color: #64748B;
+      font-weight: 600;
+    }
+
+    .history-count strong {
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .delete-btn {
+      height: 54px;
+      padding: 0 28px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+      transition: all 150ms ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .delete-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(239,68,68,0.35);
+    }
+
+    .delete-btn:active {
+      transform: translateY(0);
+    }
+
+    .delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* CONFIRMATION MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 36px;
+      width: 520px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+      animation: modalSlideIn 200ms ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FEE2E2, #FECACA);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 20px auto;
+    }
+
+    .modal-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111827;
+      text-align: center;
+      margin: 0 0 12px 0;
+    }
+
+    .modal-message {
+      font-size: 16px;
+      color: #64748B;
+      text-align: center;
+      line-height: 1.6;
+      margin: 0 0 28px 0;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      height: 56px;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .modal-btn-cancel {
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #E2E8F0;
+    }
+
+    .modal-btn-confirm {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+    }
+
+    .modal-btn-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(239,68,68,0.35);
+    }
+
+    /* HIDE ACTIVE SQUARE ON SETTINGS */
+    .square { display: none !important; }
+  </style>
+</head>
+
+<body>
+  <div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png" alt="">
+      <input placeholder="Search here...">
+    </div>
+
+    <!-- ICONS -->
+    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png" alt=""></div>
+    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png" alt=""></div>
+    <div id="bellBtn"><img src="/static/assets/Icons/bell.png" alt=""></div>
+    <div id="profileBtn"><img src="/static/assets/Icons/images-removebg-preview%201.png" alt=""></div>
+
+    <!-- CONTENT -->
+    <div class="page-title">Settings</div>
+    <div class="page-subtitle">Configure your raffle bot and default settings</div>
+
+    <div class="settings-wrap">
+      <div class="card">
+        <div class="card-head">
+          <div class="badge">✉</div>
+          <div>
+            <p class="card-title">Bot Configuration</p>
+            <p class="card-desc">Upload authentication credentials</p>
+          </div>
+        </div>
+
+        <div class="label">Gmail OAuth Credentials</div>
+
+        <label class="upload-box">
+          <div class="click-area">
+            <img class="up-icon" src="/static/assets/Icons/upload.png" alt="">
+            <div>Click to upload JSON file</div>
+          </div>
+          <input type="file" accept="application/json" id="gmailOauthFile" />
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="badge pink">🔔</div>
+          <div>
+            <p class="card-title">Preferences</p>
+            <p class="card-desc">General application preferences</p>
+          </div>
+        </div>
+
+        <div class="label">Timezone</div>
+        <select class="select" id="timezone">
+          <option value="America/New_York" selected>Eastern Time (ET)</option>
+          <option value="America/Chicago">Central Time (CT)</option>
+          <option value="America/Denver">Mountain Time (MT)</option>
+          <option value="America/Los_Angeles">Pacific Time (PT)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+
+      <!-- DATA MANAGEMENT CARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="badge red">🗑️</div>
+          <div>
+            <p class="card-title">Data Management</p>
+            <p class="card-desc">Manage your raffle history and stored data</p>
+          </div>
+        </div>
+
+        <div class="danger-info">
+          <div class="danger-info-icon">⚠️</div>
+          <div class="danger-info-text">
+            <p class="danger-info-title">Danger Zone</p>
+            <p class="danger-info-desc">Deleting raffle history is permanent and cannot be undone. All completed and cancelled raffle records will be removed from your device.</p>
+          </div>
+        </div>
+
+        <div class="danger-actions">
+          <div class="history-count">
+            <strong id="historyCountDisplay">0</strong> raffles in history
+          </div>
+          <button class="delete-btn" id="deleteHistoryBtn">
+            <span>🗑️</span>
+            <span>Delete All History</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="save-row">
+        <button class="save-btn" id="saveSettings">
+          <span>Save Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="sidebar-nav" id="sidebarNav">
+      <a class="nav-item" href="/dashboard" data-key="dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png">Dashboard</a>
+      <a class="nav-item" href="/active-raffle" data-key="active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png">Active Raffle</a>
+      <a class="nav-item" href="/raffle-history" data-key="raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png">Raffle History</a>
+      <a class="nav-item" href="/profile" data-key="profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png">Profile</a>
+      <a class="nav-item" data-key="discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png">Discord</a>
+      <a class="nav-item" data-key="donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png">Donate</a>
+    </nav>
+
+  </div>
+
+  <!-- CONFIRMATION MODAL -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <div class="modal-icon">⚠️</div>
+      <h3 class="modal-title">Delete All Raffle History?</h3>
+      <p class="modal-message">
+        This will permanently delete <strong id="modalRaffleCount">0</strong> raffles from your history. This action cannot be undone.
+      </p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="cancelDeleteBtn">Cancel</button>
+        <button class="modal-btn modal-btn-confirm" id="confirmDeleteBtn">Delete Forever</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Settings icon navigation
+    (function () {
+      const settingsBtn = document.getElementById("settingsBtn");
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+          window.location.href = "/settings";
+        });
+      }
+    })();
+
+    // Make dashed upload box clickable
+    (function () {
+      const clickArea = document.querySelector(".upload-box .click-area");
+      const fileInput = document.getElementById("gmailOauthFile");
+      if (clickArea && fileInput) {
+        clickArea.addEventListener("click", () => fileInput.click());
+      }
+    })();
+
+    // Upload file when selected
+    document.getElementById("gmailOauthFile")?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await fetch("/api/settings/upload-gmail-oauth", {
+          method: "POST",
+          body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.ok) {
+          alert("✅ Gmail OAuth JSON uploaded successfully.");
+        } else {
+          alert("❌ Upload failed: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("❌ Upload failed: " + (err?.message || err));
+      } finally {
+        e.target.value = ""; // allow re-upload same file
+      }
+    });
+
+    // Save settings
+    document.getElementById("saveSettings")?.addEventListener("click", () => {
+      const tz = document.getElementById("timezone")?.value || "America/New_York";
+      alert("✅ Saved (UI only for now): Timezone = " + tz);
+    });
+
+    // ============ DELETE RAFFLE HISTORY ============
+    (function () {
+      const deleteBtn = document.getElementById("deleteHistoryBtn");
+      const historyCountDisplay = document.getElementById("historyCountDisplay");
+      const confirmModal = document.getElementById("confirmModal");
+      const cancelDeleteBtn = document.getElementById("cancelDeleteBtn");
+      const confirmDeleteBtn = document.getElementById("confirmDeleteBtn");
+      const modalRaffleCount = document.getElementById("modalRaffleCount");
+
+      function updateHistoryCount() {
+        try {
+          const history = JSON.parse(localStorage.getItem('raffle_history') || '[]');
+          const count = history.length;
+          historyCountDisplay.textContent = count;
+          modalRaffleCount.textContent = count;
+          
+          // Disable button if no history
+          if (count === 0) {
+            deleteBtn.disabled = true;
+            deleteBtn.style.opacity = '0.5';
+            deleteBtn.style.cursor = 'not-allowed';
+          } else {
+            deleteBtn.disabled = false;
+            deleteBtn.style.opacity = '1';
+            deleteBtn.style.cursor = 'pointer';
+          }
+        } catch (e) {
+          historyCountDisplay.textContent = '0';
+          modalRaffleCount.textContent = '0';
+          deleteBtn.disabled = true;
+        }
+      }
+
+      // Show confirmation modal
+      deleteBtn?.addEventListener('click', () => {
+        const history = JSON.parse(localStorage.getItem('raffle_history') || '[]');
+        if (history.length === 0) {
+          alert('No raffle history to delete.');
+          return;
+        }
+        confirmModal.classList.add('show');
+      });
+
+      // Cancel deletion
+      cancelDeleteBtn?.addEventListener('click', () => {
+        confirmModal.classList.remove('show');
+      });
+
+      // Close modal on overlay click
+      confirmModal?.addEventListener('click', (e) => {
+        if (e.target === confirmModal) {
+          confirmModal.classList.remove('show');
+        }
+      });
+
+      // Confirm deletion
+      confirmDeleteBtn?.addEventListener('click', () => {
+        try {
+          const history = JSON.parse(localStorage.getItem('raffle_history') || '[]');
+          const count = history.length;
+          
+          localStorage.removeItem('raffle_history');
+          
+          confirmModal.classList.remove('show');
+          
+          alert(`✅ Successfully deleted ${count} raffle${count !== 1 ? 's' : ''} from history.`);
+          
+          updateHistoryCount();
+        } catch (e) {
+          alert('❌ Failed to delete raffle history: ' + e.message);
+        }
+      });
+
+      // Initial count update
+      updateHistoryCount();
+
+      // Update count when page becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          updateHistoryCount();
+        }
+      });
+    })();
+  </script>
+
+</body>
+</html>

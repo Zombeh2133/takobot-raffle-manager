@@ -1,0 +1,1589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings</title>
+<script src="/static/api.js?v=20250124"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .white-square {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    /* TOP SIDEBAR */
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 200px;
+      background-image: url('/static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      z-index: 5;
+    }
+
+    /* TAKO */
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: calc(var(--sidebar-width) / 2);
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('/static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    /* MAIN SIDEBAR */
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0px;
+      width: var(--sidebar-width);
+      height: 900px;
+      background-image: url('/static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-right-radius: 30px;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    /* RECTANGLE */
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ACTIVE WHITE SQUARE */
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    /* SIDEBAR NAV (your exact styling) */
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 40;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 2px 0 0 0;
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(236, 72, 153, 0.85);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(236, 72, 153, 1);
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    /* SEARCH BAR (your exact sizing) */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS (your exact positions) */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* PAGE TITLE */
+    .page-title {
+      position: absolute;
+      top: 100px;
+      left: var(--content-left);
+      font-size: 44px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.4px;
+    }
+
+    .page-subtitle {
+      position: absolute;
+      top: 160px;
+      left: var(--content-left);
+      font-size: 16px;
+      font-weight: 500;
+      color: #7A7D8C;
+      max-width: 820px;
+      line-height: 1.35;
+    }
+
+    /* ==============================
+       SETTINGS CONTENT (aligned)
+       ============================== */
+    .settings-wrap {
+      position: absolute;
+      top: 220px;
+      left: var(--content-left);
+      width: var(--content-width);
+      max-height: 750px;
+      overflow-y: auto;
+      padding-right: 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(0,0,0,0.06);
+      padding: 26px 28px;
+      margin-bottom: 26px;
+    }
+
+    .card-head {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .badge {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(124,58,237,0.12);
+      color: #7C3AED;
+      font-size: 18px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .badge.pink {
+      background: rgba(236,72,153,0.12);
+      color: #EC4899;
+    }
+
+    .badge.red {
+      background: rgba(239,68,68,0.12);
+      color: #EF4444;
+    }
+
+    .badge.blue {
+      background: rgba(59,130,246,0.12);
+      color: #3B82F6;
+    }
+
+    .card-title {
+      font-size: 26px;
+      font-weight: 700;
+      margin: 0;
+      color: #111;
+    }
+
+    .card-desc {
+      margin: 6px 0 0 0;
+      font-size: 16px;
+      color: #7A7D8C;
+      font-weight: 500;
+    }
+
+    .label {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111;
+      margin: 18px 0 12px 0;
+    }
+
+    .upload-box {
+      border: 2px dashed #D6D9E6;
+      border-radius: 14px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      gap: 12px;
+      background: #FBFBFE;
+      color: #5B6476;
+      font-weight: 600;
+    }
+
+    .upload-box input { display: none; }
+
+    .upload-box .click-area {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .upload-box .up-icon {
+      width: 22px;
+      height: 22px;
+      opacity: 0.9;
+    }
+
+    .select {
+      width: 100%;
+      height: 58px;
+      border: 1px solid #D6D9E6;
+      border-radius: 14px;
+      padding: 0 18px;
+      font-size: 18px;
+      font-weight: 500;
+      color: #111;
+      background: #fff;
+      outline: none;
+    }
+
+    .save-row {
+      width: var(--content-width);
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 16px;
+      padding-right: 20px;
+    }
+
+    .save-btn {
+      height: 64px;
+      min-width: 260px;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      box-shadow: 0 18px 30px rgba(124,58,237,0.18);
+      background: linear-gradient(90deg, #7C3AED, #EC4899);
+      transition: transform 150ms ease, box-shadow 150ms ease;
+    }
+
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 22px 40px rgba(124,58,237,0.25);
+    }
+
+    .save-btn:active {
+      transform: translateY(0);
+    }
+
+    /* DANGER ZONE */
+    .danger-info {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      background: #FEF2F2;
+      border: 1px solid #FECACA;
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+
+    .danger-info-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .danger-info-text {
+      flex: 1;
+    }
+
+    .danger-info-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #991B1B;
+      margin: 0 0 6px 0;
+    }
+
+    .danger-info-desc {
+      font-size: 14px;
+      color: #7F1D1D;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .danger-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .history-count {
+      font-size: 15px;
+      color: #64748B;
+      font-weight: 600;
+    }
+
+    .history-count strong {
+      color: #111827;
+      font-weight: 700;
+    }
+
+    .delete-btn {
+      height: 54px;
+      padding: 0 28px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      color: #fff;
+      font-size: 17px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+      transition: all 150ms ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .delete-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(239,68,68,0.35);
+    }
+
+    .delete-btn:active {
+      transform: translateY(0);
+    }
+
+    .delete-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* NAME IMPORT SPECIFIC STYLES */
+    .info-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 18px;
+      background: #FEF3C7;
+      border: 1px solid #FDE68A;
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+
+    .info-box-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .info-box-text {
+      flex: 1;
+    }
+
+    .info-box-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #92400E;
+      margin: 0 0 6px 0;
+    }
+
+    .info-box-desc {
+      font-size: 14px;
+      color: #78350F;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .import-preview {
+      display: none;
+      margin-top: 18px;
+      padding: 18px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+    }
+
+    .import-preview.show {
+      display: block;
+    }
+
+    .preview-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111;
+      margin: 0 0 12px 0;
+    }
+
+    .preview-list {
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      color: #475569;
+      line-height: 1.8;
+      margin: 0 0 12px 0;
+    }
+
+    .preview-count {
+      font-size: 15px;
+      font-weight: 700;
+      color: #16A34A;
+      margin: 0;
+    }
+
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .action-btn {
+      height: 54px;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 150ms ease;
+    }
+
+    .action-btn-primary {
+      background: linear-gradient(135deg, #3B82F6, #2563EB);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(59,130,246,0.25);
+    }
+
+    .action-btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(59,130,246,0.35);
+    }
+
+    .action-btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .action-btn-secondary {
+      background: #F1F5F9;
+      color: #475569;
+      border: 1px solid #E2E8F0;
+    }
+
+    .action-btn-secondary:hover {
+      background: #E2E8F0;
+    }
+
+    .action-btn-danger {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+    }
+
+    .action-btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(239,68,68,0.35);
+    }
+
+    .mapping-stats {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .stat-box {
+      flex: 1;
+      padding: 16px;
+      background: #F8FAFC;
+      border: 1px solid #E2E8F0;
+      border-radius: 12px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111;
+      margin: 0 0 4px 0;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #64748B;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    /* CONFIRMATION MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0,0,0,0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-box {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 36px;
+      width: 520px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+      animation: modalSlideIn 200ms ease;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: scale(0.95) translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+      }
+    }
+
+    .modal-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #FEE2E2, #FECACA);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin: 0 auto 20px auto;
+    }
+
+    .modal-title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111827;
+      text-align: center;
+      margin: 0 0 12px 0;
+    }
+
+    .modal-message {
+      font-size: 16px;
+      color: #64748B;
+      text-align: center;
+      line-height: 1.6;
+      margin: 0 0 28px 0;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      height: 56px;
+      border: none;
+      border-radius: 14px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .modal-btn-cancel {
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #E2E8F0;
+    }
+
+    .modal-btn-confirm {
+      background: linear-gradient(135deg, #EF4444, #DC2626);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(239,68,68,0.25);
+    }
+
+    .modal-btn-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(239,68,68,0.35);
+    }
+
+    /* HIDE ACTIVE SQUARE ON SETTINGS */
+    .square { display: none !important; }
+
+    /* ==============================
+       ACCESS DENIED MODAL
+       ============================== */
+    .access-denied-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 999999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .access-denied-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .access-denied-modal {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 440px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .access-modal-header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .access-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .access-modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .access-modal-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .access-modal-body {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .access-modal-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+
+    .access-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .access-modal-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .access-modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      color: white;
+    }
+
+    .access-modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .access-modal-btn-primary:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png" alt="">
+      <input placeholder="Search here...">
+    </div>
+
+    <!-- ICONS -->
+    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png" alt=""></div>
+    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png" alt=""></div>
+    <div id="bellBtn"><img src="/static/assets/Icons/bell.png" alt=""></div>
+    <div id="profileBtn"><img src="/static/assets/Icons/images-removebg-preview%201.png" alt=""></div>
+
+    <!-- CONTENT -->
+    <div class="page-title">Settings</div>
+    <div class="page-subtitle">Configure your raffle bot and default settings</div>
+
+    <div class="settings-wrap">
+      <!-- NAME IMPORT CARD -->
+      <div class="card">
+        <div class="card-head">
+          <div class="badge blue">📋</div>
+          <div>
+            <p class="card-title">Reddit Name Mappings</p>
+            <p class="card-desc">Import and manage Reddit username to real name mappings</p>
+          </div>
+        </div>
+
+        <div class="mapping-stats">
+          <div class="stat-box">
+            <p class="stat-value" id="mappingCount">0</p>
+            <p class="stat-label">Stored Mappings</p>
+          </div>
+          <div class="stat-box">
+            <p class="stat-value" id="lastImportDate">Never</p>
+            <p class="stat-label">Last Import</p>
+          </div>
+        </div>
+
+        <div class="label">Import File</div>
+
+        <label class="upload-box">
+          <div class="click-area" id="nameFileClickArea">
+            <img class="up-icon" src="/static/assets/Icons/upload.png" alt="">
+            <div>Click to upload CSV, Excel, or TSV file</div>
+          </div>
+          <input type="file" accept=".csv,.xlsx,.xls,.tsv,.txt" id="nameFileInput" />
+        </label>
+
+        <div class="import-preview" id="importPreview">
+          <p class="preview-title">Preview (first 5 rows):</p>
+          <div class="preview-list" id="previewList"></div>
+          <p class="preview-count" id="previewCount"></p>
+        </div>
+
+        <div class="info-box">
+          <div class="info-box-icon">💡</div>
+          <div class="info-box-text">
+            <p class="info-box-title">Format</p>
+            <p class="info-box-desc">
+              Upload a file with format: <code>reddit_user,real_name</code><br>
+              Names are stored locally. Importing will merge with existing mappings.
+            </p>
+          </div>
+        </div>
+
+        <div class="action-buttons">
+          <button class="action-btn action-btn-primary" id="importNowBtn" disabled>
+            <span>⬆️</span>
+            <span>Import Names</span>
+          </button>
+          <button class="action-btn action-btn-secondary" id="exportMappingsBtn">
+            <span>⬇️</span>
+            <span>Export Mappings</span>
+          </button>
+          <button class="action-btn action-btn-danger" id="clearMappingsBtn">
+            <span>🗑️</span>
+            <span>Clear All</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="badge">✉</div>
+          <div>
+            <p class="card-title">Bot Configuration</p>
+            <p class="card-desc">Upload authentication credentials</p>
+          </div>
+        </div>
+
+        <div class="label">Gmail OAuth Credentials</div>
+
+        <label class="upload-box">
+          <div class="click-area">
+            <img class="up-icon" src="/static/assets/Icons/upload.png" alt="">
+            <div>Click to upload JSON file</div>
+          </div>
+          <input type="file" accept="application/json" id="gmailOauthFile" />
+        </label>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <div class="badge pink">🔔</div>
+          <div>
+            <p class="card-title">Preferences</p>
+            <p class="card-desc">General application preferences</p>
+          </div>
+        </div>
+
+        <div class="label">Timezone</div>
+        <select class="select" id="timezone">
+          <option value="America/New_York" selected>Eastern Time (ET)</option>
+          <option value="America/Chicago">Central Time (CT)</option>
+          <option value="America/Denver">Mountain Time (MT)</option>
+          <option value="America/Los_Angeles">Pacific Time (PT)</option>
+          <option value="UTC">UTC</option>
+        </select>
+      </div>
+
+      <div class="save-row">
+        <button class="save-btn" id="saveSettings">
+          <span>Save Settings</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="/admin"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Admin</a>
+  <a class="nav-item" href="/user-management"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">User Management</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+</nav>
+
+<!-- USER SECTION -->
+<div class="user-section" id="userSection">
+  <div class="user-info">
+    <div class="user-avatar" id="userAvatar">U</div>
+    <div class="user-details">
+      <p class="user-name" id="userName">User</p>
+      <p class="user-role" id="userRole">Admin</p>
+    </div>
+  </div>
+  <button class="logout-btn" id="sidebarLogoutBtn">Logout</button>
+</div>
+
+<script>
+  // ============ USER SECTION & LOGOUT ============
+  (async function() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+    // Fetch current user info
+    try {
+      const response = await fetch('/api/auth/current-user');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data) {
+          const user = result.data;
+          
+          // Update username
+          if (user.username) {
+            userName.textContent = user.username;
+            // Update avatar with first letter
+            userAvatar.textContent = user.username.charAt(0).toUpperCase();
+          }
+          
+          // Update role
+          if (user.role) {
+            userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+          } else if (user.isAdmin) {
+            userRole.textContent = 'Admin';
+          } else {
+            userRole.textContent = 'User';
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+
+    // Logout button handler
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('❌ Logout failed: ' + error.message);
+      }
+    });
+  })();
+
+  // Sidebar Admin Control - Intercept admin links for non-admin users
+  (function() {
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (!sidebarNav) return;
+    
+    // Find admin links
+    const allLinks = sidebarNav.querySelectorAll('.nav-item');
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      
+      // Prevent reload when clicking settings link on settings page
+      if (href === '/settings') {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Do nothing - already on this page
+        });
+      }
+      
+      if (href === '/admin' || href === '/user-management') {
+        // Add click handler that runs BEFORE navigation
+        link.addEventListener('click', function(e) {
+          if (!window.adminCheckComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            showAccessDenied();
+          }
+        }, true);
+      }
+    });
+    
+    // Check if user is admin (async)
+    (async function() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.data?.isAdmin === true) {
+          window.adminCheckComplete = true;
+          console.log('✅ Admin access granted');
+        } else {
+          console.log('🔒 Admin links blocked for non-admin user');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    })();
+  })();
+</script>
+  </div>
+
+  <!-- CONFIRMATION MODAL (Clear Mappings) -->
+  <div class="modal-overlay" id="clearMappingsModal">
+    <div class="modal-box">
+      <div class="modal-icon">⚠️</div>
+      <h3 class="modal-title">Clear All Name Mappings?</h3>
+      <p class="modal-message">
+        This will permanently delete <strong id="modalMappingCount">0</strong> name mappings. This action cannot be undone.
+      </p>
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-cancel" id="cancelClearMappingsBtn">Cancel</button>
+        <button class="modal-btn modal-btn-confirm" id="confirmClearMappingsBtn">Delete Forever</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============ NAME MAPPING LOCALSTORAGE ============
+    const NAME_MAPPING_KEY = 'raffleui_reddit_name_mapping';
+    const LAST_IMPORT_KEY = 'raffleui_name_import_date';
+    
+    function saveNameMapping(redditUser, realName) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        mappings[redditUser] = realName;
+        localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+      } catch (e) {
+        console.error('Failed to save name mapping:', e);
+      }
+    }
+    
+    function getNameFromMapping(redditUser) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        return mappings[redditUser] || '';
+      } catch (e) {
+        return '';
+      }
+    }
+    
+    function loadAllMappings() {
+      try {
+        return JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+    
+    function saveAllMappings(mappings) {
+      try {
+        localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+        localStorage.setItem(LAST_IMPORT_KEY, new Date().toISOString());
+      } catch (e) {
+        console.error('Failed to save mappings:', e);
+      }
+    }
+    
+    function clearAllMappings() {
+      localStorage.removeItem(NAME_MAPPING_KEY);
+      localStorage.removeItem(LAST_IMPORT_KEY);
+    }
+    
+    function exportMappingsAsCSV() {
+      const mappings = loadAllMappings();
+      let csv = 'reddit_user,real_name\n';
+      for (const [reddit, name] of Object.entries(mappings)) {
+        csv += `${reddit},"${name}"\n`;
+      }
+      return csv;
+    }
+
+    function updateMappingStats() {
+      const mappings = loadAllMappings();
+      const count = Object.keys(mappings).length;
+      document.getElementById('mappingCount').textContent = count;
+
+      const lastImport = localStorage.getItem(LAST_IMPORT_KEY);
+      if (lastImport) {
+        const date = new Date(lastImport);
+        document.getElementById('lastImportDate').textContent = date.toLocaleDateString();
+      } else {
+        document.getElementById('lastImportDate').textContent = 'Never';
+      }
+    }
+
+    // ============ NAME IMPORT FUNCTIONALITY ============
+    (function () {
+      const fileInput = document.getElementById('nameFileInput');
+      const clickArea = document.getElementById('nameFileClickArea');
+      const importNowBtn = document.getElementById('importNowBtn');
+      const exportBtn = document.getElementById('exportMappingsBtn');
+      const clearBtn = document.getElementById('clearMappingsBtn');
+      const preview = document.getElementById('importPreview');
+      const previewList = document.getElementById('previewList');
+      const previewCount = document.getElementById('previewCount');
+      
+      let parsedData = null;
+
+      // Make upload box clickable
+      if (clickArea && fileInput) {
+        clickArea.addEventListener('click', () => fileInput.click());
+      }
+
+      // File input change handler
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const data = await parseFile(file);
+          parsedData = data;
+          
+          // Show preview
+          const entries = Object.entries(data);
+          const previewEntries = entries.slice(0, 5);
+          
+          previewList.innerHTML = previewEntries
+            .map(([reddit, name]) => `${reddit} → ${name}`)
+            .join('<br>');
+          
+          previewCount.textContent = `✓ Ready to import ${entries.length} name mappings`;
+          preview.classList.add('show');
+          importNowBtn.disabled = false;
+          
+        } catch (error) {
+          alert('Error parsing file: ' + error.message);
+          preview.classList.remove('show');
+          importNowBtn.disabled = true;
+        }
+      });
+
+      // Parse file (CSV or Excel)
+      async function parseFile(file) {
+        const fileName = file.name.toLowerCase();
+        
+        if (fileName.endsWith('.csv') || fileName.endsWith('.tsv') || fileName.endsWith('.txt')) {
+          return parseCSV(file);
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          return parseExcel(file);
+        } else {
+          throw new Error('Unsupported file format. Use CSV, TSV, or Excel (.xlsx, .xls)');
+        }
+      }
+
+      // Parse CSV
+      async function parseCSV(file) {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        const mappings = {};
+        
+        // Skip header if present
+        const startIndex = lines[0].toLowerCase().includes('reddit') ? 1 : 0;
+        
+        for (let i = startIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const parts = line.split(',').map(p => p.trim());
+          if (parts.length >= 2) {
+            const reddit = parts[0];
+            const name = parts.slice(1).join(',').replace(/^["']|["']$/g, '');
+            if (reddit && name) {
+              mappings[reddit] = name;
+            }
+          }
+        }
+        
+        return mappings;
+      }
+
+      // Parse Excel
+      async function parseExcel(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          
+          reader.onload = (e) => {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+              
+              const mappings = {};
+              const startIndex = rows[0] && String(rows[0][0]).toLowerCase().includes('reddit') ? 1 : 0;
+              
+              for (let i = startIndex; i < rows.length; i++) {
+                const row = rows[i];
+                if (row && row.length >= 2) {
+                  const reddit = String(row[0]).trim();
+                  const name = String(row[1]).trim();
+                  if (reddit && name) {
+                    mappings[reddit] = name;
+                  }
+                }
+              }
+              
+              resolve(mappings);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      // Import button handler
+      importNowBtn.addEventListener('click', () => {
+        if (!parsedData) return;
+        
+        const existing = loadAllMappings();
+        const merged = { ...existing, ...parsedData };
+        saveAllMappings(merged);
+        
+        updateMappingStats();
+        
+        alert(`✅ Successfully imported ${Object.keys(parsedData).length} name mappings!\n\nTotal mappings: ${Object.keys(merged).length}`);
+        
+        // Reset
+        fileInput.value = '';
+        preview.classList.remove('show');
+        parsedData = null;
+        importNowBtn.disabled = true;
+      });
+
+      // Export button handler
+      exportBtn.addEventListener('click', () => {
+        const csv = exportMappingsAsCSV();
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reddit_names_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        alert('✅ Mappings exported successfully!');
+      });
+
+      // Clear button handler
+      clearBtn.addEventListener('click', () => {
+        const mappings = loadAllMappings();
+        const count = Object.keys(mappings).length;
+        
+        if (count === 0) {
+          alert('No mappings to clear.');
+          return;
+        }
+
+        document.getElementById('modalMappingCount').textContent = count;
+        document.getElementById('clearMappingsModal').classList.add('show');
+      });
+
+      // Initial stats update
+      updateMappingStats();
+    })();
+
+    // ============ CLEAR MAPPINGS MODAL ============
+    (function () {
+      const modal = document.getElementById('clearMappingsModal');
+      const cancelBtn = document.getElementById('cancelClearMappingsBtn');
+      const confirmBtn = document.getElementById('confirmClearMappingsBtn');
+
+      cancelBtn?.addEventListener('click', () => {
+        modal.classList.remove('show');
+      });
+
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.classList.remove('show');
+        }
+      });
+
+      confirmBtn?.addEventListener('click', () => {
+        const count = Object.keys(loadAllMappings()).length;
+        clearAllMappings();
+        updateMappingStats();
+        modal.classList.remove('show');
+        alert(`✅ Successfully deleted ${count} name mappings.`);
+      });
+    })();
+
+    // Settings icon navigation
+    (function () {
+      const settingsBtn = document.getElementById("settingsBtn");
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+          window.location.href = "/settings";
+        });
+      }
+    })();
+
+    // Make dashed upload box clickable
+    (function () {
+      const clickArea = document.querySelector(".upload-box .click-area");
+      const fileInput = document.getElementById("gmailOauthFile");
+      if (clickArea && fileInput) {
+        clickArea.addEventListener("click", () => fileInput.click());
+      }
+    })();
+
+    // Upload file when selected
+    document.getElementById("gmailOauthFile")?.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      try {
+        const fd = new FormData();
+        fd.append("file", file);
+
+        const res = await fetch("/api/settings/upload-gmail-oauth", {
+          method: "POST",
+          body: fd
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (res.ok && data.ok) {
+          alert("✅ Gmail OAuth JSON uploaded successfully.");
+        } else {
+          alert("❌ Upload failed: " + (data.error || "Unknown error"));
+        }
+      } catch (err) {
+        alert("❌ Upload failed: " + (err?.message || err));
+      } finally {
+        e.target.value = "";
+      }
+    });
+
+    // Save settings
+    document.getElementById("saveSettings")?.addEventListener("click", () => {
+      const tz = document.getElementById("timezone")?.value || "America/New_York";
+      alert("✅ Saved (UI only for now): Timezone = " + tz);
+    });
+
+    // ===== ACCESS DENIED MODAL =====
+    function showAccessDenied() {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (!overlay) {
+        alert('Access Denied\n\nAdmins only');
+        return;
+      }
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAccessDenied(event) {
+      if (!event || event.target === document.getElementById('accessDeniedOverlay')) {
+        const overlay = document.getElementById('accessDeniedOverlay');
+        if (overlay) {
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('accessDeniedOverlay');
+        if (overlay && overlay.classList.contains('show')) {
+          closeAccessDenied({ target: overlay });
+        }
+      }
+    });
+  </script>
+
+  <!-- ACCESS DENIED MODAL -->
+  <div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
+    <div class="access-denied-modal" onclick="event.stopPropagation()">
+      <div class="access-modal-header">
+        <div class="access-modal-icon">🔒</div>
+        <h2 class="access-modal-title">Access Denied</h2>
+        <p class="access-modal-subtitle">Admin privileges required</p>
+      </div>
+      <div class="access-modal-body">
+        <p class="access-modal-message">
+          You don't have permission to access this page. This area is restricted to administrators only.
+        </p>
+        <div class="access-modal-actions">
+          <button class="access-modal-btn access-modal-btn-primary" onclick="closeAccessDenied()">
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

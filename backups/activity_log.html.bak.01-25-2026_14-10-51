@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Log</title>
+  <script src="/static/api.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .white-square {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    /* TOP SIDEBAR */
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 200px;
+      background-image: url('/static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      z-index: 5;
+    }
+
+    /* TAKO */
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: calc(var(--sidebar-width) / 2);
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('/static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    /* MAIN SIDEBAR */
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0px;
+      width: var(--sidebar-width);
+      height: 900px;
+      background-image: url('/static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-right-radius: 30px;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    /* RECTANGLE */
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ACTIVE WHITE SQUARE */
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    /* SIDEBAR NAV */
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 2px 0 0 0;
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(236, 72, 153, 0.85);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(236, 72, 153, 1);
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    /* SEARCH BAR */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* ACTIVITY LOG */
+    .activity-wrap {
+      position: absolute;
+      top: 100px;
+      left: 280px;
+      width: 1300px;
+      height: 900px;
+      background: #ffffff;
+      border-radius: 13px;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.10);
+      overflow: hidden;
+      z-index: 52;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .activity-head {
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      border-bottom: 1px solid #eef0f4;
+      background: #ffffff;
+    }
+
+    .a-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .a-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .a-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+    }
+
+    .filter-tab {
+      border: none;
+      background: #f2f4f8;
+      color: #111827;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .filter-tab.is-active {
+      background: #efe9ff;
+      color: #6E5FFC;
+    }
+
+    .filter-tab:hover:not(.is-active) {
+      background: #e5e7eb;
+    }
+
+    .a-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e6e8ef;
+      border-radius: 12px;
+      padding: 10px 12px;
+      width: 240px;
+      flex-shrink: 0;
+    }
+
+    .a-search img { width: 18px; height: 18px; opacity: 0.7; }
+    .a-search input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    .clear-btn {
+      border: none;
+      background: #fee2e2;
+      color: #dc2626;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .clear-btn:hover {
+      background: #fecaca;
+    }
+
+    .activity-feed {
+      flex: 1;
+      overflow: auto;
+      background: #ffffff;
+      padding: 20px 24px;
+    }
+
+    .activity-item {
+      display: flex;
+      gap: 16px;
+      padding: 18px 20px;
+      border-radius: 12px;
+      margin-bottom: 12px;
+      background: #fafbfc;
+      border: 1px solid #eef0f4;
+      transition: all 150ms ease;
+    }
+
+    .activity-item:hover {
+      background: #f5f6f8;
+      border-color: #e0e3eb;
+    }
+
+    .activity-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .icon-setup { background: linear-gradient(135deg, #3B82F6, #2563EB); }
+    .icon-participant { background: linear-gradient(135deg, #A855F7, #7C3AED); }
+    .icon-payment { background: linear-gradient(135deg, #10B981, #059669); }
+    .icon-completed { background: linear-gradient(135deg, #FF4FB2, #EC4899); }
+    .icon-cancelled { background: linear-gradient(135deg, #EF4444, #DC2626); }
+    .icon-system { background: linear-gradient(135deg, #F59E0B, #D97706); }
+
+    .activity-content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .activity-main {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .activity-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+      line-height: 1.5;
+    }
+
+    .activity-highlight {
+      color: #6E5FFC;
+      font-weight: 700;
+    }
+
+    .activity-time {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+
+    .activity-details {
+      font-size: 13px;
+      color: #64748b;
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+
+    .activity-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    .badge-setup { background: #dbeafe; color: #1e40af; }
+    .badge-participant { background: #ede9fe; color: #6b21a8; }
+    .badge-payment { background: #d1fae5; color: #065f46; }
+    .badge-completed { background: #fce7f3; color: #9f1239; }
+    .badge-cancelled { background: #fee2e2; color: #991b1b; }
+
+    .activity-foot {
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #eef0f4;
+      color: #475569;
+      font-size: 13px;
+      background: #ffffff;
+    }
+
+    .activity-foot strong { color: #111827; }
+
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .empty-state-text {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .hidden { display: none !important; }
+
+    /* ==============================
+       ACCESS DENIED MODAL
+       ============================== */
+    .access-denied-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 999999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .access-denied-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .access-denied-modal {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 440px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .access-modal-header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .access-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .access-modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .access-modal-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .access-modal-body {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .access-modal-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+
+    .access-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .access-modal-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .access-modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      color: white;
+    }
+
+    .access-modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .access-modal-btn-primary:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+<div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png">
+      <input placeholder="Search here...">
+    </div>
+
+    <!-- ICONS -->
+    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png"></div>
+    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png"></div>
+    <div id="bellBtn"><img src="/static/assets/Icons/bell.png"></div>
+    <div id="profileBtn"><img src="/static/assets/Icons/images-removebg-preview%201.png"></div>
+
+    <section class="activity-wrap" id="activityWrap">
+      <div class="activity-head">
+        <div>
+          <h3 class="a-title">Activity Log</h3>
+          <div class="a-sub"><span id="activityCount">0</span> activities logged</div>
+        </div>
+
+        <div class="a-controls">
+          <div class="filter-tabs" id="filterTabs">
+            <button class="filter-tab is-active" data-filter="all">All</button>
+            <button class="filter-tab" data-filter="setup">Setup</button>
+            <button class="filter-tab" data-filter="participant">Participants</button>
+            <button class="filter-tab" data-filter="payment">Payments</button>
+            <button class="filter-tab" data-filter="completed">Completed</button>
+          </div>
+
+          <div class="a-search">
+            <img src="/static/assets/Icons/Normal.png" alt="">
+            <input id="activitySearch" type="text" placeholder="Search activity...">
+          </div>
+
+          <button id="clearLogBtn" class="clear-btn">Clear Log</button>
+        </div>
+      </div>
+
+      <div class="activity-feed" id="activityFeed">
+        <!-- Populated by JavaScript -->
+      </div>
+
+      <div class="activity-foot">
+        <div>Showing <span id="showingCount">0</span> activities</div>
+        <div>Last updated: <strong id="lastUpdated">Never</strong></div>
+      </div>
+    </section>
+
+ <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item is-active" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+  <a class="nav-item" href="/admin"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Admin</a>
+  <a class="nav-item" href="/user-management"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">User Management</a>
+</nav>
+
+<!-- USER SECTION -->
+<div class="user-section" id="userSection">
+  <div class="user-info">
+    <div class="user-avatar" id="userAvatar">U</div>
+    <div class="user-details">
+      <p class="user-name" id="userName">User</p>
+      <p class="user-role" id="userRole">Admin</p>
+    </div>
+  </div>
+  <button class="logout-btn" id="sidebarLogoutBtn">Logout</button>
+</div>
+
+<script>
+  // ============ USER SECTION & LOGOUT ============
+  (async function() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+    // Fetch current user info
+    try {
+      const response = await fetch('/api/auth/current-user');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data) {
+          const user = result.data;
+          
+          // Update username
+          if (user.username) {
+            userName.textContent = user.username;
+            // Update avatar with first letter
+            userAvatar.textContent = user.username.charAt(0).toUpperCase();
+          }
+          
+          // Update role
+          if (user.role) {
+            userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+          } else if (user.isAdmin) {
+            userRole.textContent = 'Admin';
+          } else {
+            userRole.textContent = 'User';
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+
+    // Logout button handler
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('❌ Logout failed: ' + error.message);
+      }
+    });
+  })();
+
+  // Sidebar Admin Control - Intercept admin links for non-admin users
+  (function() {
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (!sidebarNav) return;
+    
+    // Find admin links
+    const allLinks = sidebarNav.querySelectorAll('.nav-item');
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      
+      // Prevent reload when clicking activity log link on activity log page
+      if (href === '/activity-log') {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Do nothing - already on this page
+        });
+      }
+      
+      if (href === '/admin' || href === '/user-management') {
+        // Add click handler that runs BEFORE navigation
+        link.addEventListener('click', function(e) {
+          if (!window.adminCheckComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            showAccessDenied();
+          }
+        }, true);
+      }
+    });
+    
+    // Check if user is admin (async)
+    (async function() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (!response.ok) {
+          console.log('🔒 Admin check: endpoint returned', response.status);
+          return;
+        }
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.log('🔒 Admin check: non-JSON response, assuming non-admin');
+          return;
+        }
+        
+        const data = await response.json();
+        if (data.data?.isAdmin === true) {
+          window.adminCheckComplete = true;
+          console.log('✅ Admin access granted');
+        } else {
+          console.log('🔒 Admin links blocked for non-admin user');
+        }
+      } catch (error) {
+        console.log('🔒 Admin check failed, assuming non-admin');
+      }
+    })();
+  })();
+</script>
+
+  <script>
+    // Move sidebar highlight square to active item
+    (function () {
+      const nav = document.getElementById("sidebarNav");
+      const square = document.getElementById("activeSquare");
+      if (!nav || !square) return;
+
+      function moveSquareTo(item) {
+        square.style.top = (nav.offsetTop + item.offsetTop) + "px";
+      }
+
+      const active = nav.querySelector(".is-active");
+      if (active) moveSquareTo(active);
+    })();
+
+    // Settings button
+    (function () {
+      const settingsBtn = document.getElementById("settingsBtn");
+      if (settingsBtn) {
+        settingsBtn.addEventListener("click", () => {
+          window.location.href = "/settings";
+        });
+      }
+    })();
+
+    // ============ ACTIVITY LOG LOGIC ============
+    (function () {
+      const activityFeed = document.getElementById("activityFeed");
+      const activityCount = document.getElementById("activityCount");
+      const showingCount = document.getElementById("showingCount");
+      const lastUpdated = document.getElementById("lastUpdated");
+      const filterTabs = document.getElementById("filterTabs");
+      const activitySearch = document.getElementById("activitySearch");
+      const clearLogBtn = document.getElementById("clearLogBtn");
+
+      let allActivities = [];
+      let activeFilter = "all";
+      let query = "";
+
+      async function loadActivities() {
+        try {
+          // Get current user first
+          const userRes = await fetch('/api/auth/current-user');
+          if (!userRes.ok) {
+            console.error('Failed to get current user for activity log');
+            allActivities = [];
+            renderActivities();
+            return;
+          }
+          
+          const userResult = await userRes.json();
+          if (!userResult.ok || !userResult.data || !userResult.data.username) {
+            console.error('No username found for activity log');
+            allActivities = [];
+            renderActivities();
+            return;
+          }
+          const currentUsername = userResult.data.username;
+          
+          // Get all activities
+          const result = await API.getActivities();
+          if (result.ok) {
+            const allData = result.data || [];
+            
+            console.log(`🔍 DEBUG: Current user = "${currentUsername}"`);
+            console.log(`🔍 DEBUG: Total activities from API = ${allData.length}`);
+            console.log(`🔍 DEBUG: Sample activities:`, allData.slice(0, 3));
+            
+            // Filter to only show current user's activities
+            allActivities = allData.filter(activity => {
+              // Simple match on username field
+              const matches = activity.username === currentUsername;
+              if (allData.length > 0 && allData.length <= 5) {
+                console.log(`🔍 Activity "${activity.title}" - username: "${activity.username}", matches: ${matches}`);
+              }
+              return matches;
+            });
+            
+            // Additional debug: show ALL activities if none match
+            if (allActivities.length === 0 && allData.length > 0) {
+              console.log('⚠️ NO ACTIVITIES MATCHED! Showing all activities for debugging:');
+              allData.forEach((act, idx) => {
+                console.log(`  Activity ${idx + 1}:`, {
+                  title: act.title,
+                  username: act.username,
+                  type: act.type,
+                  timestamp: act.timestamp
+                });
+              });
+            }
+            
+            console.log(`📋 Activity Log: ${allActivities.length} activities for ${currentUsername}`);
+            renderActivities();
+          } else {
+            console.error('Failed to load activities:', result.error);
+            allActivities = [];
+            renderActivities();
+          }
+        } catch (e) {
+          console.error('Failed to load activity log:', e);
+          allActivities = [];
+          renderActivities();
+        }
+      }
+
+      function getRelativeTime(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
+      function getActivityIcon(type) {
+        const icons = {
+          setup: { emoji: '⚙️', class: 'icon-setup' },
+          participant: { emoji: '👤', class: 'icon-participant' },
+          payment: { emoji: '💰', class: 'icon-payment' },
+          completed: { emoji: '🎉', class: 'icon-completed' },
+          cancelled: { emoji: '❌', class: 'icon-cancelled' },
+          system: { emoji: '🔔', class: 'icon-system' }
+        };
+        return icons[type] || icons.system;
+      }
+
+      function renderActivities() {
+        activityFeed.innerHTML = '';
+
+        if (allActivities.length === 0) {
+          activityFeed.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-icon">📋</div>
+              <div class="empty-state-title">No Activity Yet</div>
+              <div class="empty-state-text">Your raffle activities will appear here as you work.</div>
+            </div>
+          `;
+          updateStats([]);
+          return;
+        }
+
+        allActivities.forEach(activity => {
+          const icon = getActivityIcon(activity.type);
+          const item = document.createElement('div');
+          item.className = 'activity-item';
+          item.dataset.type = activity.type;
+          item.dataset.searchText = (activity.title + ' ' + (activity.details || '')).toLowerCase();
+
+          let badgeHtml = '';
+          if (activity.badge) {
+            badgeHtml = `<div class="activity-badge badge-${activity.type}">${activity.badge}</div>`;
+          }
+
+          item.innerHTML = `
+            <div class="activity-icon ${icon.class}">${icon.emoji}</div>
+            <div class="activity-content">
+              <div class="activity-main">
+                <div class="activity-text">${activity.title}</div>
+                <div class="activity-time">${getRelativeTime(activity.timestamp)}</div>
+              </div>
+              ${activity.details ? `<div class="activity-details">${activity.details}</div>` : ''}
+              ${badgeHtml}
+            </div>
+          `;
+
+          activityFeed.appendChild(item);
+        });
+
+        applyFilters();
+      }
+
+      function applyFilters() {
+        const q = query.trim().toLowerCase();
+        const items = Array.from(activityFeed.querySelectorAll('.activity-item'));
+        const visible = [];
+
+        items.forEach(item => {
+          const typeOk = activeFilter === 'all' || item.dataset.type === activeFilter;
+          const searchText = item.dataset.searchText || '';
+          const searchOk = !q || searchText.includes(q);
+
+          const show = typeOk && searchOk;
+          item.style.display = show ? '' : 'none';
+          if (show) visible.push(item);
+        });
+
+        updateStats(visible);
+      }
+
+      function updateStats(visibleItems) {
+        const total = allActivities.length;
+        const showing = visibleItems.filter(item => !item.querySelector('.empty-state')).length;
+
+        activityCount.textContent = total;
+        showingCount.textContent = showing;
+
+        if (total > 0) {
+          const latest = allActivities[0];
+          lastUpdated.textContent = getRelativeTime(latest.timestamp);
+        } else {
+          lastUpdated.textContent = 'Never';
+        }
+      }
+
+      filterTabs?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".filter-tab");
+        if (!btn) return;
+
+        activeFilter = btn.dataset.filter;
+        filterTabs.querySelectorAll(".filter-tab").forEach(b => b.classList.remove("is-active"));
+        btn.classList.add("is-active");
+        applyFilters();
+      });
+
+      activitySearch?.addEventListener("input", () => {
+        query = activitySearch.value;
+        applyFilters();
+      });
+
+      clearLogBtn?.addEventListener("click", async () => {
+        if (!confirm('Are you sure you want to clear all activity logs? This cannot be undone.')) {
+          return;
+        }
+
+        await API.clearActivities();
+        allActivities = [];
+        renderActivities();
+      });
+
+      // Initial load
+      (async function() {
+        await loadActivities();
+      })();
+
+      // Auto-refresh every 30 seconds
+      setInterval(() => {
+        if (!document.hidden) {
+          loadActivities();
+        }
+      }, 30000);
+
+      // Reload when page becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+          loadActivities();
+        }
+      });
+    })();
+
+    // ===== ACCESS DENIED MODAL =====
+    function showAccessDenied() {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (!overlay) {
+        alert('Access Denied\n\nAdmins only');
+        return;
+      }
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeAccessDenied(event) {
+      if (!event || event.target === document.getElementById('accessDeniedOverlay')) {
+        const overlay = document.getElementById('accessDeniedOverlay');
+        if (overlay) {
+          overlay.classList.remove('show');
+          document.body.style.overflow = '';
+        }
+      }
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const overlay = document.getElementById('accessDeniedOverlay');
+        if (overlay && overlay.classList.contains('show')) {
+          closeAccessDenied({ target: overlay });
+        }
+      }
+    });
+  </script>
+
+  <!-- ACCESS DENIED MODAL -->
+  <div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
+    <div class="access-denied-modal" onclick="event.stopPropagation()">
+      <div class="access-modal-header">
+        <div class="access-modal-icon">🔒</div>
+        <h2 class="access-modal-title">Access Denied</h2>
+        <p class="access-modal-subtitle">Admin privileges required</p>
+      </div>
+      <div class="access-modal-body">
+        <p class="access-modal-message">
+          You don't have permission to access this page. This area is restricted to administrators only.
+        </p>
+        <div class="access-modal-actions">
+          <button class="access-modal-btn access-modal-btn-primary" onclick="closeAccessDenied()">
+            Got it
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<!-- CLIENT-SIDE NAVIGATION TO ACTIVE RAFFLE -->
+<script>
+(function() {
+  const sidebarNav = document.getElementById('sidebarNav');
+  if (!sidebarNav) return;
+  
+  // Find the Active Raffle link
+  const activeRaffleLink = Array.from(sidebarNav.querySelectorAll('.nav-item')).find(link => 
+    link.getAttribute('href') === '/active-raffle'
+  );
+  
+  if (activeRaffleLink) {
+    activeRaffleLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Navigate without full page reload
+      window.location.replace('/active-raffle');
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

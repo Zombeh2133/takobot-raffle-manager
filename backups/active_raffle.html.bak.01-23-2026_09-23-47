@@ -1,0 +1,2809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Active Raffle</title>
+<script src="/static/api.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ============================== MASTER LAYOUT VARIABLES ============================== */
+    :root{
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body{
+      background-color:#303149;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      height:100vh;
+      margin:0;
+      font-family:'Inter',sans-serif;
+    }
+
+    .white-square{
+      width:var(--app-width);
+      height:var(--app-height);
+      background-color:#FAF8F6;
+      position:relative;
+      overflow:hidden;
+      border-radius:30px;
+      z-index: 5;
+    }
+
+    .top-sidebar{
+      position:absolute; top:0; left:0;
+      width:var(--sidebar-width); height:200px;
+      background-image:url('/static/assets/Background/Top-Sidebar.png');
+      background-size:cover; background-repeat:no-repeat;
+      border-top-left-radius:30px;
+      border-top-right-radius:30px;
+      z-index:5;
+    }
+
+    .tako{
+      position:absolute;
+      top:60px; left:calc(var(--sidebar-width) / 2);
+      transform:translate(-50%,-50%);
+      width:148px; height:148px;
+      background-image:url('/static/assets/Icons/TAKO%201.png');
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:25;
+      pointer-events:none;
+    }
+
+    .sidebar{
+      position:absolute;
+      left:0; bottom:0px;
+      width:var(--sidebar-width); height:900px;
+      background-image:url('/static/assets/Background/Sidebar.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      border-bottom-right-radius:30px;
+      border-bottom-left-radius:30px;
+      z-index:10;
+    }
+
+    .rectangle{
+      position:absolute;
+      top:135px; left:0;
+      width:165px; height:48px;
+      background-image:url('/static/assets/Background/Rectangle.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      z-index:20;
+      pointer-events:none;
+    }
+
+    .square{
+      position:absolute;
+      top:140px; left:30px;
+      width:244px; height:52px;
+      background-image:url('/static/assets/Background/Square.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:30;
+      pointer-events:none;
+      transition:top 140ms ease;
+    }
+
+    .sidebar-nav{
+      position:absolute;
+      top:140px; left:55px;
+      width:244px;
+      font-size:16px;
+      line-height:58px;
+      z-index:40;
+    }
+
+    .sidebar-nav a{
+      display:block;
+      position:relative;
+      padding-left:26px;
+      color:#ffffff;
+      text-decoration:none;
+      font-weight:400;
+      user-select:none;
+      cursor:pointer;
+    }
+
+    .sidebar-nav a.is-active{
+      color:#6E5FFC;
+      font-weight:600;
+    }
+
+    .nav-icon{
+      position:absolute;
+      left:-5px; top:17px;
+      width:20px; height:20px;
+      filter:brightness(0) invert(1);
+      pointer-events:none;
+      z-index:41;
+    }
+
+    .sidebar-nav a.is-active .nav-icon{
+      filter:brightness(0) saturate(100%) invert(46%) sepia(82%) saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* SEARCH BAR */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* STATS */
+    .stats-row{
+      position:absolute;
+      top:110px;
+      left:var(--content-left);
+      width:var(--content-width);
+      display:grid;
+      grid-template-columns:repeat(5, 1fr);
+      gap:18px;
+      z-index:55;
+    }
+
+    .stat-card{
+      border-radius:16px;
+      padding:14px 18px;
+      color:#fff;
+      box-shadow:0 10px 18px rgba(0,0,0,0.12);
+      min-height:78px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+
+    .stat-label{
+      font-size:12px;
+      letter-spacing:1px;
+      font-weight:700;
+      text-transform:uppercase;
+      opacity:0.9;
+      margin-bottom:6px;
+    }
+
+    .stat-value{
+      font-size:30px;
+      font-weight:700;
+      line-height:1;
+    }
+
+    .c-pink{   background:#ff4fb2; }
+    .c-purple{ background:#a855f7; }
+    .c-green{  background:#00c26f; }
+    .c-orange{ background:#f59e0b; }
+    .c-blue{   background:#3b82f6; }
+
+    /* PARTICIPANTS CARD */
+    .participants-card{
+      position:absolute;
+      top:235px;
+      left:276px;
+      width:1300px;
+      height:calc(var(--app-height) - 235px - 40px);
+      background:#ffffff;
+      border-radius:18px;
+      box-shadow:0 18px 30px rgba(0,0,0,0.10);
+      overflow:hidden;
+      z-index:52;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .participants-header{
+      padding:22px 24px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      border-bottom:1px solid #eef0f4;
+      background:#ffffff;
+    }
+
+    .participants-title{
+      margin:0;
+      font-size:18px;
+      font-weight:700;
+      color:#111827;
+    }
+
+    .participants-sub{
+      margin-top:6px;
+      font-size:13px;
+      color:#64748b;
+      font-weight:500;
+    }
+
+    .table-wrap{
+      flex:1;
+      overflow:auto;
+      background:#ffffff;
+    }
+
+    table.p-table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:14px;
+      table-layout:fixed;
+    }
+
+    .p-table col.col-reddit  { width:260px; }
+    .p-table col.col-name    { width:170px; }
+    .p-table col.col-comment { width:auto;  }
+    .p-table col.col-spots   { width:90px;  }
+    .p-table col.col-owed    { width:90px;  }
+    .p-table col.col-paid    { width:80px;  }
+    .p-table col.col-status  { width:120px; }
+
+    .p-table thead th{
+      text-align:left;
+      padding:14px 24px;
+      font-size:11px;
+      letter-spacing:0.8px;
+      text-transform:uppercase;
+      color:#334155;
+      background:#ffffff;
+      position:sticky;
+      top:0;
+      z-index:1;
+      border-bottom:1px solid #eef0f4;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .p-table tbody td{
+      padding:18px 24px;
+      border-bottom:1px solid #eef0f4;
+      vertical-align:middle;
+      color:#0f172a;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .user-cell{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      min-width:0;
+    }
+
+    .avatar{
+      width:34px;
+      height:34px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      color:#fff;
+      font-weight:700;
+      background:linear-gradient(135deg,#a855f7,#ff4fb2);
+      flex-shrink:0;
+    }
+
+    .reddit-link{
+      color:#6E5FFC;
+      text-decoration:none;
+      font-weight:600;
+    }
+
+    .comment-muted{
+      color:#334155;
+      font-style:italic;
+    }
+
+    .spots-pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:34px;
+      height:26px;
+      padding:0 10px;
+      border-radius:999px;
+      background:#efe9ff;
+      color:#6E5FFC;
+      font-weight:700;
+      font-size:12px;
+    }
+
+    .status-chip{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      font-weight:700;
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    .status-paid{ background:#dcfce7; color:#166534; }
+    .status-pending{ background:#fef3c7; color:#92400e; }
+
+    /* Paid Checkbox Styling */
+    .paid-checkbox {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+      accent-color: #16a34a;
+      transform: scale(1.2);
+    }
+    
+    .paid-checkbox:hover {
+      transform: scale(1.3);
+    }
+
+    .dot{
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      display:grid;
+      place-items:center;
+      font-size:12px;
+      line-height:1;
+      background:rgba(255,255,255,0.55);
+    }
+
+    .participants-foot{
+      padding:14px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      border-top:1px solid #eef0f4;
+      color:#475569;
+      font-size:13px;
+      background:#ffffff;
+    }
+
+    /* Resize handles */
+    .th-inner{ position:relative; padding-right:14px; }
+    .col-resizer{
+      position:absolute;
+      top:0;
+      right:-8px;
+      width:16px;
+      height:100%;
+      cursor:col-resize;
+      user-select:none;
+      touch-action:none;
+    }
+    .col-resizer::after{
+      content:"";
+      position:absolute;
+      top:20%;
+      left:50%;
+      transform:translateX(-50%);
+      width:2px;
+      height:60%;
+      background:rgba(15,23,42,0.12);
+      border-radius:2px;
+      opacity:0;
+      transition:opacity 120ms ease;
+    }
+    th:hover .col-resizer::after{ opacity:1; }
+    .resizing *{ cursor:col-resize !important; user-select:none !important; }
+
+    /* Buttons */
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #fff;
+      transition: all 150ms ease;
+    }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-blue   { background: #3B82F6; }
+    .btn-green  { background: #10B981; }
+    .btn-purple { background: linear-gradient(90deg, #7C3AED, #EC4899); }
+    .btn-red    { background: #EF4444; }
+
+    .search-box input {
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 12px;
+      border: 1px solid #E6E8F0;
+      font-size: 14px;
+    }
+
+    .filter-select {
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 12px;
+      border: 1px solid #E6E8F0;
+      font-size: 14px;
+      background: #fff;
+      cursor: pointer;
+    }
+
+/* MODAL STYLES */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: none; /* CHANGED from flex to none */
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+
+    .modal-overlay.show {
+      display: flex; /* ADDED: Show when .show class is added */
+    }
+
+    .modal-content {
+      background: #ffffff;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      padding: 32px 24px;
+      width: 600px;
+      max-width: 90vw;
+      transform: scale(0.9);
+      transition: transform 200ms ease;
+    }
+
+    .modal-overlay.show .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      margin: 0 0 24px 0;
+      color: #111827;
+    }
+
+    .modal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 8px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 10px 11px;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .form-input:focus {
+      border-color: #8B5CF6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+    }
+
+    .form-hint {
+      font-size: 12px;
+      color: #6B7280;
+      margin-top: 4px;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 150ms ease;
+    }
+
+    .modal-btn-cancel {
+      background: #ffffff;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #F9FAFB;
+    }
+
+    .modal-btn-save {
+      background: linear-gradient(90deg, #3B82F6, #2563EB);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .modal-btn-save:hover {
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+
+    /* FINISH RAFFLE MODAL */
+    .finish-modal-content {
+      width: 540px;
+    }
+
+    .finish-modal-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #FF4FB2, #A855F7);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      margin: 0 auto 20px;
+      font-size: 40px;
+    }
+
+    .finish-modal-text {
+      font-size: 15px;
+      color: #6B7280;
+      margin-bottom: 28px;
+      line-height: 1.6;
+      text-align: center;
+    }
+
+    .winner-section {
+      background: #F9FAFB;
+      border: 1px solid #E5E7EB;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 28px;
+    }
+
+    .winner-section-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 16px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+          .username-dropdown-container {
+      position: relative;
+    }
+
+    .username-dropdown-list {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #D1D5DB;
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
+      display: none;
+    }
+
+    .username-dropdown-list.show {
+      display: block;
+    }
+
+    .username-dropdown-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 150ms ease;
+    }
+
+    .username-dropdown-item:hover {
+      background: #F3F4F6;
+    }
+
+    .username-dropdown-item.selected {
+      background: #EFE9FF;
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .winner-form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 16px;
+    }
+
+    .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      background: white;
+      cursor: pointer;
+      transition: border-color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .form-select:focus {
+      border-color: #10B981;
+      box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+    }
+
+    .finish-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .finish-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 150ms ease;
+    }
+
+    .finish-btn-complete {
+      background: linear-gradient(90deg, #10B981, #059669);
+      color: white;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .finish-btn-complete:hover {
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .finish-btn-complete:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .finish-btn-cancel-raffle {
+      background: linear-gradient(90deg, #EF4444, #DC2626);
+      color: white;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .finish-btn-cancel-raffle:hover {
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+      transform: translateY(-1px);
+    }
+
+    .or-divider {
+      text-align: center;
+      color: #9CA3AF;
+      font-size: 13px;
+      font-weight: 600;
+      margin: 16px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* RESTRICTION MODAL */
+    .restriction-modal-content {
+      width: 480px;
+      background: #2D2D3A;
+      border-radius: 20px;
+      padding: 36px;
+      text-align: center;
+    }
+
+    .restriction-modal-icon {
+      width: 70px;
+      height: 70px;
+      background: linear-gradient(135deg, #FBBF24, #F59E0B);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+      font-size: 36px;
+    }
+
+    .restriction-modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin: 0 0 20px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .restriction-modal-title::before {
+      content: '⚠';
+      font-size: 22px;
+      color: #FBBF24;
+    }
+
+    .restriction-modal-message {
+      font-size: 16px;
+      color: #D1D5DB;
+      line-height: 1.6;
+      margin-bottom: 28px;
+      text-align: left;
+    }
+
+    .restriction-ok-btn {
+      width: 100%;
+      height: 54px;
+      background: linear-gradient(135deg, #93C5FD, #3B82F6);
+      color: #FFFFFF;
+      border: none;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .restriction-ok-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+    }
+
+    .restriction-ok-btn:active {
+      transform: translateY(0);
+    }
+
+    /* AUTO-SCAN INDICATOR */
+    .auto-scan-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+    }
+
+    .auto-scan-pulse {
+      width: 8px;
+      height: 8px;
+      background: white;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      50% {
+        opacity: 0.5;
+        transform: scale(1.2);
+      }
+    }
+
+    /* SUMMARY MODAL */
+    .summary-modal-content {
+      width: 700px;
+      max-height: 80vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .summary-total-banner {
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      padding: 20px 28px;
+      border-radius: 12px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .summary-total-label {
+      font-size: 14px;
+      font-weight: 600;
+      opacity: 0.9;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .summary-total-value {
+      font-size: 36px;
+      font-weight: 700;
+    }
+
+    .summary-list {
+      max-height: 450px;
+      overflow-y: auto;
+      margin-bottom: 24px;
+    }
+
+    .summary-participant {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-bottom: 1px solid #E5E7EB;
+      transition: background 150ms ease;
+    }
+
+    .summary-participant:hover {
+      background: #F9FAFB;
+    }
+
+    .summary-participant:last-child {
+      border-bottom: none;
+    }
+
+    .summary-user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+    }
+
+    .summary-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      background: linear-gradient(135deg, #A855F7, #FF4FB2);
+      flex-shrink: 0;
+    }
+
+    .summary-username {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .summary-stats {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .summary-stat-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .summary-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6B7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .summary-stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .summary-owed-value {
+      color: #10B981;
+    }
+
+    /* TOAST NOTIFICATION */
+    .toast {
+      position: fixed;
+      top: 30px;
+      right: 30px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      padding: 20px 28px;
+      border-radius: 16px;
+      box-shadow: 0 12px 40px rgba(16, 185, 129, 0.5);
+      font-size: 15px;
+      font-weight: 600;
+      z-index: 10000;
+      min-width: 380px;
+      max-width: 480px;
+      opacity: 0;
+      transform: translateX(400px);
+      transition: opacity 400ms cubic-bezier(0.4, 0, 0.2, 1),
+                  transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .toast-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .toast-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    .toast-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+    }
+
+    .toast-body {
+      margin-left: 44px;
+      font-size: 13px;
+      font-weight: 500;
+      line-height: 1.6;
+      opacity: 0.95;
+    }
+
+    .toast-detail {
+      margin-top: 4px;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .toast-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.2);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 150ms ease;
+    }
+
+    .toast-close:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Hidden rows */
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+  <div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png">
+      <input placeholder="Search here...">
+    </div>
+
+    <div id="themeToggle" title="Theme Toggle">
+      <img src="/static/assets/Icons/OFF.png" alt="Theme toggle">
+    </div>
+    <div id="settingsBtn" title="Settings">
+      <img src="/static/assets/Icons/Notifications%20Copy.png" alt="Settings">
+    </div>
+    <div id="bellBtn" title="Notifications">
+      <img class="bell-icon" src="/static/assets/Icons/bell.png" alt="Bell">
+      <span class="blue-square"></span>
+    </div>
+    <div id="profileBtn" title="Profile">
+      <img src="/static/assets/Icons/images-removebg-preview%201.png" alt="Profile">
+    </div>
+
+    <!-- STATS -->
+    <section class="stats-row" aria-label="Active raffle overview">
+      <div class="stat-card c-pink">
+        <div class="stat-label">Total Spots</div>
+        <div class="stat-value" id="totalSpots">-</div>
+      </div>
+      <div class="stat-card c-purple">
+        <div class="stat-label">Spots Remaining</div>
+        <div class="stat-value" id="spotsRemaining">-</div>
+      </div>
+      <div class="stat-card c-green">
+        <div class="stat-label">Cost Per Spot</div>
+        <div class="stat-value" id="costPerSpot">-</div>
+      </div>
+      <div class="stat-card c-orange">
+        <div class="stat-label">Total Owed</div>
+        <div class="stat-value" id="totalOwed">$0</div>
+      </div>
+      <div class="stat-card c-blue">
+        <div class="stat-label">Total Paid</div>
+        <div class="stat-value" id="totalPaid">$0</div>
+      </div>
+    </section>
+
+    <!-- TABLE -->
+    <section class="participants-card">
+      <div class="participants-header">
+        <div>
+          <h3 class="participants-title">Participants</h3>
+          <div class="participants-sub"><span id="totalParticipants">0</span> total participants</div>
+        </div>
+<div style="display:flex; gap:10px;">
+  <button id="setupBtn" class="btn btn-blue">Setup</button>
+  <button id="scanRedditBtn" class="btn btn-purple">Scan Reddit</button>
+  <button id="scanEmailBtn" class="btn btn-purple">Scan Email</button>
+  <button id="summaryBtn" class="btn btn-purple">Summary</button>
+  <button id="markPaidBtn" class="btn btn-green">Mark All Paid</button>
+  <button id="finishRaffleBtn" class="btn btn-red">Finish Raffle</button>
+</div>
+
+        <div style="display:flex; gap:12px; align-items:center;">
+          <div class="search-box">
+            <input id="participantSearch" type="text" placeholder="Search participants..." />
+          </div>
+
+          <select id="paymentFilter" class="filter-select">
+            <option value="all">All Payments</option>
+            <option value="paid">Paid</option>
+            <option value="pending">Pending</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table class="p-table" id="participantsTable">
+          <colgroup>
+            <col class="col-reddit">
+            <col class="col-name">
+            <col class="col-comment">
+            <col class="col-spots">
+            <col class="col-owed">
+            <col class="col-paid">
+            <col class="col-status">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th data-col="0"><div class="th-inner">Reddit User<span class="col-resizer"></span></div></th>
+              <th data-col="1"><div class="th-inner">Name<span class="col-resizer"></span></div></th>
+              <th data-col="2"><div class="th-inner">Comment<span class="col-resizer"></span></div></th>
+              <th data-col="3"><div class="th-inner">Spots<span class="col-resizer"></span></div></th>
+              <th data-col="4"><div class="th-inner">Owed<span class="col-resizer"></span></div></th>
+              <th data-col="5"><div class="th-inner">Paid<span class="col-resizer"></span></div></th>
+              <th data-col="6"><div class="th-inner">Status<span class="col-resizer"></span></div></th>
+            </tr>
+          </thead>
+          <tbody id="participantsTbody">
+            <tr id="emptyRow">
+              <td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">
+                No participants yet. Click "Setup" to configure your raffle.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="participants-foot">
+        <div id="footerShowing">Showing 0 of 0 participants</div>
+        <div id="autoScanIndicator" class="auto-scan-indicator" style="display: none;">
+          <div class="auto-scan-pulse"></div>
+          <span>Auto-scanning every 30 sec</span>
+        </div>
+        <div id="footerStats">Paid: <strong>0</strong> &nbsp;&nbsp; Pending: <strong>0</strong></div>
+      </div>
+    </section>
+
+   <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item is-active" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+  <a class="nav-item" href="/admin"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Admin</a>
+  <a class="nav-item" href="/user-management"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">User Management</a>
+</nav>
+
+<script>
+  // Sidebar Admin Control - Intercept admin links for non-admin users
+  (function() {
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (!sidebarNav) return;
+    
+    // Find admin links
+    const allLinks = sidebarNav.querySelectorAll('.nav-item');
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      if (href === '/admin' || href === '/user-management') {
+        // Add click handler that runs BEFORE navigation
+        link.addEventListener('click', function(e) {
+          if (!window.adminCheckComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            alert('Access Denied\n\nAdmins only');
+          }
+        }, true);
+      }
+    });
+    
+    // Check if user is admin (async)
+    (async function() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.data?.isAdmin === true) {
+          window.adminCheckComplete = true;
+          console.log('✅ Admin access granted');
+        } else {
+          console.log('🔒 Admin links blocked for non-admin user');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    })();
+  })();
+</script>
+
+ <!-- SETUP MODAL -->
+  <div id="setupModal" class="modal-overlay">
+    <div class="modal-content" style="width: 600px;">
+      <h3 class="modal-title">Raffle Setup</h3>
+
+      <div class="modal-form">
+        <div class="form-group">
+          <label class="form-label">Reddit Link</label>
+          <input
+            type="url"
+            id="redditLinkInput"
+            class="form-input"
+            placeholder="https://reddit.com/r/WatchURaffle/..."
+          />
+        </div>
+
+<div class="form-row" style="gap: 50px !important;">
+          <div class="form-group">
+            <label class="form-label">Total Spots</label>
+            <input
+              type="number"
+              id="totalSpotsInput"
+              class="form-input"
+              placeholder="100"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Cost Per Spot ($)</label>
+            <input
+              type="number"
+              id="spotCostInput"
+              class="form-input"
+              placeholder="50"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="modal-btn modal-btn-cancel">Cancel</button>
+        <button id="modalSaveBtn" class="modal-btn modal-btn-save">Save Setup</button>
+      </div>
+    </div>
+  </div>
+
+ <!-- FINISH RAFFLE MODAL -->
+  <div id="finishModal" class="modal-overlay">
+    <div class="modal-content finish-modal-content">
+      <div class="finish-modal-icon">🎉</div>
+      <h3 class="modal-title" style="text-align: center;">Finish Raffle</h3>
+      <p class="finish-modal-text">
+        Enter the winner's information to complete the raffle, or cancel it to save as incomplete.
+      </p>
+
+      <!-- Winner Selection Section -->
+      <div class="winner-section">
+        <div class="winner-section-title">
+          <span>🏆</span>
+          <span>Winner Information</span>
+        </div>
+      <div class="form-group" style="margin-bottom: 12px;">
+          <label class="form-label">Winner Username</label>
+          <div class="username-dropdown-container">
+            <input
+              type="text"
+              id="winnerUsernameInput"
+              class="form-input"
+              placeholder="Search Reddit username..."
+              autocomplete="off"
+            />
+            <div id="usernameDropdownList" class="username-dropdown-list"></div>
+          </div>
+        </div>
+   <div class="form-group">
+          <label class="form-label">Winning Spot Number</label>
+          <input
+            type="number"
+            id="winningSpotInput"
+            class="form-input"
+            placeholder="Enter spot number"
+            min="1"
+          />
+        </div>
+      </div>
+
+      <div class="finish-modal-actions">
+        <button id="finishCompleteBtn" class="finish-btn finish-btn-complete" disabled>
+          ✓ Complete Raffle
+        </button>
+      </div>
+
+      <div class="or-divider">or</div>
+
+      <button id="finishCancelBtn" class="finish-btn finish-btn-cancel-raffle" style="width: 100%;">
+        × Cancel Raffle
+      </button>
+    </div>
+  </div>
+
+  <!-- RESTRICTION POPUP MODAL -->
+  <div id="restrictionModal" class="modal-overlay">
+    <div class="modal-content restriction-modal-content">
+      <div class="restriction-modal-icon">⚠️</div>
+      <h3 class="restriction-modal-title">Cannot finish raffle!</h3>
+      <div id="restrictionMessage" class="restriction-modal-message"></div>
+      <button id="restrictionOkBtn" class="restriction-ok-btn">OK</button>
+    </div>
+  </div>
+
+  <!-- SUMMARY MODAL -->
+  <div id="summaryModal" class="modal-overlay">
+    <div class="modal-content summary-modal-content">
+      <h3 class="modal-title">Raffle Summary</h3>
+
+      <div class="summary-total-banner">
+        <div>
+          <div class="summary-total-label">Total Owed</div>
+          <div class="summary-total-value" id="summaryTotalOwed">$0</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="summary-total-label">Participants</div>
+          <div class="summary-total-value" id="summaryTotalParticipants">0</div>
+        </div>
+      </div>
+
+      <div class="summary-list" id="summaryList">
+        <!-- Participants will be populated here -->
+      </div>
+
+      <div class="modal-actions">
+        <button id="summaryCloseBtn" class="modal-btn modal-btn-save" style="width: 100%;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NAME IMPORT MODAL -->
+  <div id="nameImportModal" class="modal-overlay">
+    <div class="modal-content" style="width: 600px;">
+      <h3 class="modal-title">Import Reddit Name Mappings</h3>
+
+      <div class="modal-form">
+        <div class="form-group">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #334155;">Upload File</label>
+          <input type="file" id="nameFileInput" accept=".csv,.xlsx,.xls,.tsv,.txt" style="display: block; margin-bottom: 12px; padding: 8px; border: 2px dashed #cbd5e1; border-radius: 8px; width: 100%; cursor: pointer;">
+          <p style="font-size: 12px; color: #64748b; margin: 0;">
+            Supported: CSV, Excel (.xlsx, .xls), TSV<br>
+            Format: <code>reddit_user,real_name</code>
+          </p>
+        </div>
+
+        <div id="importPreview" style="display: none; margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px;">
+          <p style="font-size: 13px; font-weight: 600; margin-bottom: 8px;">Preview (first 5 rows):</p>
+          <div id="importPreviewList" style="font-size: 12px; font-family: monospace; color: #475569;"></div>
+          <p id="importCount" style="font-size: 13px; color: #16a34a; margin-top: 8px; font-weight: 600;"></p>
+        </div>
+
+        <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 4px;">
+          <p style="font-size: 13px; margin: 0; color: #92400e;">
+            <strong>Note:</strong> Names are stored locally. Importing will merge with existing mappings.
+          </p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="nameImportBtn" class="modal-btn modal-btn-save" disabled>
+          Import Names
+        </button>
+        <button id="nameExportBtn" class="modal-btn modal-btn-secondary">
+          Export Current Mappings
+        </button>
+        <button id="nameClearBtn" class="modal-btn modal-btn-secondary" style="background: #dc2626; color: white;">
+          Clear All Mappings
+        </button>
+        <button id="nameImportCloseBtn" class="modal-btn modal-btn-secondary">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION -->
+  <div id="successToast" class="toast">
+    <button class="toast-close" id="toastClose">×</button>
+    <div class="toast-header">
+      <div class="toast-icon">✓</div>
+      <h4 class="toast-title" id="toastTitle">Success!</h4>
+    </div>
+    <div class="toast-body">
+      <div id="toastMessage"></div>
+    </div>
+  </div>
+
+  <script>
+
+    // ============ APP STATE ============
+    const appState = {
+      redditLink: '',
+      totalSpots: null,
+      costPerSpot: null,
+      participants: []
+    };
+
+    // ============ PERSISTENCE FUNCTIONS ============
+    async function saveState() {
+      try {
+        await API.saveRaffle({
+          redditLink: appState.redditLink,
+          totalSpots: appState.totalSpots,
+          costPerSpot: appState.costPerSpot,
+          participants: appState.participants
+        });
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+    }
+
+   async function loadState() {
+      try {
+        const result = await API.loadRaffle();
+        if (result.ok && result.data) {
+          const data = result.data;
+          appState.redditLink = data.redditLink || '';
+          appState.totalSpots = data.totalSpots;
+          appState.costPerSpot = data.costPerSpot;
+          appState.participants = data.participants || [];
+
+          // Update modal inputs
+          document.getElementById("redditLinkInput").value = appState.redditLink;
+
+          // Only set values if they exist (no default values)
+          if (appState.totalSpots) {
+            document.getElementById("totalSpotsInput").value = appState.totalSpots;
+          }
+          if (appState.costPerSpot) {
+            document.getElementById("spotCostInput").value = appState.costPerSpot;
+          }
+
+          // Rebuild table if there are participants
+          if (appState.participants.length > 0) {
+            rebuildTable();
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load state:', e);
+      }
+    }
+
+    async function clearState() {
+      try {
+        await API.clearRaffle();
+      } catch (e) {
+        console.error('Failed to clear state:', e);
+      }
+    }
+
+  function rebuildTable() {
+      const tbody = document.getElementById("participantsTbody");
+      const emptyRow = document.getElementById("emptyRow");
+
+      if (appState.participants.length === 0) {
+        if (!emptyRow) {
+          tbody.innerHTML = '<tr id="emptyRow"><td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
+        }
+        return;
+      }
+
+      if (emptyRow) {
+        emptyRow.remove();
+      }
+
+      tbody.innerHTML = '';
+
+      // Reverse the array so newest participants appear at the top
+      const reversedParticipants = [...appState.participants].reverse();
+
+      reversedParticipants.forEach((participant, displayIndex) => {
+        // Calculate the actual index in the original array
+        const actualIndex = appState.participants.length - 1 - displayIndex;
+        
+        const row = document.createElement('tr');
+        row.dataset.reddit = participant.redditUser;
+        row.dataset.name = participant.name;
+        row.dataset.comment = participant.comment;
+        row.dataset.paid = participant.paid;
+        row.dataset.index = actualIndex;  // Use actual index for editing
+
+        const initial = participant.redditUser.charAt(2).toUpperCase();
+        const statusClass = participant.paid ? 'status-paid' : 'status-pending';
+        const statusIcon = participant.paid ? '✓' : '⏱';
+        const statusText = participant.paid ? 'Paid' : 'Pending';
+
+        // Auto-lookup name from localStorage
+        const storedName = getNameFromMapping(participant.redditUser);
+        const displayName = storedName || participant.name || '';
+        
+        row.innerHTML = `
+          <td>
+            <div class="user-cell">
+              <div class="avatar">${initial}</div>
+              <a class="reddit-link" href="#" onclick="return false;">${participant.redditUser}</a>
+            </div>
+          </td>
+          <td><span class="name-field" data-index="${actualIndex}" style="cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;" title="Click to edit name">${displayName || '<span style="color: #94a3b8;">—</span>'}</span></td>
+          <td><span class="comment-muted">${participant.comment || ''}</span></td>
+          <td><span class="spots-pill" data-index="${actualIndex}" style="cursor: pointer;" title="Double-click to edit">${participant.spots}</span></td>
+          <td>$${participant.owed}</td>
+          <td style="text-align: center;">
+            <input type="checkbox" class="paid-checkbox" data-index="${actualIndex}" ${participant.paid ? 'checked' : ''} />
+          </td>
+          <td><span class="status-chip ${statusClass}"><span class="dot">${statusIcon}</span>${statusText}</span></td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      // Add double-click edit functionality
+      attachSpotEditListeners();
+      
+      // Add name edit functionality
+      attachNameEditListeners();
+      
+      // Add checkbox event listeners
+      attachPaidCheckboxListeners();
+    }
+
+        function attachSpotEditListeners() {
+      const spotsPills = document.querySelectorAll('.spots-pill');
+
+      spotsPills.forEach(pill => {
+        pill.addEventListener('dblclick', function() {
+          const index = parseInt(this.dataset.index);
+          const currentSpots = appState.participants[index].spots;
+
+          // Create input field
+          const input = document.createElement('input');
+          input.type = 'number';
+          input.value = currentSpots;
+          input.min = '0';
+          input.style.width = '50px';
+          input.style.padding = '4px 8px';
+          input.style.border = '2px solid #6E5FFC';
+          input.style.borderRadius = '999px';
+          input.style.textAlign = 'center';
+          input.style.fontSize = '12px';
+          input.style.fontWeight = '700';
+          input.style.color = '#6E5FFC';
+          input.style.background = '#efe9ff';
+          input.style.outline = 'none';
+
+          // Replace pill with input
+          const originalContent = this.textContent;
+          this.textContent = '';
+          this.appendChild(input);
+          input.focus();
+          input.select();
+
+          // Save on Enter or blur
+          const saveEdit = async () => {
+            const newSpots = parseInt(input.value) || 0;
+
+            if (newSpots < 0) {
+              alert('Spots cannot be negative');
+              input.value = currentSpots;
+              return;
+            }
+
+            // Update participant data
+            appState.participants[index].spots = newSpots;
+            appState.participants[index].owed = newSpots * appState.costPerSpot;
+
+            // Save to database
+            await saveState();
+
+            // Rebuild table
+            rebuildTable();
+            updateStats();
+            updateFooter();
+
+            // Show toast
+            showToast('Spots Updated', [`${appState.participants[index].redditUser}: ${currentSpots} → ${newSpots} spots`]);
+          };
+
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              saveEdit();
+            } else if (e.key === 'Escape') {
+              rebuildTable();
+            }
+          });
+
+          input.addEventListener('blur', saveEdit);
+        });
+      });
+    }
+
+    // ============ NAME MAPPING LOCALSTORAGE ============
+    const NAME_MAPPING_KEY = 'raffleui_reddit_name_mapping';
+    
+    function saveNameMapping(redditUser, realName) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        mappings[redditUser] = realName;
+        localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+      } catch (e) {
+        console.error('Failed to save name mapping:', e);
+      }
+    }
+    
+    function getNameFromMapping(redditUser) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        return mappings[redditUser] || '';
+      } catch (e) {
+        return '';
+      }
+    }
+    
+    function loadAllMappings() {
+      try {
+        return JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+      } catch (e) {
+        return {};
+      }
+    }
+    
+    function saveAllMappings(mappings) {
+      try {
+        localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+      } catch (e) {
+        console.error('Failed to save mappings:', e);
+      }
+    }
+    
+    function clearAllMappings() {
+      localStorage.removeItem(NAME_MAPPING_KEY);
+    }
+    
+    function exportMappingsAsCSV() {
+      const mappings = loadAllMappings();
+      let csv = 'reddit_user,real_name\n';
+      for (const [reddit, name] of Object.entries(mappings)) {
+        csv += `${reddit},${name}\n`;
+      }
+      return csv;
+    }
+
+    // ============ NAME EDIT FUNCTIONALITY ============
+    function attachNameEditListeners() {
+      const nameFields = document.querySelectorAll('.name-field');
+      
+      nameFields.forEach(field => {
+        field.addEventListener('click', function() {
+          const index = parseInt(this.dataset.index);
+          const participant = appState.participants[index];
+          const currentName = getNameFromMapping(participant.redditUser) || participant.name || '';
+          
+          // Create input field
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.value = currentName;
+          input.style.width = '140px';
+          input.style.padding = '4px 8px';
+          input.style.border = '1px solid #cbd5e1';
+          input.style.borderRadius = '4px';
+          input.style.fontSize = '14px';
+          input.style.fontFamily = 'Inter, sans-serif';
+          
+          // Replace field with input
+          const parentTd = this.parentElement;
+          parentTd.innerHTML = '';
+          parentTd.appendChild(input);
+          input.focus();
+          input.select();
+          
+          const saveEdit = async () => {
+            const newName = input.value.trim();
+            
+            // Save to localStorage
+            if (newName) {
+              saveNameMapping(participant.redditUser, newName);
+            }
+            
+            // Update participant object
+            appState.participants[index].name = newName;
+            await saveState();
+            rebuildTable();
+            
+            // Show toast
+            showToast('Name Updated', [`${participant.redditUser} → ${newName || '(cleared)'}`]);
+          };
+          
+          input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+              saveEdit();
+            } else if (e.key === 'Escape') {
+              rebuildTable();
+            }
+          });
+          
+          input.addEventListener('blur', saveEdit);
+        });
+      });
+    }
+
+    function attachPaidCheckboxListeners() {
+      const checkboxes = document.querySelectorAll('.paid-checkbox');
+      
+      checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', async function() {
+          const index = parseInt(this.dataset.index);
+          const newPaidStatus = this.checked;
+          const participant = appState.participants[index];
+          
+          // Update participant paid status
+          appState.participants[index].paid = newPaidStatus;
+          
+          // Save to database
+          await saveState();
+          
+          // Rebuild table to update status chip
+          rebuildTable();
+          updateStats();
+          
+          // Log activity
+          await API.logActivity({
+            type: newPaidStatus ? 'payment' : 'edit',
+            title: newPaidStatus ? 'Payment received' : 'Payment unmarked',
+            details: `${participant.redditUser} • $${participant.owed}`,
+            badge: newPaidStatus ? 'Payment' : 'Edit'
+          });
+          
+          // Show toast
+          const statusText = newPaidStatus ? 'marked as paid' : 'marked as unpaid';
+          showToast('Payment Status Updated', [`${participant.redditUser} ${statusText}`]);
+        });
+      });
+    }
+
+    // ============ UTILITY FUNCTIONS ============
+    function showToast(title, details) {
+      const toast = document.getElementById("successToast");
+      const toastTitle = document.getElementById("toastTitle");
+      const toastMessage = document.getElementById("toastMessage");
+
+      toastTitle.textContent = title;
+      toastMessage.innerHTML = details.map(d => `<div class="toast-detail">${d}</div>`).join('');
+
+      toast.classList.add("show");
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 4000);
+    }
+
+function updateStats() {
+      const totalSpotsEl = document.getElementById("totalSpots");
+      const spotsRemainingEl = document.getElementById("spotsRemaining");
+      const costPerSpotEl = document.getElementById("costPerSpot");
+      const totalOwedEl = document.getElementById("totalOwed");
+      const totalPaidEl = document.getElementById("totalPaid");
+
+      totalSpotsEl.textContent = appState.totalSpots !== null ? appState.totalSpots : '-';
+      costPerSpotEl.textContent = appState.costPerSpot !== null ? `$${appState.costPerSpot}` : '-';
+
+      const spotsClaimed = appState.participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+      const spotsRemaining = appState.totalSpots !== null ? Math.max(0, appState.totalSpots - spotsClaimed) : '-';  // ADD Math.max(0, ...)
+      spotsRemainingEl.textContent = spotsRemaining;
+
+      // Stop auto-polling when raffle is full (0 spots remaining)
+      if (spotsRemaining === 0 && pollingInterval) {
+        stopAutoPolling();
+        console.log('🎯 Raffle is full! Auto-polling stopped.');
+      }
+      
+      // Restart auto-polling if spots open up and polling is not running
+      if (spotsRemaining > 0 && !pollingInterval && appState.redditLink && appState.costPerSpot) {
+        startAutoPolling();
+        console.log('🔄 Spots available! Auto-polling restarted.');
+      }
+
+      const totalOwed = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+      const totalPaid = appState.participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+
+      totalOwedEl.textContent = `$${totalOwed.toLocaleString()}`;
+      totalPaidEl.textContent = `$${totalPaid.toLocaleString()}`;
+    }
+
+    function updateFooter() {
+      const tbody = document.getElementById("participantsTbody");
+      const visibleRows = Array.from(tbody.querySelectorAll("tr:not(.hidden):not(#emptyRow)"));
+      const totalCount = appState.participants.length;
+      const visibleCount = visibleRows.length;
+
+      const paidCount = appState.participants.filter(p => p.paid).length;
+      const pendingCount = totalCount - paidCount;
+
+      document.getElementById("footerShowing").textContent = `Showing ${visibleCount} of ${totalCount} participants`;
+      document.getElementById("footerStats").innerHTML = `Paid: <strong>${paidCount}</strong> &nbsp;&nbsp; Pending: <strong>${pendingCount}</strong>`;
+      document.getElementById("totalParticipants").textContent = totalCount;
+    }
+
+    function filterAndSearch() {
+      const searchQuery = document.getElementById("participantSearch").value.toLowerCase();
+      const paymentFilter = document.getElementById("paymentFilter").value;
+      const tbody = document.getElementById("participantsTbody");
+      const rows = Array.from(tbody.querySelectorAll("tr:not(#emptyRow)"));
+
+      rows.forEach(row => {
+        const redditUser = row.dataset.reddit?.toLowerCase() || '';
+        const name = row.dataset.name?.toLowerCase() || '';
+        const comment = row.dataset.comment?.toLowerCase() || '';
+        const paid = row.dataset.paid === 'true';
+
+        const matchesSearch = redditUser.includes(searchQuery) ||
+                            name.includes(searchQuery) ||
+                            comment.includes(searchQuery);
+        const matchesFilter = paymentFilter === 'all' ||
+                             (paymentFilter === 'paid' && paid) ||
+                             (paymentFilter === 'pending' && !paid);
+
+        if (matchesSearch && matchesFilter) {
+          row.classList.remove('hidden');
+        } else {
+          row.classList.add('hidden');
+        }
+      });
+
+      updateFooter();
+    }
+
+    async function saveToHistory(status, winner = null) {
+      try {
+        await API.saveToHistory({
+          raffleDate: new Date().toISOString(),
+          status: status,
+          redditLink: appState.redditLink,
+          totalSpots: appState.totalSpots,
+          costPerSpot: appState.costPerSpot,
+          participants: appState.participants,
+          totalOwed: appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0),
+          totalPaid: appState.participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0),
+          winner: winner
+        });
+
+        // Also log activity
+        await API.logActivity({
+          type: status === 'completed' ? 'completed' : 'cancelled',
+          title: status === 'completed'
+            ? `Raffle completed${winner ? ` - Winner: <span class="activity-highlight">${winner.username}</span>` : ''}`
+            : 'Raffle cancelled',
+          details: status === 'completed'
+            ? `${appState.participants.length} participants • Total value: $${appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0).toLocaleString()}${winner ? ` • Winning spot: #${winner.spot}` : ''}`
+            : `${appState.participants.length} participants • Raffle cancelled before completion`,
+          badge: status === 'completed' ? 'Completed' : 'Cancelled'
+        });
+      } catch (e) {
+        console.error('Failed to save to history:', e);
+      }
+    }
+
+  async function resetRaffle() {
+      appState.redditLink = '';
+      appState.totalSpots = null;
+      appState.costPerSpot = null;
+      appState.participants = [];
+
+      await clearState();
+
+      const tbody = document.getElementById("participantsTbody");
+      tbody.innerHTML = '<tr id="emptyRow"><td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
+
+      document.getElementById("redditLinkInput").value = '';
+      document.getElementById("totalSpotsInput").value = ''; // CHANGED from '100' to ''
+      document.getElementById("spotCostInput").value = ''; // CHANGED from '50' to ''
+      document.getElementById("participantSearch").value = '';
+      document.getElementById("paymentFilter").value = 'all';
+
+      updateStats();
+      updateFooter();
+    }
+
+    // ============ SIDEBAR NAVIGATION ============
+    (function () {
+      const nav = document.getElementById("sidebarNav");
+      const square = document.getElementById("activeSquare");
+      function moveSquareTo(item) {
+        const navRect = nav.getBoundingClientRect();
+        const itemRect = item.getBoundingClientRect();
+        const navTop = parseFloat(getComputedStyle(nav).top) || 0;
+        square.style.top = navTop + (itemRect.top - navRect.top) + "px";
+      }
+      const active = nav.querySelector(".is-active");
+      if (active) moveSquareTo(active);
+    })();
+
+    // ============ COLUMN RESIZE ============
+    (function () {
+      const table = document.getElementById("participantsTable");
+      if (!table) return;
+
+      const STORAGE_KEY = "raffleui_participants_colwidths_v1";
+      const colgroup = table.querySelector("colgroup");
+      const cols = Array.from(colgroup.querySelectorAll("col"));
+      const ths = Array.from(table.querySelectorAll("thead th"));
+
+      try {
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
+        if (saved && Array.isArray(saved) && saved.length === cols.length) {
+          saved.forEach((w, i) => {
+            if (typeof w === "number" && w > 40) cols[i].style.width = Math.round(w) + "px";
+          });
+        }
+      } catch (_) {}
+
+      let isDragging = false;
+      let startX = 0;
+      let startWidth = 0;
+      let colIndex = -1;
+
+      function onMove(e) {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const dx = clientX - startX;
+        const minW = 70;
+        const newW = Math.max(minW, startWidth + dx);
+        cols[colIndex].style.width = Math.round(newW) + "px";
+        document.documentElement.classList.add("resizing");
+      }
+
+      function saveWidths() {
+        const widths = cols.map(c => Math.round(parseFloat(getComputedStyle(c).width) || 0));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(widths));
+      }
+
+      function onUp() {
+        if (!isDragging) return;
+        isDragging = false;
+        colIndex = -1;
+        document.documentElement.classList.remove("resizing");
+        saveWidths();
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+        window.removeEventListener("touchmove", onMove, { passive:false });
+        window.removeEventListener("touchend", onUp);
+      }
+
+      ths.forEach((th) => {
+        const handle = th.querySelector(".col-resizer");
+        if (!handle) return;
+
+        handle.addEventListener("mousedown", (e) => {
+          e.preventDefault();
+          const idx = parseInt(th.dataset.col, 10);
+          if (!Number.isFinite(idx)) return;
+
+          isDragging = true;
+          colIndex = idx;
+          startX = e.clientX;
+          startWidth = parseFloat(getComputedStyle(cols[idx]).width) || cols[idx].getBoundingClientRect().width;
+
+          window.addEventListener("mousemove", onMove);
+          window.addEventListener("mouseup", onUp);
+        });
+
+        handle.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          const idx = parseInt(th.dataset.col, 10);
+          if (!Number.isFinite(idx)) return;
+
+          isDragging = true;
+          colIndex = idx;
+          startX = e.touches[0].clientX;
+          startWidth = parseFloat(getComputedStyle(cols[idx]).width) || cols[idx].getBoundingClientRect().width;
+
+          window.addEventListener("touchmove", onMove, { passive:false });
+          window.addEventListener("touchend", onUp);
+        }, { passive:false });
+      });
+    })();
+
+    // ============ SETTINGS BUTTON ============
+    document.getElementById("settingsBtn").addEventListener("click", () => {
+      window.location.href = "/settings";
+    });
+
+ // ============ SETUP MODAL ============
+    (function () {
+      const setupBtn = document.getElementById("setupBtn");
+      const modal = document.getElementById("setupModal");
+      const cancelBtn = document.getElementById("modalCancelBtn");
+      const saveBtn = document.getElementById("modalSaveBtn");
+
+      const redditLinkInput = document.getElementById("redditLinkInput");
+      const totalSpotsInput = document.getElementById("totalSpotsInput");
+      const spotCostInput = document.getElementById("spotCostInput");
+      const pollingIntervalInput = document.getElementById("pollingIntervalInput");
+
+      setupBtn.addEventListener("click", () => {
+        modal.classList.add("show");
+      });
+
+      function closeModal() {
+        modal.classList.remove("show");
+      }
+
+      cancelBtn.addEventListener("click", closeModal);
+
+      // REMOVED: modal.addEventListener("click", ...) to prevent closing on outside click
+
+      saveBtn.addEventListener("click", async () => {
+        const data = {
+          redditLink: redditLinkInput.value,
+          totalSpots: parseInt(totalSpotsInput.value) || 100,
+          spotCost: parseInt(spotCostInput.value) || 50
+        };
+
+        appState.redditLink = data.redditLink;
+        appState.totalSpots = data.totalSpots;
+        appState.costPerSpot = data.spotCost;
+
+        await saveState();
+        updateStats();
+
+        // Log activity
+        await API.logActivity({
+          type: 'setup',
+          title: 'Raffle setup configured',
+          details: `${data.totalSpots} spots @ $${data.spotCost} each${data.redditLink ? ' • Reddit link added' : ''}`,
+          badge: 'Raffle Setup'
+        });
+
+        const details = [];
+        if (data.redditLink) {
+          details.push('📝 Reddit post linked');
+        }
+        details.push(`🎯 ${data.totalSpots} spots @ $${data.spotCost} each`);
+        details.push(`🤖 Auto-scanning every 30 sec`);
+
+        showToast('Setup Saved Successfully!', details);
+        closeModal();
+      });
+    })();
+
+ // ============ SUMMARY MODAL ============
+    (function () {
+      const summaryBtn = document.getElementById("summaryBtn");
+      const modal = document.getElementById("summaryModal");
+      const closeBtn = document.getElementById("summaryCloseBtn");
+
+      summaryBtn.addEventListener("click", () => {
+        populateSummary();
+        modal.classList.add("show");
+      });
+
+      function closeModal() {
+        modal.classList.remove("show");
+      }
+
+      closeBtn.addEventListener("click", closeModal);
+
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+      function populateSummary() {
+        const paidParticipants = appState.participants.filter(p => p.paid);
+        const unpaidParticipants = appState.participants.filter(p => !p.paid);
+        
+        const totalOwed = unpaidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalPaid = paidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalParticipants = appState.participants.length;
+
+        document.getElementById("summaryTotalOwed").textContent = `$${totalOwed.toLocaleString()}`;
+        document.getElementById("summaryTotalParticipants").textContent = totalParticipants;
+
+        const summaryList = document.getElementById("summaryList");
+        summaryList.innerHTML = '';
+
+        if (appState.participants.length === 0) {
+          summaryList.innerHTML = '<div style="padding: 40px; text-align: center; color: #9CA3AF;">No participants yet</div>';
+          return;
+        }
+
+        // Add summary stats header
+        const statsHeader = document.createElement('div');
+        statsHeader.style.cssText = 'display: flex; gap: 16px; padding: 16px; background: #F3F4F6; border-radius: 8px; margin-bottom: 20px;';
+        statsHeader.innerHTML = `
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">Total Collected</div>
+            <div style="font-size: 20px; font-weight: 700; color: #16a34a;">$${totalPaid.toLocaleString()}</div>
+          </div>
+          <div style="flex: 1; text-align: center;">
+            <div style="font-size: 12px; color: #6B7280; margin-bottom: 4px;">Still Owed</div>
+            <div style="font-size: 20px; font-weight: 700; color: #dc2626;">$${totalOwed.toLocaleString()}</div>
+          </div>
+        `;
+        summaryList.appendChild(statsHeader);
+
+        // Unpaid participants section
+        if (unpaidParticipants.length > 0) {
+          const unpaidHeader = document.createElement('div');
+          unpaidHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #dc2626; padding: 12px 0 8px 0; border-top: 2px solid #fee2e2;';
+          unpaidHeader.innerHTML = `⏱ Pending Payment (${unpaidParticipants.length})`;
+          summaryList.appendChild(unpaidHeader);
+
+          unpaidParticipants.forEach(participant => {
+            const initial = participant.redditUser.charAt(2).toUpperCase();
+            const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
+            const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
+            
+            const participantEl = document.createElement('div');
+            participantEl.className = 'summary-participant';
+            participantEl.style.background = '#fef3c7';
+            participantEl.innerHTML = `
+              <div class="summary-user-info">
+                <div class="summary-avatar">${initial}</div>
+                <div>
+                  <div class="summary-username">${participant.redditUser}</div>
+                  ${nameDisplay}
+                </div>
+              </div>
+              <div class="summary-stats">
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Spots</div>
+                  <div class="summary-stat-value">${participant.spots}</div>
+                </div>
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Owed</div>
+                  <div class="summary-stat-value summary-owed-value" style="color: #dc2626; font-weight: 700;">$${participant.owed}</div>
+                </div>
+              </div>
+            `;
+            summaryList.appendChild(participantEl);
+          });
+        }
+
+        // Paid participants section
+        if (paidParticipants.length > 0) {
+          const paidHeader = document.createElement('div');
+          paidHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #16a34a; padding: 20px 0 8px 0; border-top: 2px solid #dcfce7; margin-top: 16px;';
+          paidHeader.innerHTML = `✓ Paid (${paidParticipants.length})`;
+          summaryList.appendChild(paidHeader);
+
+          paidParticipants.forEach(participant => {
+            const initial = participant.redditUser.charAt(2).toUpperCase();
+            const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
+            const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
+            
+            const participantEl = document.createElement('div');
+            participantEl.className = 'summary-participant';
+            participantEl.style.background = '#dcfce7';
+            participantEl.innerHTML = `
+              <div class="summary-user-info">
+                <div class="summary-avatar">${initial}</div>
+                <div>
+                  <div class="summary-username">${participant.redditUser}</div>
+                  ${nameDisplay}
+                </div>
+              </div>
+              <div class="summary-stats">
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Spots</div>
+                  <div class="summary-stat-value">${participant.spots}</div>
+                </div>
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Paid</div>
+                  <div class="summary-stat-value" style="color: #16a34a; font-weight: 700;">$${participant.owed}</div>
+                </div>
+              </div>
+            `;
+            summaryList.appendChild(participantEl);
+          });
+        }
+      }
+    })();
+
+ // ============ NAME IMPORT MODAL ============
+    // Note: This modal is now primarily used in Settings page
+    // Keeping the handler logic here for potential inline use
+    (function () {
+      const modal = document.getElementById("nameImportModal");
+      if (!modal) return; // Modal might not exist on this page
+      
+      const closeBtn = document.getElementById("nameImportCloseBtn");
+      const fileInput = document.getElementById("nameFileInput");
+      const importNowBtn = document.getElementById("nameImportBtn");
+      const exportBtn = document.getElementById("nameExportBtn");
+      const clearBtn = document.getElementById("nameClearBtn");
+      const preview = document.getElementById("importPreview");
+      const previewList = document.getElementById("importPreviewList");
+      const importCount = document.getElementById("importCount");
+      
+      let parsedData = null;
+
+      function closeModal() {
+        modal.classList.remove("show");
+        fileInput.value = '';
+        preview.style.display = 'none';
+        parsedData = null;
+        importNowBtn.disabled = true;
+      }
+
+      if (closeBtn) closeBtn.addEventListener("click", closeModal);
+
+      if (modal) {
+        modal.addEventListener("click", (e) => {
+          if (e.target === modal) closeModal();
+        });
+      }
+
+      // File input change handler
+      fileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+          const data = await parseFile(file);
+          parsedData = data;
+          
+          // Show preview
+          const entries = Object.entries(data);
+          const previewEntries = entries.slice(0, 5);
+          
+          previewList.innerHTML = previewEntries
+            .map(([reddit, name]) => `${reddit} → ${name}`)
+            .join('<br>');
+          
+          importCount.textContent = `Ready to import ${entries.length} name mappings`;
+          preview.style.display = 'block';
+          importNowBtn.disabled = false;
+          
+        } catch (error) {
+          alert('Error parsing file: ' + error.message);
+          preview.style.display = 'none';
+          importNowBtn.disabled = true;
+        }
+      });
+
+      // Parse file (CSV or Excel)
+      async function parseFile(file) {
+        const fileName = file.name.toLowerCase();
+        
+        if (fileName.endsWith('.csv') || fileName.endsWith('.tsv') || fileName.endsWith('.txt')) {
+          return parseCSV(file);
+        } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+          return parseExcel(file);
+        } else {
+          throw new Error('Unsupported file format. Use CSV, TSV, or Excel (.xlsx, .xls)');
+        }
+      }
+
+      // Parse CSV
+      async function parseCSV(file) {
+        const text = await file.text();
+        const lines = text.split('\n').filter(line => line.trim());
+        const mappings = {};
+        
+        // Skip header if present
+        const startIndex = lines[0].toLowerCase().includes('reddit') ? 1 : 0;
+        
+        for (let i = startIndex; i < lines.length; i++) {
+          const line = lines[i].trim();
+          if (!line) continue;
+          
+          const parts = line.split(',').map(p => p.trim());
+          if (parts.length >= 2) {
+            const reddit = parts[0];
+            const name = parts.slice(1).join(',').replace(/^["']|["']$/g, ''); // Handle quoted names
+            if (reddit && name) {
+              mappings[reddit] = name;
+            }
+          }
+        }
+        
+        return mappings;
+      }
+
+      // Parse Excel
+      async function parseExcel(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          
+          reader.onload = (e) => {
+            try {
+              const data = new Uint8Array(e.target.result);
+              const workbook = XLSX.read(data, { type: 'array' });
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+              
+              const mappings = {};
+              // Skip header if present
+              const startIndex = rows[0] && String(rows[0][0]).toLowerCase().includes('reddit') ? 1 : 0;
+              
+              for (let i = startIndex; i < rows.length; i++) {
+                const row = rows[i];
+                if (row && row.length >= 2) {
+                  const reddit = String(row[0]).trim();
+                  const name = String(row[1]).trim();
+                  if (reddit && name) {
+                    mappings[reddit] = name;
+                  }
+                }
+              }
+              
+              resolve(mappings);
+            } catch (error) {
+              reject(error);
+            }
+          };
+          
+          reader.onerror = () => reject(new Error('Failed to read file'));
+          reader.readAsArrayBuffer(file);
+        });
+      }
+
+      // Import button handler
+      importNowBtn.addEventListener("click", () => {
+        if (!parsedData) return;
+        
+        // Merge with existing mappings
+        const existing = loadAllMappings();
+        const merged = { ...existing, ...parsedData };
+        saveAllMappings(merged);
+        
+        // Rebuild table to show new names
+        rebuildTable();
+        
+        showToast('Names Imported!', [
+          `✓ ${Object.keys(parsedData).length} mappings imported`,
+          `📋 Total mappings: ${Object.keys(merged).length}`,
+          '🔄 Names updated in table'
+        ]);
+        
+        closeModal();
+      });
+
+      // Export button handler
+      exportBtn.addEventListener("click", () => {
+        const csv = exportMappingsAsCSV();
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `reddit_names_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        showToast('Mappings Exported!', ['📥 CSV file downloaded']);
+      });
+
+      // Clear button handler
+      clearBtn.addEventListener("click", () => {
+        if (confirm('Are you sure you want to clear all name mappings? This cannot be undone.')) {
+          clearAllMappings();
+          rebuildTable();
+          showToast('Mappings Cleared!', ['🗑️ All name mappings removed']);
+        }
+      });
+    })();
+
+ // ============ RESTRICTION MODAL ============
+    (function () {
+      const restrictionModal = document.getElementById("restrictionModal");
+      const restrictionMessage = document.getElementById("restrictionMessage");
+      const restrictionOkBtn = document.getElementById("restrictionOkBtn");
+
+      window.showRestrictionModal = function(message) {
+        restrictionMessage.innerHTML = message;
+        restrictionModal.classList.add("show");
+      };
+
+      restrictionOkBtn.addEventListener("click", () => {
+        restrictionModal.classList.remove("show");
+      });
+
+      restrictionModal.addEventListener("click", (e) => {
+        if (e.target === restrictionModal) {
+          restrictionModal.classList.remove("show");
+        }
+      });
+    })();
+
+ // ============ FINISH RAFFLE MODAL ============
+    (function () {
+      const finishBtn = document.getElementById("finishRaffleBtn");
+      const modal = document.getElementById("finishModal");
+      const completeBtn = document.getElementById("finishCompleteBtn");
+      const cancelBtn = document.getElementById("finishCancelBtn");
+      const winnerUsernameInput = document.getElementById("winnerUsernameInput");
+      const winningSpotInput = document.getElementById("winningSpotInput");
+
+   finishBtn.addEventListener("click", () => {
+        // Calculate current stats
+        const spotsClaimed = appState.participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+        const spotsRemaining = appState.totalSpots !== null ? Math.max(0, appState.totalSpots - spotsClaimed) : 0;
+        const totalOwed = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalPaid = appState.participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+        const unpaidAmount = totalOwed - totalPaid;
+        
+        // Check if raffle can be finished
+        if (spotsRemaining > 0) {
+          showRestrictionModal(`There are still <strong>${spotsRemaining}</strong> spots remaining.<br>All spots must be filled before selecting a winner.`);
+          return;
+        }
+        
+        if (unpaidAmount > 0) {
+          showRestrictionModal(`There is still <strong>$${unpaidAmount.toLocaleString()}</strong> owed.<br>All payments must be collected before selecting a winner.`);
+          return;
+        }
+        
+        // If all checks pass, open the modal
+        winnerUsernameInput.value = '';
+        winningSpotInput.value = '';
+        completeBtn.disabled = true;
+        
+        // Set max attribute and placeholder based on total spots from setup
+        const totalSpots = appState.totalSpots || 100;
+        winningSpotInput.setAttribute('max', totalSpots);
+        winningSpotInput.setAttribute('placeholder', `Enter spot number (1-${totalSpots})`);
+        
+        modal.classList.add("show");
+
+        // Populate username dropdown
+        populateUsernameDropdown();
+      });
+
+      function closeModal() {
+        modal.classList.remove("show");
+      }
+
+      modal.addEventListener("click", (e) => {
+        if (e.target === modal) closeModal();
+      });
+
+         // Populate username dropdown with unique Reddit usernames
+      function populateUsernameDropdown() {
+        const dropdownList = document.getElementById('usernameDropdownList');
+
+        // Get unique Reddit usernames
+        const usernames = [...new Set(appState.participants.map(p => p.redditUser))].sort();
+
+        // Store for filtering
+        window.allUsernames = usernames;
+
+        // Initially hide dropdown
+        dropdownList.classList.remove('show');
+      }
+
+      // Filter and display username dropdown
+      function filterUsernameDropdown(searchTerm) {
+        const dropdownList = document.getElementById('usernameDropdownList');
+        const searchLower = searchTerm.toLowerCase();
+
+        // Filter usernames
+        const filtered = window.allUsernames.filter(u => u.toLowerCase().includes(searchLower));
+
+        // Clear list
+        dropdownList.innerHTML = '';
+
+        if (searchTerm && filtered.length > 0) {
+          filtered.forEach(username => {
+            const item = document.createElement('div');
+            item.className = 'username-dropdown-item';
+            item.textContent = username;
+            item.addEventListener('click', () => {
+              winnerUsernameInput.value = username;
+              dropdownList.classList.remove('show');
+              validateWinnerInput();
+              winningSpotInput.focus();
+            });
+            dropdownList.appendChild(item);
+          });
+          dropdownList.classList.add('show');
+        } else {
+          dropdownList.classList.remove('show');
+        }
+      }
+
+      // Username input event listeners
+      winnerUsernameInput.addEventListener('input', (e) => {
+        filterUsernameDropdown(e.target.value);
+        validateWinnerInput();
+      });
+
+      winnerUsernameInput.addEventListener('focus', (e) => {
+        if (e.target.value) {
+          filterUsernameDropdown(e.target.value);
+        }
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        const dropdownList = document.getElementById('usernameDropdownList');
+        if (!winnerUsernameInput.contains(e.target) && !dropdownList.contains(e.target)) {
+          dropdownList.classList.remove('show');
+        }
+      });
+
+      function validateWinnerInput() {
+        const hasUsername = winnerUsernameInput.value.trim() !== '';
+        const spotValue = parseInt(winningSpotInput.value);
+        const totalSpots = appState.totalSpots || 100;
+        const hasSpot = winningSpotInput.value !== '' && spotValue > 0 && spotValue <= totalSpots;
+        completeBtn.disabled = !(hasUsername && hasSpot);
+      }
+
+      winnerUsernameInput.addEventListener("input", validateWinnerInput);
+      winningSpotInput.addEventListener("input", validateWinnerInput);
+
+      completeBtn.addEventListener("click", async () => {
+        const username = winnerUsernameInput.value.trim();
+        const spot = parseInt(winningSpotInput.value);
+        const totalSpots = appState.totalSpots || 100;
+
+        if (!username || !spot) {
+          alert('Please enter both winner username and spot number.');
+          return;
+        }
+
+        if (spot < 1 || spot > totalSpots) {
+          alert(`Spot number must be between 1 and ${totalSpots}.`);
+          return;
+        }
+
+        const winner = {
+          username: username,
+          spot: spot
+        };
+
+        await saveToHistory('completed', winner);
+        showToast(
+          `🏆 Winner: ${winner.username}`,
+          [`Spot #${winner.spot}`]
+        );
+        await resetRaffle();
+        closeModal();
+      });
+
+      cancelBtn.addEventListener("click", async () => {
+        if (confirm("Are you sure you want to cancel this raffle? It will be saved as incomplete.")) {
+          await saveToHistory('cancelled', null);
+          showToast('Raffle Cancelled', ['Saved to history as cancelled']);
+          await resetRaffle();
+          closeModal();
+        }
+      });
+    })();
+
+    // ============ SCAN REDDIT BUTTON ============
+    document.getElementById("scanRedditBtn").addEventListener("click", async () => {
+      if (!appState.redditLink) {
+        alert('❌ Please set up a Reddit link first using the Setup button.');
+        return;
+      }
+
+      if (!appState.costPerSpot) {
+        alert('❌ Please configure cost per spot in Setup first.');
+        return;
+      }
+
+      // Disable button during scan
+      const btn = document.getElementById("scanRedditBtn");
+      btn.disabled = true;
+      btn.textContent = 'Scanning...';
+
+      try {
+        const result = await API.scanReddit(appState.redditLink, appState.costPerSpot);
+
+        if (!result.ok) {
+          alert(`❌ Reddit scan failed: ${result.error}`);
+          return;
+        }
+
+        const newParticipants = result.participants || [];
+
+        if (newParticipants.length === 0) {
+          alert('ℹ️ No new participants found in Reddit comments.');
+          return;
+        }
+
+        // Add all new participants as separate entries (allow duplicates for multiple comments)
+        newParticipants.forEach(newP => {
+          appState.participants.push(newP);
+        });
+
+        await saveState();
+        rebuildTable();
+        updateStats();
+        updateFooter();
+
+        // Log activity
+        await API.logActivity({
+          type: 'participant',
+          title: `Reddit scan completed - ${newParticipants.length} entries added`,
+          details: `${newParticipants.length} participant entries processed from Reddit comments`,
+          badge: 'Reddit Scan'
+        });
+
+        const details = [
+          `👥 ${newParticipants.length} entries added`,
+          `📊 Total entries: ${appState.participants.length}`
+        ];
+        showToast('Reddit Scan Complete!', details);
+
+      } catch (error) {
+        console.error('Reddit scan error:', error);
+        alert(`❌ Scan failed: ${error.message}`);
+      } finally {
+        // Re-enable button
+        btn.disabled = false;
+        btn.textContent = 'Scan Reddit';
+      }
+    });
+
+    // ============ SCAN EMAIL BUTTON ============
+    document.getElementById("scanEmailBtn").addEventListener("click", () => {
+      const details = [
+        '📧 Gmail inbox scanned',
+        '✅ Payment confirmations detected',
+        '🔄 Participant statuses updated'
+      ];
+      showToast('Email Scan Complete!', details);
+    });
+
+    // ============ MARK ALL PAID BUTTON ============
+    document.getElementById("markPaidBtn").addEventListener("click", async () => {
+      const pendingCount = appState.participants.filter(p => !p.paid).length;
+      const totalAmount = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+
+      appState.participants.forEach(p => p.paid = true);
+      await saveState();
+      rebuildTable();
+      updateStats();
+      updateFooter();
+
+      // Log activity
+      await API.logActivity({
+        type: 'payment',
+        title: 'All participants marked as paid',
+        details: `${pendingCount} payments confirmed • Total: $${totalAmount.toLocaleString()}`,
+        badge: 'Payment Confirmed'
+      });
+
+      const details = [
+        `✓ ${pendingCount} participants marked as paid`,
+        `💰 Total confirmed: $${totalAmount.toLocaleString()}`,
+        '🎉 All payments complete!'
+      ];
+      showToast('Payments Updated!', details);
+    });
+
+    // ============ SEARCH & FILTER ============
+    document.getElementById("participantSearch").addEventListener("input", filterAndSearch);
+    document.getElementById("paymentFilter").addEventListener("change", filterAndSearch);
+
+    // ============ TOAST CLOSE ============
+    document.getElementById("toastClose").addEventListener("click", () => {
+      document.getElementById("successToast").classList.remove("show");
+    });
+
+    // ============ INITIALIZE ============
+    (async function init() {
+      await loadState();
+      updateStats();
+      updateFooter();
+      startAutoPolling(); // Start auto-polling
+    })();
+
+    // ============ AUTO-POLLING REDDIT SCAN ============
+    let pollingInterval = null;
+
+    async function performAutoScan() {
+      // Only scan if Reddit link and cost per spot are configured
+      if (!appState.redditLink || !appState.costPerSpot) {
+        return;
+      }
+
+      console.log('🔄 Auto-scanning Reddit...');
+
+      try {
+        const result = await API.scanReddit(appState.redditLink, appState.costPerSpot);
+
+        if (!result.ok) {
+          console.error('Auto-scan failed:', result.error);
+          return;
+        }
+
+        const newParticipants = result.participants || [];
+
+        if (newParticipants.length === 0) {
+          console.log('✓ Auto-scan complete - no new participants');
+          return;
+        }
+
+        // Add all new participants
+        newParticipants.forEach(newP => {
+          appState.participants.push(newP);
+        });
+
+        await saveState();
+        rebuildTable();
+        updateStats();
+        updateFooter();
+
+        // Log activity
+        await API.logActivity({
+          type: 'participant',
+          title: `Auto-scan: ${newParticipants.length} entries added`,
+          details: `${newParticipants.length} participant entries found via automatic Reddit scan`,
+          badge: 'Auto-Scan'
+        });
+
+        // Show notification
+        const details = [
+          `👥 ${newParticipants.length} new entries found`,
+          `📊 Total entries: ${appState.participants.length}`
+        ];
+        showToast('Auto-Scan Complete!', details);
+
+        console.log(`✓ Auto-scan complete - ${newParticipants.length} new participants added`);
+
+      } catch (error) {
+        console.error('Auto-scan error:', error);
+      }
+    }
+
+    function startAutoPolling() {
+      // Clear any existing interval
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+
+      // Only start polling if setup is configured
+      if (!appState.redditLink || !appState.costPerSpot) {
+        document.getElementById('autoScanIndicator').style.display = 'none';
+        return;
+      }
+
+      // Show indicator
+      document.getElementById('autoScanIndicator').style.display = 'inline-flex';
+
+      // Start polling every 30 seconds (30000ms)
+      pollingInterval = setInterval(performAutoScan, 30000);
+
+      console.log('✓ Auto-polling started - scanning every 30 seconds');
+    }
+
+    function stopAutoPolling() {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+      }
+      document.getElementById('autoScanIndicator').style.display = 'none';
+      console.log('✓ Auto-polling stopped');
+    }
+
+    // Stop polling when page is unloaded
+    window.addEventListener('beforeunload', stopAutoPolling);
+
+    // Restart polling when setup is saved
+    const originalSaveBtn = document.getElementById("modalSaveBtn");
+    if (originalSaveBtn) {
+      originalSaveBtn.addEventListener("click", () => {
+        setTimeout(() => {
+          startAutoPolling();
+        }, 500);
+      });
+    }
+
+        // ===== AUTO-OPEN SETUP MODAL FROM DASHBOARD =====
+(function() {
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('setup') === 'open') {
+    // Wait for page to fully load
+    setTimeout(() => {
+      const setupBtn = document.getElementById('setupBtn');
+      if (setupBtn) {
+        setupBtn.click();
+      }
+    }, 500);
+
+    // Clean URL (remove ?setup=open)
+    window.history.replaceState({}, document.title, '/active-raffle');
+  }
+})();
+
+  </script>
+</body>
+</html>

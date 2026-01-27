@@ -1,0 +1,87 @@
+const API = {
+  saveRaffle: async (data) => {
+    const response = await fetch('/api/raffle/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  loadRaffle: async () => {
+    const response = await fetch('/api/raffle/load');
+    return response.json();
+  },
+
+  clearRaffle: async () => {
+    const response = await fetch('/api/raffle/clear', { method: 'DELETE' });
+    return response.json();
+  },
+
+  saveToHistory: async (data) => {
+    const response = await fetch('/api/raffle/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  getHistory: async () => {
+    const response = await fetch('/api/raffle/history');
+    return response.json();
+  },
+
+  clearHistory: async () => {
+    const response = await fetch('/api/raffle/history', { method: 'DELETE' });
+    return response.json();
+  },
+
+  logActivity: async (data) => {
+    const response = await fetch('/api/activity/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  getActivities: async () => {
+    const response = await fetch('/api/activity/list');
+    return response.json();
+  },
+
+  clearActivities: async () => {
+    const response = await fetch('/api/activity/clear', { method: 'DELETE' });
+    return response.json();
+  },
+
+  scanReddit: async (redditLink, costPerSpot) => {
+    // FIXED: Changed from /api/parse-reddit to /api/reddit/scan
+    const url = `/api/reddit/scan?url=${encodeURIComponent(redditLink)}&costPerSpot=${costPerSpot}`;
+    const response = await fetch(url);
+    return response.json();
+  },
+
+  // User authentication methods
+  login: async (username) => {
+    const response = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    });
+    return response.json();
+  },
+
+  checkAdminStatus: async () => {
+    const response = await fetch('/api/auth/current-user');
+    return response.json();
+  },
+
+  // Admin analytics methods
+  getAdminAnalytics: async (year) => {
+    const response = await fetch(`/api/admin/analytics/${year}`);
+    return response.json();
+  }
+};
+

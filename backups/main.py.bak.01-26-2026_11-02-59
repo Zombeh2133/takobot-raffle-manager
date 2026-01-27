@@ -1,0 +1,1115 @@
+from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
+from pydantic import BaseModel
+from pathlib import Path
+from PIL import Image
+from datetime import datetime, timedelta
+from . import reddit as Reddit
+import json
+import sqlite3
+import os
+import hashlib
+import base64
+import secrets
+import httpx
+import subprocess
+import sys
+import psycopg2
+from psycopg2.extras import RealDictCursor
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+app = FastAPI()
+# =========================
+# Sessions (cookie-based)
+# =========================
+SESSION_SECRET = os.environ.get("SESSION_SECRET", "CHANGE_ME_SESSION_SECRET")
+app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=False)
+
+# =========================
+# Paths
+# =========================
+APP_DIR = Path(__file__).resolve().parent
+TEMPLATES_DIR = APP_DIR / "templates"
+STATIC_DIR = APP_DIR / "static"
+
+DATA_DIR = APP_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+USERS_DIR = DATA_DIR / "users"
+
+# =========================
+# PostgreSQL Connection
+# =========================
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:makii@localhost:5432/raffle_manager")
+
+# =========================
+# Email Configuration (Gmail SMTP)
+# =========================
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+EMAIL_USER = os.environ.get("EMAIL_USER", "ww2994@gmail.com")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")  # Gmail app password
+EMAIL_FROM = os.environ.get("EMAIL_FROM", EMAIL_USER)
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8000")
+
+def get_pg_connection():
+    """Get PostgreSQL connection"""
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
+
+# =========================
+# Templates + Static
+# =========================
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# =========================
+# Image paths
+# =========================
+SOURCE_IMG = STATIC_DIR / "assets" / "Background" / "Sidebar.png"
+OUTPUT_IMG = STATIC_DIR / "processed" / "sidebar_processed.png"
+
+# =========================
+# DB helpers
+# =========================
+def db_connect():
+    con = sqlite3.connect(str(DB_PATH))
+    con.row_factory = sqlite3.Row
+    return con
+
+def ensure_db():
+    con = db_connect()
+    cur = con.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS users (
+       id INTEGER PRIMARY KEY AUTOINCREMENT,
+       username TEXT UNIQUE NOT NULL,
+       password_hash TEXT
+    )
+    """)
+
+    con.commit()
+    con.close()
+
+@app.on_event("startup")
+async def on_startup():
+    """Initialize on startup"""
+    USERS_DIR.mkdir(parents=True, exist_ok=True)
+    # Ensure password_hash column exists in PostgreSQL
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+        """)
+        cur.execute("""
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Startup DB migration info: {e}")
+
+def get_current_user(request: Request):
+    """Get current user from session (PostgreSQL)"""
+    uid = request.session.get("user_id")
+    if not uid:
+        return None
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, is_admin FROM users WHERE id = %s", (uid,))
+        row = cur.fetchone()
+        conn.close()
+        return dict(row) if row else None
+    except Exception:
+        return None
+
+def get_or_create_active_raffle_id(user_id: int) -> int:
+    con = db_connect()
+    cur = con.cursor()
+
+    row = cur.execute("""
+        SELECT id FROM raffles
+        WHERE user_id=? AND status='active'
+        ORDER BY id DESC
+        LIMIT 1
+    """, (user_id,)).fetchone()
+
+    if row:
+        con.close()
+        return int(row["id"])
+
+    cur.execute("""
+        INSERT INTO raffles (user_id, status, reddit_post_url, created_at)
+        VALUES (?, 'active', '', ?)
+    """, (user_id, now_iso()))
+    con.commit()
+
+    rid = cur.execute("SELECT last_insert_rowid() AS id").fetchone()["id"]
+    con.close()
+    return int(rid)
+
+def now_iso():
+    return datetime.utcnow().isoformat(timespec="seconds") + "Z"
+
+def db_init_raffle_tables():
+    con = db_connect()
+    cur = con.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS raffles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'active',
+        reddit_post_url TEXT DEFAULT '',
+        created_at TEXT NOT NULL
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS participants (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        raffle_id INTEGER NOT NULL,
+        reddit_comment_id TEXT NOT NULL,
+        reddit_author TEXT NOT NULL,
+        comment_body TEXT NOT NULL,
+        spots INTEGER NULL,
+        created_utc INTEGER NOT NULL DEFAULT 0,
+        permalink TEXT DEFAULT '',
+        created_at TEXT NOT NULL,
+        UNIQUE(raffle_id, reddit_comment_id)
+    )
+    """)
+
+    con.commit()
+    con.close()
+
+# =========================
+# Password hashing (PBKDF2)
+# =========================
+def hash_password(password: str) -> str:
+    # format: pbkdf2$iterations$salt_b64$hash_b64
+    iterations = 200_000
+    salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+    return "pbkdf2${}${}${}".format(
+        iterations,
+        base64.b64encode(salt).decode("ascii"),
+        base64.b64encode(dk).decode("ascii"),
+    )
+
+def verify_password(password: str, stored: str) -> bool:
+    try:
+        scheme, iters, salt_b64, hash_b64 = stored.split("$", 3)
+        if scheme != "pbkdf2":
+            return False
+        iterations = int(iters)
+        salt = base64.b64decode(salt_b64.encode("ascii"))
+        expected = base64.b64decode(hash_b64.encode("ascii"))
+        dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, iterations)
+        return secrets.compare_digest(dk, expected)
+    except Exception:
+        return False
+
+# =========================
+# Admin API (check is_admin from PostgreSQL)
+# =========================
+@app.get("/api/admin/users")
+async def admin_list_users(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Forbidden"}, status_code=403)
+
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, is_admin FROM users ORDER BY id ASC")
+        rows = cur.fetchall()
+        conn.close()
+
+        items = []
+        for r in rows:
+            uid = int(r["id"])
+            creds_dir = str(USERS_DIR / str(uid) / "credentials")
+            oauth_path = str(USERS_DIR / str(uid) / "credentials" / "gmail_oauth_client.json")
+            items.append({
+                "id": uid,
+                "username": r["username"],
+                "is_admin": r["is_admin"],
+                "creds_dir": creds_dir,
+                "gmail_oauth_client_path": oauth_path,
+            })
+
+        return {"ok": True, "users": items}
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+@app.get("/api/whoami")
+async def whoami(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return {"ok": False, "user": None}
+    return {"ok": True, "user": user}
+
+@app.get("/api/auth/current-user")
+async def current_user(request: Request):
+    """Get current user with admin status - for frontend auth checks"""
+    user = get_current_user(request)
+    if not user:
+        return {"ok": False, "data": None}
+    return {
+        "ok": True,
+        "data": {
+            "id": user["id"],
+            "username": user["username"],
+            "isAdmin": user.get("is_admin", False)
+        }
+    }
+
+@app.post("/api/auth/logout")
+@app.get("/api/auth/logout")
+async def api_auth_logout(request: Request):
+    """Auth API endpoint for logout - clears session and returns JSON"""
+    request.session.clear()
+    return {"ok": True, "message": "Logged out successfully"}
+
+# =========================
+# API: Upload Gmail OAuth (per-user, numeric folder)
+# =========================
+@app.post("/api/settings/upload-gmail-oauth")
+async def upload_gmail_oauth(request: Request, file: UploadFile = File(...)):
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        if not file.filename.lower().endswith(".json"):
+            return JSONResponse({"ok": False, "error": "Please upload a .json file."}, status_code=400)
+
+        raw = await file.read()
+
+        try:
+            obj = json.loads(raw.decode("utf-8"))
+        except Exception:
+            return JSONResponse({"ok": False, "error": "Invalid JSON file."}, status_code=400)
+
+        if not isinstance(obj, dict) or ("installed" not in obj and "web" not in obj):
+            return JSONResponse(
+                {"ok": False, "error": "JSON does not look like a Google OAuth client credentials file."},
+                status_code=400
+            )
+
+        # Store in /data/users/{username}/gmail_credentials.json
+        username = user["username"]
+        user_creds_dir = USERS_DIR / username
+        user_creds_dir.mkdir(parents=True, exist_ok=True)
+
+        out_path = user_creds_dir / "gmail_credentials.json"
+        out_path.write_bytes(raw)
+
+        return {
+            "ok": True,
+            "saved_to": str(out_path),
+            "user_id": user["id"],
+            "username": user["username"],
+        }
+
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+# =========================
+# API: Scan Gmail for PayPal Payments
+# =========================
+@app.post("/api/paypal/scan")
+async def scan_paypal_emails(request: Request):
+    """
+    Scan Gmail for PayPal payment emails and match to active raffle participants
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+        
+        # Get request body
+        body = await request.json()
+        raffle_id = body.get("raffle_id")
+        days_back = body.get("days_back", 7)
+        
+        if not raffle_id:
+            return JSONResponse({"ok": False, "error": "raffle_id is required"}, status_code=400)
+        
+        # Import and run scanner
+        from . import gmail_scanner
+        result = gmail_scanner.scan_and_match_payments(user["username"], raffle_id, days_back)
+        
+        return JSONResponse(result)
+        
+    except Exception as e:
+        import traceback
+        return JSONResponse({
+            "ok": False, 
+            "error": f"Failed to scan emails: {str(e)}",
+            "trace": traceback.format_exc()
+        }, status_code=500)
+
+@app.post("/api/paypal/clear")
+async def clear_paypal_transactions(request: Request):
+    """
+    Clear all processed PayPal transaction records for a raffle
+    This allows emails to be rescanned
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+        
+        # Get request body
+        body = await request.json()
+        raffle_id = body.get("raffle_id")
+        
+        if not raffle_id:
+            return JSONResponse({"ok": False, "error": "raffle_id is required"}, status_code=400)
+        
+        # Delete transaction records for this raffle
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM paypal_transactions 
+            WHERE user_id = (SELECT id FROM users WHERE username = %s)
+              AND raffle_id = %s
+        """, (user["username"], raffle_id))
+        
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "ok": True,
+            "message": f"Cleared {deleted_count} processed email records",
+            "deleted": deleted_count
+        })
+        
+    except Exception as e:
+        import traceback
+        return JSONResponse({
+            "ok": False,
+            "error": f"Failed to clear records: {str(e)}",
+            "trace": traceback.format_exc()
+        }, status_code=500)
+
+from pydantic import BaseModel
+from fastapi import HTTPException
+
+# =========================
+# Auth routes
+# =========================
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    page = TEMPLATES_DIR / "pages" / "login.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>login.html not found</h1><p>Create: app/templates/pages/login.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/login.html", {"request": request, "error": None})
+
+@app.post("/login")
+async def login_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, password_hash, is_admin FROM users WHERE username = %s", (username,))
+        row = cur.fetchone()
+        conn.close()
+
+        if not row:
+            return templates.TemplateResponse(
+                "pages/login.html",
+                {"request": request, "error": "Invalid username or password"},
+                status_code=401
+            )
+
+        # If password_hash exists, enforce it; otherwise fallback (older rows)
+        stored = row["password_hash"]
+        if stored:
+            if not verify_password(password, stored):
+                return templates.TemplateResponse(
+                    "pages/login.html",
+                    {"request": request, "error": "Invalid username or password"},
+                    status_code=401
+                )
+
+        request.session["user_id"] = int(row["id"])
+        return RedirectResponse(url="/dashboard", status_code=303)
+    except Exception as e:
+        return templates.TemplateResponse(
+            "pages/login.html",
+            {"request": request, "error": f"Login error: {e}"},
+            status_code=500
+        )
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    page = TEMPLATES_DIR / "pages" / "register.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>register.html not found</h1><p>Create: app/templates/pages/register.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/register.html", {"request": request, "error": None})
+
+@app.post("/register")
+async def register_post(request: Request, username: str = Form(...), password: str = Form(...)):
+    username = username.strip()
+
+    # Simple username rules (safe + predictable)
+    if len(username) < 3 or len(username) > 24:
+        return templates.TemplateResponse(
+            "pages/register.html",
+            {"request": request, "error": "Username must be 3–24 characters."},
+            status_code=400
+        )
+    if not all(c.isalnum() or c in ("-", "_") for c in username):
+        return templates.TemplateResponse(
+            "pages/register.html",
+            {"request": request, "error": "Username can only contain letters, numbers, - or _."},
+            status_code=400
+        )
+    if len(password) < 6:
+        return templates.TemplateResponse(
+            "pages/register.html",
+            {"request": request, "error": "Password must be at least 6 characters."},
+            status_code=400
+        )
+
+    pw_hash = hash_password(password)
+
+    try:
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        # Insert with default is_admin=false
+        cur.execute(
+            "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (%s, %s, %s, NOW()) RETURNING id",
+            (username, pw_hash, False)
+        )
+        new_id = cur.fetchone()["id"]
+        conn.commit()
+        conn.close()
+        
+        request.session["user_id"] = int(new_id)
+        return RedirectResponse(url="/dashboard", status_code=303)
+    except psycopg2.IntegrityError:
+        return templates.TemplateResponse(
+            "pages/register.html",
+            {"request": request, "error": "That username is already taken."},
+            status_code=400
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "pages/register.html",
+            {"request": request, "error": f"Registration error: {e}"},
+            status_code=500
+        )
+
+@app.get("/logout")
+async def logout(request: Request):
+    request.session.clear()
+    return RedirectResponse(url="/login", status_code=303)
+
+@app.post("/api/logout")
+@app.get("/api/logout")
+async def api_logout(request: Request):
+    """API endpoint for logout - clears session and returns JSON"""
+    request.session.clear()
+    return {"ok": True, "message": "Logged out successfully"}
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_page(request: Request):
+    """Forgot password page"""
+    page = TEMPLATES_DIR / "pages" / "forgot-password.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>forgot-password.html not found</h1><p>Create: app/templates/pages/forgot-password.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/forgot-password.html", {"request": request})
+
+@app.get("/forgot-password.html", response_class=HTMLResponse)
+async def forgot_password_page_html(request: Request):
+    """Forgot password page (with .html extension)"""
+    page = TEMPLATES_DIR / "pages" / "forgot-password.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>forgot-password.html not found</h1><p>Create: app/templates/pages/forgot-password.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/forgot-password.html", {"request": request})
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_page(request: Request):
+    """Reset password page"""
+    page = TEMPLATES_DIR / "pages" / "reset-password.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>reset-password.html not found</h1><p>Create: app/templates/pages/reset-password.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/reset-password.html", {"request": request})
+
+@app.get("/reset-password.html", response_class=HTMLResponse)
+async def reset_password_page_html(request: Request):
+    """Reset password page (with .html extension)"""
+    page = TEMPLATES_DIR / "pages" / "reset-password.html"
+    if not page.exists():
+        return HTMLResponse(
+            "<h1>reset-password.html not found</h1><p>Create: app/templates/pages/reset-password.html</p>",
+            status_code=404,
+        )
+    return templates.TemplateResponse("pages/reset-password.html", {"request": request})
+
+# =========================
+# Password Reset Email Functions
+# =========================
+def send_reset_email(to_email: str, reset_token: str, username: str) -> bool:
+    """Send password reset email via Gmail SMTP"""
+    try:
+        if not EMAIL_PASSWORD:
+            print("❌ ERROR: EMAIL_PASSWORD not set in environment variables!")
+            return False
+            
+        # Create message
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = "🔐 PokemonRaffles - Password Reset Request"
+        msg['From'] = EMAIL_FROM
+        msg['To'] = to_email
+        
+        # Reset URL
+        reset_url = f"{FRONTEND_URL}/reset-password?token={reset_token}"
+        
+        # Email HTML body with purple gradient design
+        html = f"""
+        <html>
+          <body style="font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5;">
+            <div style="max-width: 600px; margin: 0 auto;">
+              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2px; border-radius: 12px;">
+                <div style="background: white; padding: 40px 30px; border-radius: 10px;">
+                  <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #667eea; margin: 0; font-size: 28px;">🎮 PokemonRaffles</h1>
+                    <p style="color: #764ba2; margin: 5px 0 0 0; font-size: 14px;">Raffle Management System</p>
+                  </div>
+                  
+                  <h2 style="color: #333; margin-bottom: 20px;">Password Reset Request</h2>
+                  
+                  <p style="color: #666; line-height: 1.6;">
+                    Hello <strong>{username}</strong>,
+                  </p>
+                  
+                  <p style="color: #666; line-height: 1.6;">
+                    We received a request to reset your password. Click the button below to create a new password:
+                  </p>
+                  
+                  <div style="text-align: center; margin: 30px 0;">
+                    <a href="{reset_url}" 
+                       style="display: inline-block; 
+                              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+                              color: white; 
+                              padding: 14px 40px; 
+                              text-decoration: none; 
+                              border-radius: 8px; 
+                              font-weight: bold;
+                              font-size: 16px;
+                              box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                      Reset My Password
+                    </a>
+                  </div>
+                  
+                  <p style="color: #666; font-size: 14px; line-height: 1.6;">
+                    Or copy and paste this link into your browser:
+                  </p>
+                  <p style="color: #667eea; font-size: 13px; word-break: break-all; background: #f8f9ff; padding: 10px; border-radius: 5px;">
+                    {reset_url}
+                  </p>
+                  
+                  <div style="margin-top: 30px; padding-top: 20px; border-top: 2px solid #f0f0f0;">
+                    <p style="color: #999; font-size: 13px; margin: 0;">
+                      <strong>⏱️ This link will expire in 1 hour.</strong>
+                    </p>
+                    <p style="color: #999; font-size: 13px; margin: 10px 0 0 0;">
+                      If you didn't request this password reset, you can safely ignore this email.
+                    </p>
+                  </div>
+                  
+                  <div style="margin-top: 30px; text-align: center;">
+                    <p style="color: #999; font-size: 12px; margin: 0;">
+                      PokemonRaffles Team 🐙<br>
+                      Secure Raffle Management for r/PokemonRaffles
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </body>
+        </html>
+        """
+        
+        msg.attach(MIMEText(html, 'html'))
+        
+        # Connect to Gmail SMTP and send
+        print(f"📧 Connecting to {EMAIL_HOST}:{EMAIL_PORT}...")
+        server = smtplib.SMTP(EMAIL_HOST, EMAIL_PORT)
+        server.starttls()
+        
+        print(f"🔐 Logging in as {EMAIL_USER}...")
+        server.login(EMAIL_USER, EMAIL_PASSWORD)
+        
+        print(f"📨 Sending password reset email to {to_email}...")
+        server.sendmail(EMAIL_FROM, to_email, msg.as_string())
+        
+        server.quit()
+        print(f"✅ Password reset email sent successfully to {to_email}")
+        return True
+        
+    except smtplib.SMTPAuthenticationError as e:
+        print(f"❌ SMTP Authentication failed: {e}")
+        print(f"   Check your Gmail app password in EMAIL_PASSWORD env variable")
+        return False
+    except Exception as e:
+        print(f"❌ Failed to send email: {e}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+# =========================
+# Password Reset API Endpoints
+# =========================
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+@app.post("/api/auth/forgot-password")
+async def forgot_password_api(data: ForgotPasswordRequest):
+    """Request password reset - sends email with reset token"""
+    try:
+        email = data.email.strip().lower()
+        
+        if not email:
+            return JSONResponse(
+                {"ok": False, "error": "Email is required"},
+                status_code=400
+            )
+        
+        # Find user by email
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, username, email FROM users WHERE LOWER(email) = %s", (email,))
+        user = cur.fetchone()
+        
+        # Always return success (don't reveal if email exists)
+        if not user:
+            conn.close()
+            print(f"⚠️  No user found with email: {email}")
+            return {
+                "ok": True, 
+                "message": "If that email is registered, you'll receive a password reset link shortly."
+            }
+        
+        # Generate secure reset token
+        reset_token = secrets.token_urlsafe(32)
+        expires_at = datetime.now() + timedelta(hours=1)
+        
+        # Save token to database
+        cur.execute("""
+            INSERT INTO password_reset_tokens (user_id, token, email, expires_at, used)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (user["id"], reset_token, email, expires_at, False))
+        conn.commit()
+        conn.close()
+        
+        # Send email
+        email_sent = send_reset_email(email, reset_token, user["username"])
+        
+        if not email_sent:
+            print(f"❌ Failed to send email to {email}")
+            return JSONResponse(
+                {"ok": False, "error": "Failed to send email. Please contact support."},
+                status_code=500
+            )
+        
+        return {
+            "ok": True,
+            "message": "If that email is registered, you'll receive a password reset link shortly."
+        }
+        
+    except Exception as e:
+        print(f"❌ Forgot password error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"ok": False, "error": "An error occurred. Please try again."},
+            status_code=500
+        )
+
+@app.post("/api/auth/reset-password")
+async def reset_password_api(data: ResetPasswordRequest):
+    """Reset password using token from email"""
+    try:
+        token = data.token
+        new_password = data.new_password
+        
+        if not token or not new_password:
+            return JSONResponse(
+                {"ok": False, "error": "Token and new password are required"},
+                status_code=400
+            )
+        
+        if len(new_password) < 6:
+            return JSONResponse(
+                {"ok": False, "error": "Password must be at least 6 characters"},
+                status_code=400
+            )
+        
+        # Find valid token
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, user_id, email, expires_at, used 
+            FROM password_reset_tokens 
+            WHERE token = %s
+        """, (token,))
+        token_record = cur.fetchone()
+        
+        if not token_record:
+            conn.close()
+            return JSONResponse(
+                {"ok": False, "error": "Invalid or expired reset link"},
+                status_code=400
+            )
+        
+        # Check if already used
+        if token_record["used"]:
+            conn.close()
+            return JSONResponse(
+                {"ok": False, "error": "This reset link has already been used"},
+                status_code=400
+            )
+        
+        # Check if expired
+        if datetime.now() > token_record["expires_at"]:
+            conn.close()
+            return JSONResponse(
+                {"ok": False, "error": "This reset link has expired. Please request a new one."},
+                status_code=400
+            )
+        
+        # Hash new password
+        pw_hash = hash_password(new_password)
+        
+        # Update user password
+        cur.execute("""
+            UPDATE users 
+            SET password_hash = %s, updated_at = NOW() 
+            WHERE id = %s
+        """, (pw_hash, token_record["user_id"]))
+        
+        # Mark token as used
+        cur.execute("""
+            UPDATE password_reset_tokens 
+            SET used = TRUE 
+            WHERE id = %s
+        """, (token_record["id"],))
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"✅ Password reset successful for user_id: {token_record['user_id']}")
+        
+        return {
+            "ok": True,
+            "message": "Password reset successful! You can now login with your new password."
+        }
+        
+    except Exception as e:
+        print(f"❌ Reset password error: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"ok": False, "error": "An error occurred. Please try again."},
+            status_code=500
+        )
+
+# =========================
+# Reddit Scan API (matches frontend)
+# =========================
+@app.get("/api/reddit/scan")
+async def scan_reddit_endpoint(request: Request):
+    """Scan Reddit post and extract participants - matches frontend API call"""
+    try:
+        url = request.query_params.get('url')
+        costPerSpot = request.query_params.get('costPerSpot')
+        totalSpots = request.query_params.get('totalSpots')  # Optional parameter
+        existingCommentIds = request.query_params.get('existingCommentIds')  # Optional: JSON array of comment IDs
+
+        if not url or not costPerSpot:
+            return JSONResponse(
+                {"ok": False, "error": "Missing url or costPerSpot parameter"},
+                status_code=400
+            )
+
+        # Use optimized parser if available, fallback to regular parser
+        parser_path = APP_DIR.parent / "reddit_parser_optimized.py"
+        if not parser_path.exists():
+            parser_path = APP_DIR / "reddit_parser.py"
+        
+        if not parser_path.exists():
+            return JSONResponse(
+                {"ok": False, "error": f"Reddit parser not found at {parser_path}"},
+                status_code=500
+            )
+
+        # Run the Python parser script
+        cmd_args = ["python3", str(parser_path), url, costPerSpot]
+        if totalSpots:
+            cmd_args.append(totalSpots)
+        
+        # Pass existing comment IDs to optimized parser (to skip AI calls)
+        if existingCommentIds and "optimized" in str(parser_path):
+            cmd_args.append(existingCommentIds)
+        
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            timeout=120  # Increased to 120 seconds for large raffle threads
+        )
+
+        # Check for errors
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or "Unknown error"
+            return JSONResponse(
+                {"ok": False, "error": f"Parser error: {error_msg}"},
+                status_code=500
+            )
+
+        # Parse the JSON response
+        try:
+            response_data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                {"ok": False, "error": f"Invalid JSON from parser: {str(e)}\nOutput: {result.stdout[:500]}"},
+                status_code=500
+            )
+
+        # Map 'username' to 'redditUser' for frontend compatibility
+        if response_data.get("ok") and "participants" in response_data:
+            for participant in response_data["participants"]:
+                if "username" in participant:
+                    participant["redditUser"] = participant.pop("username")
+                # Ensure redditUser exists even if username was missing
+                if "redditUser" not in participant:
+                    participant["redditUser"] = "unknown"
+
+        return JSONResponse(response_data)
+
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            {"ok": False, "error": "Reddit scan timed out"},
+            status_code=500
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            {"ok": False, "error": f"Failed to scan Reddit: {str(e)}\n{traceback.format_exc()}"},
+            status_code=500
+        )
+
+# =========================
+# API Proxy to Node.js Backend
+# =========================
+@app.api_route("/api/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_to_nodejs(path: str, request: Request):
+    """
+    Forward all /api/* requests to Node.js backend on port 3000
+    """
+    try:
+        # Build the target URL
+        target_url = f"http://localhost:3000/api/{path}"
+
+        # Get request body if present
+        body = await request.body()
+
+        # Get current user from session
+        user = get_current_user(request)
+        
+        # Debug logging
+        print(f"[PROXY] Path: /api/{path}")
+        print(f"[PROXY] Session user_id: {request.session.get('user_id')}")
+        print(f"[PROXY] Current user: {user}")
+        
+        # Prepare headers - add user info for Node.js backend
+        headers = {k: v for k, v in request.headers.items() if k.lower() != "host"}
+        
+        # Add custom headers with user info (if logged in)
+        if user:
+            headers["X-User-Id"] = str(user["id"])
+            headers["X-User-Name"] = user["username"]
+            headers["X-User-Admin"] = "true" if user.get("is_admin") else "false"
+            print(f"[PROXY] Adding headers: X-User-Id={user['id']}, X-User-Name={user['username']}, X-User-Admin={user.get('is_admin')}")
+
+        # Forward the request
+        async with httpx.AsyncClient() as client:
+            response = await client.request(
+                method=request.method,
+                url=target_url,
+                headers=headers,
+                content=body,
+                timeout=120.0  # Increased to 120 seconds for long-running operations
+            )
+
+            return JSONResponse(
+                content=response.json() if response.text else {},
+                status_code=response.status_code
+            )
+    except Exception as e:
+        return JSONResponse(
+            {"ok": False, "error": f"Proxy error: {str(e)}"},
+            status_code=500
+        )
+# =========================
+# Page routes
+# =========================
+@app.get("/", response_class=HTMLResponse)
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    return templates.TemplateResponse("index.html", {"request": request, "user": user})
+
+@app.get("/active-raffle", response_class=HTMLResponse)
+async def active_raffle(request: Request):
+    page = TEMPLATES_DIR / "pages" / "active_raffle.html"
+    if not page.exists():
+        return HTMLResponse("<h1>active_raffle.html not found</h1>", status_code=404)
+    return templates.TemplateResponse("pages/active_raffle.html", {"request": request})
+
+@app.get("/raffle-history", response_class=HTMLResponse)
+async def raffle_history(request: Request):
+    page = TEMPLATES_DIR / "pages" / "raffle_history.html"
+    if not page.exists():
+        return HTMLResponse("<h1>raffle_history.html not found</h1>", status_code=404)
+    return templates.TemplateResponse("pages/raffle_history.html", {"request": request})
+
+@app.get("/activity-log", response_class=HTMLResponse)
+async def activity_log(request: Request):
+    page = TEMPLATES_DIR / "pages" / "activity_log.html"
+    if not page.exists():
+        return HTMLResponse("<h1>activity_log.html not found</h1>", status_code=404)
+    return templates.TemplateResponse("pages/activity_log.html", {"request": request})
+
+@app.get("/profile", response_class=HTMLResponse)
+async def profile(request: Request):
+    page = TEMPLATES_DIR / "pages" / "profile.html"
+    if not page.exists():
+        return HTMLResponse("<h1>profile.html not found</h1>", status_code=404)
+    return templates.TemplateResponse("pages/profile.html", {"request": request})
+
+@app.get("/settings", response_class=HTMLResponse)
+async def settings_page(request: Request):
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    page = TEMPLATES_DIR / "pages" / "settings.html"
+    if not page.exists():
+        return HTMLResponse("<h1>settings.html not found</h1>", status_code=404)
+    return templates.TemplateResponse("pages/settings.html", {"request": request, "user": user})
+
+@app.get("/admin", response_class=HTMLResponse)
+async def admin_page(request: Request):
+    """Admin dashboard page - requires admin privileges"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    if not user.get("is_admin"):
+        return HTMLResponse("<h1>403 Forbidden</h1><p>You must be an admin to access this page.</p>", status_code=403)
+    
+    page = TEMPLATES_DIR / "pages" / "admin.html"
+    if not page.exists():
+        return HTMLResponse("<h1>admin.html not found</h1><p>Create: app/templates/pages/admin.html</p>", status_code=404)
+    
+    return templates.TemplateResponse("pages/admin.html", {"request": request, "user": user})
+
+@app.get("/user-management", response_class=HTMLResponse)
+async def user_management_page(request: Request):
+    """User management page - requires admin privileges"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    if not user.get("is_admin"):
+        return HTMLResponse("<h1>403 Forbidden</h1><p>You must be an admin to access this page.</p>", status_code=403)
+    
+    page = TEMPLATES_DIR / "pages" / "user_management.html"
+    if not page.exists():
+        return HTMLResponse("<h1>user_management.html not found</h1><p>Create: app/templates/pages/user_management.html</p>", status_code=404)
+    
+    return templates.TemplateResponse("pages/user_management.html", {"request": request, "user": user})
+
+@app.get("/discord", response_class=HTMLResponse)
+async def discord_page(request: Request):
+    """Discord servers page"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    page = TEMPLATES_DIR / "pages" / "discord.html"
+    if not page.exists():
+        return HTMLResponse("<h1>discord.html not found</h1><p>Create: app/templates/pages/discord.html</p>", status_code=404)
+    
+    return templates.TemplateResponse("pages/discord.html", {"request": request, "user": user})
+
+@app.get("/donate", response_class=HTMLResponse)
+async def donate_page(request: Request):
+    """Donate/Support page"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+    
+    page = TEMPLATES_DIR / "pages" / "donate.html"
+    if not page.exists():
+        return HTMLResponse("<h1>donate.html not found</h1><p>Create: app/templates/pages/donate.html</p>", status_code=404)
+    
+    return templates.TemplateResponse("pages/donate.html", {"request": request, "user": user})
+
+# =========================
+# Existing image processing route (kept)
+# =========================
+@app.get("/process-image")
+async def process_image():
+    try:
+        if not SOURCE_IMG.exists():
+            return JSONResponse({"ok": False, "error": f"Source image not found: {SOURCE_IMG}"}, status_code=404)
+
+        img = Image.open(SOURCE_IMG)
+        img = img.convert("L")
+        img = img.resize((250, 700))
+
+        OUTPUT_IMG.parent.mkdir(parents=True, exist_ok=True)
+        img.save(OUTPUT_IMG)
+
+        return {"ok": True, "output": "/static/processed/sidebar_processed.png"}
+
+    except Exception as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)

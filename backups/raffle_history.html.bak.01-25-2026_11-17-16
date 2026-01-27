@@ -1,0 +1,1766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raffle History</title>
+<script src="/static/api.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .white-square {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    /* TOP SIDEBAR */
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 200px;
+      background-image: url('/static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      z-index: 5;
+    }
+
+    /* TAKO */
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: calc(var(--sidebar-width) / 2);
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('/static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    /* MAIN SIDEBAR */
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0px;
+      width: var(--sidebar-width);
+      height: 900px;
+      background-image: url('/static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-right-radius: 30px;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    /* RECTANGLE */
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ACTIVE WHITE SQUARE */
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    /* SIDEBAR NAV */
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 2px 0 0 0;
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(236, 72, 153, 0.85);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(236, 72, 153, 1);
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    /* SEARCH BAR */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* RAFFLE HISTORY TABLE */
+    .history-wrap {
+      position: absolute;
+      top: 100px;
+      left: 280px;
+      width: 1300px;
+      height: 900px;
+      background: #ffffff;
+      border-radius: 13px;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.10);
+      overflow: visible;
+      z-index: 52;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-head {
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      border-bottom: 1px solid #eef0f4;
+      background: #ffffff;
+    }
+
+    .h-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .h-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .h-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+    }
+
+    .tab {
+      border: none;
+      background: #f2f4f8;
+      color: #111827;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .tab.is-active {
+      background: #efe9ff;
+      color: #6E5FFC;
+    }
+    .tab:hover:not(.is-active) {
+      background: #e5e7eb;
+    }
+
+    .h-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e6e8ef;
+      border-radius: 12px;
+      padding: 10px 12px;
+      width: 240px;
+      flex-shrink: 0;
+    }
+    .h-search img { width: 18px; height: 18px; opacity: 0.7; }
+    .h-search input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    .h-table-wrap {
+      flex: 1;
+      overflow: auto;
+      background: #ffffff;
+      overflow-x: hidden;
+    }
+
+    table.h-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed;
+    }
+
+    .h-table thead th {
+      text-align: left;
+      padding: 14px 24px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #334155;
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      border-bottom: 1px solid #eef0f4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-table tbody td {
+      padding: 18px 24px;
+      border-bottom: 1px solid #eef0f4;
+      vertical-align: middle;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-table tbody tr {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .link-pill {
+      color: #6E5FFC;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .link-pill .ext {
+      font-size: 12px;
+      margin-left: 6px;
+      opacity: 0.9;
+    }
+    .link-pill:hover {
+      text-decoration: underline;
+      opacity: 0.85;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-completed { background: #dcfce7; color: #166534; }
+    .status-cancelled { background: #fee2e2; color: #b91c1c; }
+
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      line-height: 1;
+      background: rgba(255,255,255,0.55);
+    }
+
+    .delete-btn {
+      background: transparent;
+      border: none;
+      color: #ef4444;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.6;
+    }
+
+    .delete-btn:hover {
+      background: #fee2e2;
+      opacity: 1;
+      transform: scale(1.1);
+    }
+
+    .delete-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* DELETE MODAL STYLES */
+    .delete-modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 13px;
+    }
+
+    .delete-modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 420px;
+      max-width: 90%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.2s ease-out;
+      position: relative;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .delete-modal-header {
+      padding: 24px 24px 20px;
+      text-align: center;
+      border-bottom: 1px solid #eef0f4;
+    }
+
+    .delete-icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+      animation: shake 0.5s ease-in-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .delete-modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+
+    .delete-modal-body {
+      padding: 20px 24px;
+    }
+
+    .delete-modal-body > p:first-child {
+      font-size: 14px;
+      color: #475569;
+      margin: 0 0 16px 0;
+      line-height: 1.5;
+    }
+
+    .delete-raffle-info {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    .delete-info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+    }
+
+    .delete-info-row:not(:last-child) {
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .delete-info-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .delete-info-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      text-align: right;
+      max-width: 60%;
+      word-break: break-word;
+    }
+
+    .delete-warning {
+      font-size: 13px;
+      color: #dc2626;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .delete-modal-footer {
+      padding: 16px 24px 24px;
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .delete-cancel-btn,
+    .delete-confirm-btn {
+      padding: 10px 20px;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+
+    .delete-cancel-btn {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .delete-cancel-btn:hover {
+      background: #e2e8f0;
+    }
+
+    .delete-confirm-btn {
+      background: #dc2626;
+      color: white;
+    }
+
+    .delete-confirm-btn:hover {
+      background: #b91c1c;
+    }
+
+    .delete-confirm-btn:active {
+      transform: scale(0.98);
+    }
+
+    .h-foot {
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #eef0f4;
+      color: #475569;
+      font-size: 13px;
+      background: #ffffff;
+    }
+    .h-foot strong { color: #111827; }
+
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: #64748b;
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    .empty-state-text {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .hidden { display: none !important; }
+
+    /* RAFFLE DETAILS MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.show {
+      display: grid;
+      place-items: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: #2D2D3A;
+      border-radius: 20px;
+      padding: 0;
+      width: 900px;
+      max-height: 85vh;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 28px 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #FFFFFF;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: grid;
+      place-items: center;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: rotate(90deg);
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 24px 32px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-stat-card {
+      text-align: center;
+    }
+
+    .modal-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .modal-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .modal-stat-value.green { color: #10B981; }
+    .modal-stat-value.orange { color: #F59E0B; }
+    .modal-stat-value.purple { color: #A855F7; }
+    .modal-stat-value.blue { color: #3B82F6; }
+
+    .modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+    }
+
+    .participants-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .participants-table thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #9CA3AF;
+      background: #2D2D3A;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .participants-table tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #E5E7EB;
+    }
+
+    .participants-table tbody td:first-child,
+    .participants-table thead th:first-child {
+      padding-left: 32px;
+    }
+
+    .participants-table tbody td:last-child,
+    .participants-table thead th:last-child {
+      padding-right: 32px;
+    }
+
+    .participants-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .username-cell {
+      font-weight: 600;
+      color: #A855F7;
+    }
+
+    .realname-cell {
+      color: #9CA3AF;
+      font-size: 13px;
+    }
+
+    .paid-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .paid-badge.yes {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+    }
+
+    .paid-badge.no {
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+    }
+
+    /* ==============================
+       ACCESS DENIED MODAL
+       ============================== */
+    .access-denied-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 999999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .access-denied-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .access-denied-modal {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 440px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .access-modal-header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .access-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .access-modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .access-modal-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .access-modal-body {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .access-modal-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+
+    .access-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .access-modal-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .access-modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      color: white;
+    }
+
+    .access-modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .access-modal-btn-primary:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+<div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png">
+      <input placeholder="Search here...">
+    </div>
+
+    <!-- ICONS -->
+    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png"></div>
+    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png"></div>
+    <div id="bellBtn"><img src="/static/assets/Icons/bell.png"></div>
+    <div id="profileBtn"><img src="/static/assets/Icons/images-removebg-preview%201.png"></div>
+
+<section class="history-wrap" id="historyWrap">
+  <div class="history-head">
+    <div>
+      <h3 class="h-title">All Raffles</h3>
+      <div class="h-sub"><span id="raffleCount">0</span> raffles found</div>
+    </div>
+
+    <div class="h-controls">
+      <div class="tabs" id="tabs">
+        <button class="tab is-active" data-filter="all">All</button>
+        <button class="tab" data-filter="completed">Completed</button>
+        <button class="tab" data-filter="cancelled">Cancelled</button>
+      </div>
+
+      <div class="h-search">
+        <img src="/static/assets/Icons/Normal.png" alt="">
+        <input id="raffleSearch" type="text" placeholder="Search raffles...">
+      </div>
+    </div>
+  </div>
+
+  <div class="h-table-wrap">
+    <table class="h-table" id="rafflesTable">
+      <thead>
+        <tr>
+          <th style="width:90px;">Date</th>
+          <th style="width:200px;">Item</th>
+          <th style="width:115px;">Raffle Link</th>
+          <th style="width:65px;">Spots</th>
+          <th style="width:75px;">Value</th>
+          <th style="width:105px;">Status</th>
+          <th style="width:220px;">Winner</th>
+          <th style="width:65px;">Actions</th>
+        </tr>
+      </thead>
+
+      <tbody id="rafflesTableBody">
+        <!-- Populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="h-foot">
+    <div>Showing <span id="showingCount">0</span> raffles</div>
+    <div>Success Rate: <strong id="successRate" style="color:#16a34a;">0%</strong></div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL (Inside history-wrap) -->
+  <div id="deleteModal" class="delete-modal-overlay" style="display: none;">
+    <div class="delete-modal-content">
+      <div class="delete-modal-header">
+        <div class="delete-icon">🗑️</div>
+        <h3 class="delete-modal-title">Delete Raffle</h3>
+      </div>
+      <div class="delete-modal-body">
+        <p>Are you sure you want to permanently delete this raffle?</p>
+        <div class="delete-raffle-info">
+          <div class="delete-info-row">
+            <span class="delete-info-label">Item:</span>
+            <span class="delete-info-value" id="deleteItemName"></span>
+          </div>
+          <div class="delete-info-row">
+            <span class="delete-info-label">Date:</span>
+            <span class="delete-info-value" id="deleteDate"></span>
+          </div>
+        </div>
+        <p class="delete-warning">⚠️ This action cannot be undone.</p>
+      </div>
+      <div class="delete-modal-footer">
+        <button class="delete-cancel-btn" id="deleteCancelBtn">Cancel</button>
+        <button class="delete-confirm-btn" id="deleteConfirmBtn">Delete Raffle</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- RAFFLE DETAILS MODAL -->
+<div id="detailsModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <span>📋</span>
+        <span id="modalRaffleTitle">Raffle Details</span>
+      </h3>
+      <button class="modal-close" id="closeDetailsModal">×</button>
+    </div>
+
+    <div class="modal-stats">
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Spots</div>
+        <div class="modal-stat-value blue" id="modalTotalSpots">0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Participants</div>
+        <div class="modal-stat-value purple" id="modalParticipants">0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Paid</div>
+        <div class="modal-stat-value green" id="modalTotalPaid">$0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Value</div>
+        <div class="modal-stat-value orange" id="modalTotalValue">$0</div>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <table class="participants-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Reddit User</th>
+            <th style="width: 30%;">Real Name</th>
+            <th style="width: 15%;">Spots</th>
+            <th style="width: 15%;">Amount</th>
+            <th style="width: 10%;">Paid</th>
+          </tr>
+        </thead>
+        <tbody id="modalParticipantsBody">
+          <!-- Populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+   <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item is-active" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+  <a class="nav-item" href="/admin"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Admin</a>
+  <a class="nav-item" href="/user-management"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">User Management</a>
+</nav>
+
+<!-- USER SECTION -->
+<div class="user-section" id="userSection">
+  <div class="user-info">
+    <div class="user-avatar" id="userAvatar">U</div>
+    <div class="user-details">
+      <p class="user-name" id="userName">User</p>
+      <p class="user-role" id="userRole">Admin</p>
+    </div>
+  </div>
+  <button class="logout-btn" id="sidebarLogoutBtn">Logout</button>
+</div>
+  
+<script>
+  // ============ USER SECTION & LOGOUT ============
+  (async function() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+    // Fetch current user info
+    try {
+      const response = await fetch('/api/auth/current-user');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data) {
+          const user = result.data;
+          
+          // Update username
+          if (user.username) {
+            userName.textContent = user.username;
+            // Update avatar with first letter
+            userAvatar.textContent = user.username.charAt(0).toUpperCase();
+          }
+          
+          // Update role
+          if (user.role) {
+            userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+          } else if (user.isAdmin) {
+            userRole.textContent = 'Admin';
+          } else {
+            userRole.textContent = 'User';
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+
+    // Logout button handler
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('❌ Logout failed: ' + error.message);
+      }
+    });
+  })();
+
+  // Sidebar Admin Control - Intercept admin links for non-admin users
+  (function() {
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (!sidebarNav) return;
+    
+    // Find admin links
+    const allLinks = sidebarNav.querySelectorAll('.nav-item');
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href');
+      
+      // Prevent reload when clicking raffle history link on raffle history page
+      if (href === '/raffle-history') {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Do nothing - already on this page
+        });
+      }
+      
+      if (href === '/admin' || href === '/user-management') {
+        // Add click handler that runs BEFORE navigation
+        link.addEventListener('click', function(e) {
+          if (!window.adminCheckComplete) {
+            e.preventDefault();
+            e.stopPropagation();
+            showAccessDenied();
+          }
+        }, true);
+      }
+    });
+    
+    // Check if user is admin (async)
+    (async function() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        if (data.data?.isAdmin === true) {
+          window.adminCheckComplete = true;
+          console.log('✅ Admin access granted');
+        } else {
+          console.log('🔒 Admin links blocked for non-admin user');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    })();
+  })();
+</script>
+
+<script>
+  // Move sidebar highlight square to active item
+  (function () {
+    const nav = document.getElementById("sidebarNav");
+    const square = document.getElementById("activeSquare");
+    if (!nav || !square) return;
+
+    function moveSquareTo(item) {
+      square.style.top = (nav.offsetTop + item.offsetTop) + "px";
+    }
+
+    const active = nav.querySelector(".is-active");
+    if (active) moveSquareTo(active);
+  })();
+
+  // Settings button
+  (function () {
+    const settingsBtn = document.getElementById("settingsBtn");
+    if (settingsBtn) {
+      settingsBtn.style.cursor = "pointer";
+      settingsBtn.addEventListener("click", () => {
+        window.location.href = "/settings";
+      });
+    }
+  })();
+
+  // ============ RAFFLE DETAILS MODAL ============
+  (function () {
+    const modal = document.getElementById("detailsModal");
+    const closeBtn = document.getElementById("closeDetailsModal");
+    const modalTitle = document.getElementById("modalRaffleTitle");
+    const modalTotalSpots = document.getElementById("modalTotalSpots");
+    const modalParticipants = document.getElementById("modalParticipants");
+    const modalTotalPaid = document.getElementById("modalTotalPaid");
+    const modalTotalValue = document.getElementById("modalTotalValue");
+    const modalParticipantsBody = document.getElementById("modalParticipantsBody");
+
+    window.showRaffleDetails = function(raffle) {
+      // Set title
+      const itemName = getItemName(raffle);
+      modalTitle.textContent = itemName;
+
+      // Calculate stats
+      const totalSpots = raffle.totalSpots || 0;
+      const participants = raffle.participants || [];
+      const uniqueParticipants = participants.length;
+      const totalPaid = participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+      const totalValue = participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+
+      // Update stats
+      modalTotalSpots.textContent = totalSpots;
+      modalParticipants.textContent = uniqueParticipants;
+      modalTotalPaid.textContent = '$' + totalPaid.toLocaleString();
+      modalTotalValue.textContent = '$' + totalValue.toLocaleString();
+
+      // Populate participants table
+      modalParticipantsBody.innerHTML = '';
+
+      if (participants.length === 0) {
+        modalParticipantsBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #9CA3AF;">
+              No participants found
+            </td>
+          </tr>
+        `;
+      } else {
+        participants.forEach(p => {
+          const row = document.createElement('tr');
+          const paidClass = p.paid ? 'yes' : 'no';
+          const paidIcon = p.paid ? '✓' : '×';
+          const paidText = p.paid ? 'Paid' : 'Unpaid';
+
+          row.innerHTML = `
+            <td class="username-cell">${p.redditUser || '-'}</td>
+            <td class="realname-cell">${p.realName || '-'}</td>
+            <td>${p.spots || 0}</td>
+            <td>$${(p.owed || 0).toLocaleString()}</td>
+            <td><span class="paid-badge ${paidClass}">${paidIcon} ${paidText}</span></td>
+          `;
+          modalParticipantsBody.appendChild(row);
+        });
+      }
+
+      // Show modal
+      modal.classList.add('show');
+    };
+
+    function closeModal() {
+      modal.classList.remove('show');
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  })();
+
+  // ============ RAFFLE HISTORY LOGIC ============
+  (function () {
+    const tbody = document.getElementById("rafflesTableBody");
+    const raffleCount = document.getElementById("raffleCount");
+    const showingCount = document.getElementById("showingCount");
+    const successRate = document.getElementById("successRate");
+    const tabs = document.getElementById("tabs");
+    const search = document.getElementById("raffleSearch");
+
+    let allRaffles = [];
+    let activeFilter = "all";
+    let query = "";
+    let currentUsername = null; // Track current user
+
+    // ⚡ INSTANT CACHE: Show cached data immediately on page load
+    (function showCachedData() {
+      const cached = localStorage.getItem('raffle_history_cache');
+      if (cached) {
+        try {
+          const data = JSON.parse(cached);
+          const cacheAge = Date.now() - (data.timestamp || 0);
+          
+          // Show cache if less than 5 minutes old
+          if (cacheAge < 300000 && data.raffles && data.username) {
+            allRaffles = data.raffles;
+            currentUsername = data.username;
+            renderRaffles();
+            console.log('⚡ Instant load from cache:', allRaffles.length, 'raffles');
+          }
+        } catch (err) {
+          console.error('Cache parse error:', err);
+        }
+      }
+    })();
+
+    async function loadRaffles() {
+      try {
+        // Get current user first
+        if (!currentUsername) {
+          const userResult = await API.checkAuth();
+          if (userResult.ok && userResult.data) {
+            currentUsername = userResult.data.username;
+            console.log('✅ Loaded raffles for user:', currentUsername);
+          } else {
+            console.error('Failed to get current user');
+            allRaffles = [];
+            renderRaffles();
+            return;
+          }
+        }
+
+        const result = await API.getHistory();
+        if (result.ok) {
+          const allData = result.data || [];
+          // Filter raffles to only show those created by the current user
+          allRaffles = allData.filter(raffle => {
+            // Match by created_by field or host_username field
+            return raffle.created_by === currentUsername || 
+                   raffle.host_username === currentUsername ||
+                   raffle.username === currentUsername;
+          });
+          console.log(`📊 Showing ${allRaffles.length} raffles for ${currentUsername} (out of ${allData.length} total)`);
+          
+          // CACHE: Save filtered user-specific raffles
+          localStorage.setItem('raffle_history_cache', JSON.stringify({
+            raffles: allRaffles,
+            username: currentUsername,
+            timestamp: Date.now()
+          }));
+          
+          renderRaffles();
+        } else {
+          console.error('Failed to load raffle history:', result.error);
+          allRaffles = [];
+          renderRaffles();
+        }
+      } catch (e) {
+        console.error('Failed to load raffle history:', e);
+        allRaffles = [];
+        renderRaffles();
+      }
+    }
+
+    function formatDate(isoString) {
+      const date = new Date(isoString);
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    }
+
+    function getItemName(raffle) {
+      // Try to extract item name from Reddit link or use placeholder
+      if (raffle.redditLink) {
+        const match = raffle.redditLink.match(/comments\/[^/]+\/([^/]+)/);
+        if (match) {
+          return match[1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        return 'Watch Raffle';
+      }
+      return 'Custom Raffle';
+    }
+
+    window.getItemName = getItemName;
+
+    function getRandomWinner(raffle) {
+      if (raffle.status !== 'completed' || !raffle.participants || raffle.participants.length === 0) {
+        return null;
+      }
+
+      // Get a paid participant as winner
+      const paidParticipants = raffle.participants.filter(p => p.paid);
+      if (paidParticipants.length === 0) return null;
+
+      const winner = paidParticipants[Math.floor(Math.random() * paidParticipants.length)];
+      const randomSpot = Math.floor(Math.random() * raffle.totalSpots) + 1;
+
+      return {
+        username: winner.redditUser,
+        spot: randomSpot
+      };
+    }
+
+    function renderRaffles() {
+      tbody.innerHTML = '';
+
+      if (allRaffles.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-title">No Raffle History</div>
+                <div class="empty-state-text">Complete or cancel raffles from the Active Raffle page to see them here.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        updateStats([]);
+        return;
+      }
+
+      allRaffles.forEach(raffle => {
+        const row = document.createElement('tr');
+        row.dataset.status = raffle.status;
+        row.dataset.raffleId = raffle.id;
+
+        const itemName = getItemName(raffle);
+        const date = formatDate(raffle.date);
+        const spotsFilled = raffle.participants ? raffle.participants.reduce((sum, p) => sum + p.spots, 0) : 0;
+        const spotsText = `${spotsFilled}/${raffle.totalSpots || 0}`;
+        const value = raffle.status === 'completed' ? (raffle.totalPaid || raffle.totalOwed || 0) : 0;
+        const statusClass = raffle.status === 'completed' ? 'status-completed' : 'status-cancelled';
+        const statusIcon = raffle.status === 'completed' ? '✓' : '×';
+        const statusText = raffle.status === 'completed' ? 'Completed' : 'Cancelled';
+
+const winnerHtml = raffle.winner && raffle.winner.username
+  ? `🏆 ${raffle.winner.username} <span style="color: #94a3b8; font-size: 12px;">(Spot #${raffle.winner.spot})</span>`
+  : '-';
+
+        const linkHtml = raffle.redditLink
+          ? `<a class="link-pill" href="${raffle.redditLink}" target="_blank" onclick="event.stopPropagation()">View Raffle <span class="ext">↗</span></a>`
+          : '—';
+
+        row.innerHTML = `
+          <td>${date}</td>
+          <td>${itemName}</td>
+          <td>${linkHtml}</td>
+          <td>${spotsText}</td>
+          <td>$${value.toLocaleString()}</td>
+          <td><span class="status-chip ${statusClass}"><span class="dot">${statusIcon}</span>${statusText}</span></td>
+          <td class="winner">${winnerHtml}</td>
+          <td><button class="delete-btn" data-raffle-id="${raffle.id}" title="Delete raffle">🗑️</button></td>
+        `;
+
+        // Add click handler to show details
+        row.addEventListener('click', (e) => {
+          // Don't open modal if clicking delete button
+          if (e.target.classList.contains('delete-btn') || e.target.closest('.delete-btn')) {
+            return;
+          }
+          showRaffleDetails(raffle);
+        });
+
+        // Add delete handler
+        const deleteBtn = row.querySelector('.delete-btn');
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          showDeleteModal(raffle, itemName, date);
+        });
+
+        tbody.appendChild(row);
+      });
+
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = query.trim().toLowerCase();
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const visible = [];
+
+      rows.forEach(r => {
+        if (r.querySelector('.empty-state')) {
+          r.style.display = '';
+          return;
+        }
+
+        const statusOk = activeFilter === "all" || r.dataset.status === activeFilter;
+        const text = r.innerText.toLowerCase();
+        const searchOk = !q || text.includes(q);
+
+        const show = statusOk && searchOk;
+        r.style.display = show ? "" : "none";
+        if (show) visible.push(r);
+      });
+
+      updateStats(visible);
+    }
+
+    function updateStats(visibleRows) {
+      const completed = visibleRows.filter(r => r.dataset.status === "completed").length;
+      const total = allRaffles.length;
+      const showing = visibleRows.filter(r => !r.querySelector('.empty-state')).length;
+
+      raffleCount.textContent = total;
+      showingCount.textContent = showing;
+
+      if (total === 0) {
+        successRate.textContent = "0%";
+        successRate.style.color = "#64748b";
+      } else {
+        const allCompleted = allRaffles.filter(r => r.status === "completed").length;
+        const pct = Math.round((allCompleted / total) * 100);
+        successRate.textContent = pct + "%";
+        successRate.style.color = pct >= 50 ? "#16a34a" : "#ef4444";
+      }
+    }
+
+    // Delete modal functionality
+    function showDeleteModal(raffle, itemName, date) {
+      const modal = document.getElementById('deleteModal');
+      const itemNameEl = document.getElementById('deleteItemName');
+      const dateEl = document.getElementById('deleteDate');
+      const confirmBtn = document.getElementById('deleteConfirmBtn');
+      const cancelBtn = document.getElementById('deleteCancelBtn');
+
+      itemNameEl.textContent = itemName;
+      dateEl.textContent = date;
+      modal.style.display = 'flex';
+
+      // Remove old listeners by cloning buttons
+      const newConfirmBtn = confirmBtn.cloneNode(true);
+      const newCancelBtn = cancelBtn.cloneNode(true);
+      confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+      cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+
+      // Add new listeners
+      newConfirmBtn.addEventListener('click', async () => {
+        modal.style.display = 'none';
+        try {
+          const result = await API.deleteRaffle(raffle.id);
+          if (result.ok) {
+            allRaffles = allRaffles.filter(r => r.id !== raffle.id);
+            
+            // UPDATE CACHE: Remove deleted raffle
+            localStorage.setItem('raffle_history_cache', JSON.stringify({
+              raffles: allRaffles,
+              username: currentUsername,
+              timestamp: Date.now()
+            }));
+            
+            renderRaffles();
+          } else {
+            alert('Failed to delete raffle: ' + (result.error || 'Unknown error'));
+          }
+        } catch (error) {
+          console.error('Error deleting raffle:', error);
+          alert('Failed to delete raffle: ' + error.message);
+        }
+      });
+
+      newCancelBtn.addEventListener('click', () => {
+        modal.style.display = 'none';
+      });
+
+      // Close on overlay click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.style.display = 'none';
+        }
+      });
+    }
+
+    tabs?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+
+      activeFilter = btn.dataset.filter;
+      tabs.querySelectorAll(".tab").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      applyFilters();
+    });
+
+    search?.addEventListener("input", () => {
+      query = search.value;
+      applyFilters();
+    });
+
+    // Initial load - wait for DOM and scripts to be ready
+    window.addEventListener('load', async function() {
+      await loadRaffles();
+    });
+
+    // Reload when page becomes visible (in case user finished a raffle in another tab)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        loadRaffles();
+      }
+    });
+  })();
+
+  // ===== ACCESS DENIED MODAL =====
+  function showAccessDenied() {
+    const overlay = document.getElementById('accessDeniedOverlay');
+    if (!overlay) {
+      alert('Access Denied\n\nAdmins only');
+      return;
+    }
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAccessDenied(event) {
+    if (!event || event.target === document.getElementById('accessDeniedOverlay')) {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (overlay && overlay.classList.contains('show')) {
+        closeAccessDenied({ target: overlay });
+      }
+    }
+  });
+</script>
+
+<!-- ACCESS DENIED MODAL -->
+<div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
+  <div class="access-denied-modal" onclick="event.stopPropagation()">
+    <div class="access-modal-header">
+      <div class="access-modal-icon">🔒</div>
+      <h2 class="access-modal-title">Access Denied</h2>
+      <p class="access-modal-subtitle">Admin privileges required</p>
+    </div>
+    <div class="access-modal-body">
+      <p class="access-modal-message">
+        You don't have permission to access this page. This area is restricted to administrators only.
+      </p>
+      <div class="access-modal-actions">
+        <button class="access-modal-btn access-modal-btn-primary" onclick="closeAccessDenied()">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CLIENT-SIDE NAVIGATION TO ACTIVE RAFFLE -->
+<script>
+(function() {
+  const sidebarNav = document.getElementById('sidebarNav');
+  if (!sidebarNav) return;
+  
+  // Find the Active Raffle link
+  const activeRaffleLink = Array.from(sidebarNav.querySelectorAll('.nav-item')).find(link => 
+    link.getAttribute('href') === '/active-raffle'
+  );
+  
+  if (activeRaffleLink) {
+    activeRaffleLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Navigate without full page reload
+      window.location.replace('/active-raffle');
+    });
+  }
+})();
+</script>
+
+</body>
+</html>

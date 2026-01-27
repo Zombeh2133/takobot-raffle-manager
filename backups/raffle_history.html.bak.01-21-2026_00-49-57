@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raffle History</title>
+<script src="/static/api.js"></script>
+<script src="/admin_nav_control.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .white-square {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+    }
+
+    /* TOP SIDEBAR */
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: var(--sidebar-width);
+      height: 200px;
+      background-image: url('/static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      border-top-right-radius: 30px;
+      z-index: 5;
+    }
+
+    /* TAKO */
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: calc(var(--sidebar-width) / 2);
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('/static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    /* MAIN SIDEBAR */
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0px;
+      width: var(--sidebar-width);
+      height: 900px;
+      background-image: url('/static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-right-radius: 30px;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    /* RECTANGLE */
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    /* ACTIVE WHITE SQUARE */
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    /* SIDEBAR NAV */
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* SEARCH BAR */
+    .search-bar {
+      position: absolute;
+      top: 40px;
+      left: var(--content-left);
+      width: calc(var(--content-width) - 400px);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 12px 16px;
+      z-index: 50;
+    }
+
+    .search-bar img { width: 20px; height: 20px; }
+    .search-bar input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 260px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 48px; right: 200px; width: 24px; height: 24px; cursor: pointer; }
+    #bellBtn     { position: absolute; top: 48px; right: 150px; width: 24px; height: 24px; cursor: pointer; }
+    #profileBtn  { position: absolute; top: 48px; right: 100px; width: 24px; height: 24px; cursor: pointer; }
+
+    /* RAFFLE HISTORY TABLE */
+    .history-wrap {
+      position: absolute;
+      top: 100px;
+      left: 280px;
+      width: 1300px;
+      height: 900px;
+      background: #ffffff;
+      border-radius: 13px;
+      box-shadow: 0 18px 30px rgba(0,0,0,0.10);
+      overflow: hidden;
+      z-index: 52;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .history-head {
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      border-bottom: 1px solid #eef0f4;
+      background: #ffffff;
+    }
+
+    .h-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .h-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .h-controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+    }
+
+    .tab {
+      border: none;
+      background: #f2f4f8;
+      color: #111827;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+    .tab.is-active {
+      background: #efe9ff;
+      color: #6E5FFC;
+    }
+    .tab:hover:not(.is-active) {
+      background: #e5e7eb;
+    }
+
+    .h-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #ffffff;
+      border: 1px solid #e6e8ef;
+      border-radius: 12px;
+      padding: 10px 12px;
+      width: 240px;
+      flex-shrink: 0;
+    }
+    .h-search img { width: 18px; height: 18px; opacity: 0.7; }
+    .h-search input {
+      border: none;
+      outline: none;
+      width: 100%;
+      font-size: 14px;
+      background: transparent;
+    }
+
+    .h-table-wrap {
+      flex: 1;
+      overflow: auto;
+      background: #ffffff;
+      overflow-x: hidden;
+    }
+
+    table.h-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      table-layout: fixed;
+    }
+
+    .h-table thead th {
+      text-align: left;
+      padding: 14px 24px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #334155;
+      background: #ffffff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      border-bottom: 1px solid #eef0f4;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-table tbody td {
+      padding: 18px 24px;
+      border-bottom: 1px solid #eef0f4;
+      vertical-align: middle;
+      color: #0f172a;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .h-table tbody tr {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .h-table tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .link-pill {
+      color: #6E5FFC;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .link-pill .ext {
+      font-size: 12px;
+      margin-left: 6px;
+      opacity: 0.9;
+    }
+    .link-pill:hover {
+      text-decoration: underline;
+      opacity: 0.85;
+    }
+
+    .status-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .status-completed { background: #dcfce7; color: #166534; }
+    .status-cancelled { background: #fee2e2; color: #b91c1c; }
+
+    .dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      line-height: 1;
+      background: rgba(255,255,255,0.55);
+    }
+
+    .winner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .winner a {
+      color: #6E5FFC;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .winner small {
+      display: block;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .h-foot {
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #eef0f4;
+      color: #475569;
+      font-size: 13px;
+      background: #ffffff;
+    }
+    .h-foot strong { color: #111827; }
+
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: #64748b;
+    }
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+    .empty-state-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+    .empty-state-text {
+      font-size: 14px;
+      color: #64748b;
+    }
+
+    .hidden { display: none !important; }
+
+    /* RAFFLE DETAILS MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-overlay.show {
+      display: grid;
+      place-items: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .modal-content {
+      background: #2D2D3A;
+      border-radius: 20px;
+      padding: 0;
+      width: 900px;
+      max-height: 85vh;
+      box-shadow: 0 24px 48px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .modal-header {
+      padding: 28px 32px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #FFFFFF;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-close {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #FFFFFF;
+      font-size: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: grid;
+      place-items: center;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: rotate(90deg);
+    }
+
+    .modal-stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      padding: 24px 32px;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-stat-card {
+      text-align: center;
+    }
+
+    .modal-stat-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #9CA3AF;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .modal-stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    .modal-stat-value.green { color: #10B981; }
+    .modal-stat-value.orange { color: #F59E0B; }
+    .modal-stat-value.purple { color: #A855F7; }
+    .modal-stat-value.blue { color: #3B82F6; }
+
+    .modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+    }
+
+    .participants-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .participants-table thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 11px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: #9CA3AF;
+      background: #2D2D3A;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .participants-table tbody td {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: #E5E7EB;
+    }
+
+    .participants-table tbody td:first-child,
+    .participants-table thead th:first-child {
+      padding-left: 32px;
+    }
+
+    .participants-table tbody td:last-child,
+    .participants-table thead th:last-child {
+      padding-right: 32px;
+    }
+
+    .participants-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .username-cell {
+      font-weight: 600;
+      color: #A855F7;
+    }
+
+    .realname-cell {
+      color: #9CA3AF;
+      font-size: 13px;
+    }
+
+    .paid-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .paid-badge.yes {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+    }
+
+    .paid-badge.no {
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+    }
+  </style>
+</head>
+
+<body>
+<div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <!-- SEARCH -->
+    <div class="search-bar">
+      <img src="/static/assets/Icons/Normal.png">
+      <input placeholder="Search here...">
+    </div>
+
+    <!-- ICONS -->
+    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png"></div>
+    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png"></div>
+    <div id="bellBtn"><img src="/static/assets/Icons/bell.png"></div>
+    <div id="profileBtn"><img src="/static/assets/Icons/images-removebg-preview%201.png"></div>
+
+<section class="history-wrap" id="historyWrap">
+  <div class="history-head">
+    <div>
+      <h3 class="h-title">All Raffles</h3>
+      <div class="h-sub"><span id="raffleCount">0</span> raffles found</div>
+    </div>
+
+    <div class="h-controls">
+      <div class="tabs" id="tabs">
+        <button class="tab is-active" data-filter="all">All</button>
+        <button class="tab" data-filter="completed">Completed</button>
+        <button class="tab" data-filter="cancelled">Cancelled</button>
+      </div>
+
+      <div class="h-search">
+        <img src="/static/assets/Icons/Normal.png" alt="">
+        <input id="raffleSearch" type="text" placeholder="Search raffles...">
+      </div>
+    </div>
+  </div>
+
+  <div class="h-table-wrap">
+    <table class="h-table" id="rafflesTable">
+      <thead>
+        <tr>
+          <th style="width:110px;">Date</th>
+          <th style="width:280px;">Item</th>
+          <th style="width:140px;">Raffle Link</th>
+          <th style="width:90px;">Spots</th>
+          <th style="width:90px;">Value</th>
+          <th style="width:120px;">Status</th>
+          <th style="width:220px;">Winner</th>
+        </tr>
+      </thead>
+
+      <tbody id="rafflesTableBody">
+        <!-- Populated by JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="h-foot">
+    <div>Showing <span id="showingCount">0</span> raffles</div>
+    <div>Success Rate: <strong id="successRate" style="color:#16a34a;">0%</strong></div>
+  </div>
+</section>
+
+<!-- RAFFLE DETAILS MODAL -->
+<div id="detailsModal" class="modal-overlay">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        <span>📋</span>
+        <span id="modalRaffleTitle">Raffle Details</span>
+      </h3>
+      <button class="modal-close" id="closeDetailsModal">×</button>
+    </div>
+
+    <div class="modal-stats">
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Spots</div>
+        <div class="modal-stat-value blue" id="modalTotalSpots">0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Participants</div>
+        <div class="modal-stat-value purple" id="modalParticipants">0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Paid</div>
+        <div class="modal-stat-value green" id="modalTotalPaid">$0</div>
+      </div>
+      <div class="modal-stat-card">
+        <div class="modal-stat-label">Total Value</div>
+        <div class="modal-stat-value orange" id="modalTotalValue">$0</div>
+      </div>
+    </div>
+
+    <div class="modal-body">
+      <table class="participants-table">
+        <thead>
+          <tr>
+            <th style="width: 30%;">Reddit User</th>
+            <th style="width: 30%;">Real Name</th>
+            <th style="width: 15%;">Spots</th>
+            <th style="width: 15%;">Amount</th>
+            <th style="width: 10%;">Paid</th>
+          </tr>
+        </thead>
+        <tbody id="modalParticipantsBody">
+          <!-- Populated by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+ <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item is-active" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="/admin" style="display: none;"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Admin</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="#"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+</nav>
+
+<script>
+  // Move sidebar highlight square to active item
+  (function () {
+    const nav = document.getElementById("sidebarNav");
+    const square = document.getElementById("activeSquare");
+    if (!nav || !square) return;
+
+    function moveSquareTo(item) {
+      square.style.top = (nav.offsetTop + item.offsetTop) + "px";
+    }
+
+    const active = nav.querySelector(".is-active");
+    if (active) moveSquareTo(active);
+  })();
+
+  // Settings button
+  (function () {
+    const settingsBtn = document.getElementById("settingsBtn");
+    if (settingsBtn) {
+      settingsBtn.style.cursor = "pointer";
+      settingsBtn.addEventListener("click", () => {
+        window.location.href = "/settings";
+      });
+    }
+  })();
+
+  // ============ RAFFLE DETAILS MODAL ============
+  (function () {
+    const modal = document.getElementById("detailsModal");
+    const closeBtn = document.getElementById("closeDetailsModal");
+    const modalTitle = document.getElementById("modalRaffleTitle");
+    const modalTotalSpots = document.getElementById("modalTotalSpots");
+    const modalParticipants = document.getElementById("modalParticipants");
+    const modalTotalPaid = document.getElementById("modalTotalPaid");
+    const modalTotalValue = document.getElementById("modalTotalValue");
+    const modalParticipantsBody = document.getElementById("modalParticipantsBody");
+
+    window.showRaffleDetails = function(raffle) {
+      // Set title
+      const itemName = getItemName(raffle);
+      modalTitle.textContent = itemName;
+
+      // Calculate stats
+      const totalSpots = raffle.totalSpots || 0;
+      const participants = raffle.participants || [];
+      const uniqueParticipants = participants.length;
+      const totalPaid = participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+      const totalValue = participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+
+      // Update stats
+      modalTotalSpots.textContent = totalSpots;
+      modalParticipants.textContent = uniqueParticipants;
+      modalTotalPaid.textContent = '$' + totalPaid.toLocaleString();
+      modalTotalValue.textContent = '$' + totalValue.toLocaleString();
+
+      // Populate participants table
+      modalParticipantsBody.innerHTML = '';
+
+      if (participants.length === 0) {
+        modalParticipantsBody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 40px; color: #9CA3AF;">
+              No participants found
+            </td>
+          </tr>
+        `;
+      } else {
+        participants.forEach(p => {
+          const row = document.createElement('tr');
+          const paidClass = p.paid ? 'yes' : 'no';
+          const paidIcon = p.paid ? '✓' : '×';
+          const paidText = p.paid ? 'Paid' : 'Unpaid';
+
+          row.innerHTML = `
+            <td class="username-cell">${p.redditUser || '-'}</td>
+            <td class="realname-cell">${p.realName || '-'}</td>
+            <td>${p.spots || 0}</td>
+            <td>$${(p.owed || 0).toLocaleString()}</td>
+            <td><span class="paid-badge ${paidClass}">${paidIcon} ${paidText}</span></td>
+          `;
+          modalParticipantsBody.appendChild(row);
+        });
+      }
+
+      // Show modal
+      modal.classList.add('show');
+    };
+
+    function closeModal() {
+      modal.classList.remove('show');
+    }
+
+    closeBtn.addEventListener('click', closeModal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+  })();
+
+  // ============ RAFFLE HISTORY LOGIC ============
+  (function () {
+    const tbody = document.getElementById("rafflesTableBody");
+    const raffleCount = document.getElementById("raffleCount");
+    const showingCount = document.getElementById("showingCount");
+    const successRate = document.getElementById("successRate");
+    const tabs = document.getElementById("tabs");
+    const search = document.getElementById("raffleSearch");
+
+    let allRaffles = [];
+    let activeFilter = "all";
+    let query = "";
+
+async function loadRaffles() {
+  try {
+    const result = await API.getHistory();
+    if (result.ok) {
+      allRaffles = result.data || [];
+      renderRaffles();
+    } else {
+      console.error('Failed to load raffle history:', result.error);
+      allRaffles = [];
+      renderRaffles();
+    }
+  } catch (e) {
+    console.error('Failed to load raffle history:', e);
+    allRaffles = [];
+    renderRaffles();
+  }
+}
+
+    function formatDate(isoString) {
+      const date = new Date(isoString);
+      const options = { month: 'short', day: 'numeric', year: 'numeric' };
+      return date.toLocaleDateString('en-US', options);
+    }
+
+    function getItemName(raffle) {
+      // Try to extract item name from Reddit link or use placeholder
+      if (raffle.redditLink) {
+        const match = raffle.redditLink.match(/comments\/[^/]+\/([^/]+)/);
+        if (match) {
+          return match[1].replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+        }
+        return 'Watch Raffle';
+      }
+      return 'Custom Raffle';
+    }
+
+    window.getItemName = getItemName;
+
+    function getRandomWinner(raffle) {
+      if (raffle.status !== 'completed' || !raffle.participants || raffle.participants.length === 0) {
+        return null;
+      }
+
+      // Get a paid participant as winner
+      const paidParticipants = raffle.participants.filter(p => p.paid);
+      if (paidParticipants.length === 0) return null;
+
+      const winner = paidParticipants[Math.floor(Math.random() * paidParticipants.length)];
+      const randomSpot = Math.floor(Math.random() * raffle.totalSpots) + 1;
+
+      return {
+        username: winner.redditUser,
+        spot: randomSpot
+      };
+    }
+
+    function renderRaffles() {
+      tbody.innerHTML = '';
+
+      if (allRaffles.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7">
+              <div class="empty-state">
+                <div class="empty-state-icon">📋</div>
+                <div class="empty-state-title">No Raffle History</div>
+                <div class="empty-state-text">Complete or cancel raffles from the Active Raffle page to see them here.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+        updateStats([]);
+        return;
+      }
+
+      allRaffles.forEach(raffle => {
+        const row = document.createElement('tr');
+        row.dataset.status = raffle.status;
+        row.dataset.raffleId = raffle.id;
+
+        const itemName = getItemName(raffle);
+        const date = formatDate(raffle.date);
+        const spotsFilled = raffle.participants ? raffle.participants.reduce((sum, p) => sum + p.spots, 0) : 0;
+        const spotsText = `${spotsFilled}/${raffle.totalSpots || 0}`;
+        const value = raffle.status === 'completed' ? (raffle.totalPaid || raffle.totalOwed || 0) : 0;
+        const statusClass = raffle.status === 'completed' ? 'status-completed' : 'status-cancelled';
+        const statusIcon = raffle.status === 'completed' ? '✓' : '×';
+        const statusText = raffle.status === 'completed' ? 'Completed' : 'Cancelled';
+
+const winnerHtml = raffle.winner && raffle.winner.username
+  ? `<span>🏆</span>
+     <div style="min-width:0;">
+       <a href="#" onclick="return false;">${raffle.winner.username}</a>
+       <small>Spot #${raffle.winner.spot}</small>
+     </div>`
+  : '-';
+
+        const linkHtml = raffle.redditLink
+          ? `<a class="link-pill" href="${raffle.redditLink}" target="_blank" onclick="event.stopPropagation()">View Raffle <span class="ext">↗</span></a>`
+          : '—';
+
+        row.innerHTML = `
+          <td>${date}</td>
+          <td>${itemName}</td>
+          <td>${linkHtml}</td>
+          <td>${spotsText}</td>
+          <td>$${value.toLocaleString()}</td>
+          <td><span class="status-chip ${statusClass}"><span class="dot">${statusIcon}</span>${statusText}</span></td>
+          <td class="winner">${winnerHtml}</td>
+        `;
+
+        // Add click handler to show details
+        row.addEventListener('click', () => {
+          showRaffleDetails(raffle);
+        });
+
+        tbody.appendChild(row);
+      });
+
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const q = query.trim().toLowerCase();
+      const rows = Array.from(tbody.querySelectorAll("tr"));
+      const visible = [];
+
+      rows.forEach(r => {
+        if (r.querySelector('.empty-state')) {
+          r.style.display = '';
+          return;
+        }
+
+        const statusOk = activeFilter === "all" || r.dataset.status === activeFilter;
+        const text = r.innerText.toLowerCase();
+        const searchOk = !q || text.includes(q);
+
+        const show = statusOk && searchOk;
+        r.style.display = show ? "" : "none";
+        if (show) visible.push(r);
+      });
+
+      updateStats(visible);
+    }
+
+    function updateStats(visibleRows) {
+      const completed = visibleRows.filter(r => r.dataset.status === "completed").length;
+      const total = allRaffles.length;
+      const showing = visibleRows.filter(r => !r.querySelector('.empty-state')).length;
+
+      raffleCount.textContent = total;
+      showingCount.textContent = showing;
+
+      if (total === 0) {
+        successRate.textContent = "0%";
+        successRate.style.color = "#64748b";
+      } else {
+        const allCompleted = allRaffles.filter(r => r.status === "completed").length;
+        const pct = Math.round((allCompleted / total) * 100);
+        successRate.textContent = pct + "%";
+        successRate.style.color = pct >= 50 ? "#16a34a" : "#ef4444";
+      }
+    }
+
+    tabs?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab");
+      if (!btn) return;
+
+      activeFilter = btn.dataset.filter;
+      tabs.querySelectorAll(".tab").forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+      applyFilters();
+    });
+
+    search?.addEventListener("input", () => {
+      query = search.value;
+      applyFilters();
+    });
+
+// Initial load
+(async function() {
+  await loadRaffles();
+})();
+
+    // Reload when page becomes visible (in case user finished a raffle in another tab)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        loadRaffles();
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

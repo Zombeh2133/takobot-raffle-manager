@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "nodemailer": "^7.0.12",
+    "uuid": "^13.0.0"
+  }
+}

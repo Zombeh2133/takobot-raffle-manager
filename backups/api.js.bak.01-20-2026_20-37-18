@@ -1,0 +1,64 @@
+const API = {
+  saveRaffle: async (data) => {
+    const response = await fetch('/api/raffle/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  loadRaffle: async () => {
+    const response = await fetch('/api/raffle/load');
+    return response.json();
+  },
+
+  clearRaffle: async () => {
+    const response = await fetch('/api/raffle/clear', { method: 'DELETE' });
+    return response.json();
+  },
+
+  saveToHistory: async (data) => {
+    const response = await fetch('/api/raffle/history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  getHistory: async () => {
+    const response = await fetch('/api/raffle/history');
+    return response.json();
+  },
+
+  clearHistory: async () => {
+    const response = await fetch('/api/raffle/history', { method: 'DELETE' });
+    return response.json();
+  },
+
+  logActivity: async (data) => {
+    const response = await fetch('/api/activity/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return response.json();
+  },
+
+  getActivities: async () => {
+    const response = await fetch('/api/activity/list');
+    return response.json();
+  },
+
+  clearActivities: async () => {
+    const response = await fetch('/api/activity/clear', { method: 'DELETE' });
+    return response.json();
+  },
+
+  scanReddit: async (redditLink, costPerSpot) => {
+    const url = `/api/parse-reddit?url=${encodeURIComponent(redditLink)}&costPerSpot=${costPerSpot}`;
+    const response = await fetch(url);
+    return response.json();
+  }
+};

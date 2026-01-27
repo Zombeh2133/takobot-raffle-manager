@@ -1,0 +1,778 @@
+const express = require('express');
+const { Pool } = require('pg');
+const cors = require('cors');
+const path = require('path');
+const { spawn } = require('child_process');
+require('dotenv').config();
+
+const app = express();
+const port = process.env.PORT || 3000;
+const passwordResetRoutes = require('./password-reset-routes');
+
+// PostgreSQL connection
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL
+});
+
+app.use(cors());
+app.use(express.json());
+
+// Serve sidebar admin control script
+app.get('/sidebar-admin-control.js', (req, res) => {
+  res.sendFile(path.join(__dirname, 'sidebar-admin-control.js'));
+});
+
+// Serve static files from templates/pages
+app.use(express.static(path.join(__dirname, '../app/templates/pages')));
+
+//Password Reset Route
+passwordResetRoutes(app, pool);
+
+// Test endpoint
+app.get('/api/test', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT NOW()');
+    res.json({ ok: true, time: result.rows[0].now, message: 'Database connected!' });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ACTIVE RAFFLE ENDPOINTS ============
+
+// Save active raffle state
+app.post('/api/raffle/save', async (req, res) => {
+  try {
+    const { redditLink, totalSpots, costPerSpot, pollingInterval, participants } = req.body;
+    
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+    
+    if (!username) {
+      return res.status(401).json({ ok: false, error: 'User not authenticated' });
+    }
+
+    // Delete only THIS user's active raffle
+    await pool.query('DELETE FROM active_raffle WHERE username = $1', [username]);
+
+    const result = await pool.query(
+      `INSERT INTO active_raffle (reddit_link, total_spots, cost_per_spot, polling_interval, participants, username, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
+      [redditLink, totalSpots, costPerSpot, pollingInterval, JSON.stringify(participants), username]
+    );
+
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error saving raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Load active raffle state
+app.get('/api/raffle/load', async (req, res) => {
+  try {
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+    
+    if (!username) {
+      return res.status(401).json({ ok: false, error: 'User not authenticated' });
+    }
+
+    // Get only THIS user's active raffle
+    const result = await pool.query(
+      'SELECT * FROM active_raffle WHERE username = $1 ORDER BY id DESC LIMIT 1',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ ok: true, data: null });
+    }
+
+    const raffle = result.rows[0];
+    res.json({
+      ok: true,
+      data: {
+        redditLink: raffle.reddit_link,
+        totalSpots: raffle.total_spots,
+        costPerSpot: raffle.cost_per_spot,
+        pollingInterval: raffle.polling_interval,
+        participants: raffle.participants || []
+      }
+    });
+  } catch (error) {
+    console.error('Error loading raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Clear active raffle
+app.delete('/api/raffle/clear', async (req, res) => {
+  try {
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+    
+    if (!username) {
+      return res.status(401).json({ ok: false, error: 'User not authenticated' });
+    }
+
+    // Delete only THIS user's active raffle
+    await pool.query('DELETE FROM active_raffle WHERE username = $1', [username]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error clearing raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ RAFFLE HISTORY ENDPOINTS ============
+
+// Save raffle to history
+app.post('/api/raffle/history', async (req, res) => {
+  try {
+    const {
+      raffleDate,
+      status,
+      redditLink,
+      totalSpots,
+      costPerSpot,
+      participants,
+      totalOwed,
+      totalPaid,
+      winner,
+      username
+    } = req.body;
+
+    const result = await pool.query(
+      `INSERT INTO raffle_history
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [
+        raffleDate,
+        status,
+        redditLink,
+        totalSpots,
+        costPerSpot,
+        JSON.stringify(participants),
+        totalOwed,
+        totalPaid,
+        winner ? JSON.stringify(winner) : null,
+        username
+      ]
+    );
+
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error saving to history:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Get raffle history
+app.get('/api/raffle/history', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM raffle_history ORDER BY raffle_date DESC'
+    );
+
+    const history = result.rows.map(row => ({
+      id: row.id,
+      date: row.raffle_date,
+      status: row.status,
+      redditLink: row.reddit_link,
+      totalSpots: row.total_spots,
+      costPerSpot: row.cost_per_spot,
+      participants: row.participants,
+      totalOwed: row.total_owed,
+      totalPaid: row.total_paid,
+      winner: row.winner,
+      username: row.username
+    }));
+
+    res.json({ ok: true, data: history });
+  } catch (error) {
+    console.error('Error fetching history:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Delete all raffle history
+app.delete('/api/raffle/history', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM raffle_history');
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error deleting history:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Delete individual raffle from history
+app.delete('/api/raffle/history/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM raffle_history WHERE id = $1', [id]);
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error deleting raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ACTIVITY LOG ENDPOINTS ============
+
+// Add activity
+app.post('/api/activity/log', async (req, res) => {
+  try {
+    const { type, title, details, badge, raffle_id, username } = req.body;
+    
+    // DEBUG: Log what we received
+    console.log('🔍 POST /api/activity/log received:');
+    console.log('  req.body:', req.body);
+    console.log('  username from body:', username);
+    console.log('  type:', type, 'title:', title);
+
+    const result = await pool.query(
+      `INSERT INTO activity_log (type, title, details, badge, raffle_id, username, timestamp)
+       VALUES ($1, $2, $3, $4, $5, $6, NOW())
+       RETURNING *`,
+      [type, title, details, badge, raffle_id, username]
+    );
+    
+    // DEBUG: Log what was inserted
+    console.log('✅ Inserted activity with username:', result.rows[0].username);
+
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Error logging activity:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Get activity log
+app.get('/api/activity/list', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 100'
+    );
+
+    const activities = result.rows.map(row => ({
+      id: row.id,
+      type: row.type,
+      title: row.title,
+      details: row.details,
+      badge: row.badge,
+      raffle_id: row.raffle_id,
+      username: row.username,
+      timestamp: row.timestamp
+    }));
+
+    res.json({ ok: true, data: activities });
+  } catch (error) {
+    console.error('Error fetching activities:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Clear activity log
+app.delete('/api/activity/clear', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM activity_log');
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error clearing activity log:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ SETTINGS ENDPOINTS ============
+
+// Save setting
+app.post('/api/settings', async (req, res) => {
+  try {
+    const { key, value } = req.body;
+
+    await pool.query(
+      `INSERT INTO settings (key, value, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+      [key, value]
+    );
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error saving setting:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Get setting
+app.get('/api/settings/:key', async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT value FROM settings WHERE key = $1',
+      [req.params.key]
+    );
+
+    if (result.rows.length === 0) {
+      return res.json({ ok: true, data: null });
+    }
+
+    res.json({ ok: true, data: result.rows[0].value });
+  } catch (error) {
+    console.error('Error fetching setting:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ REDDIT SCANNING ENDPOINT ============
+
+app.post('/api/reddit/scan', async (req, res) => {
+  try {
+    const { redditLink, costPerSpot } = req.body;
+
+    if (!redditLink || !costPerSpot) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing redditLink or costPerSpot'
+      });
+    }
+
+    // Path to Python script (AI-powered version)
+    const pythonScript = path.join(__dirname, '../app/reddit_parser_ai.py');
+
+    console.log('Starting Reddit scan:', redditLink, 'Cost:', costPerSpot);
+
+    // Spawn Python process
+    const python = spawn('python3', [pythonScript, redditLink, costPerSpot.toString()], {
+      timeout: 300000  // Increased to 300 seconds (5 minutes) for OpenAI API calls
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    python.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    python.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    python.on('close', async (code) => {
+      // Log for debugging
+      console.log('Python exit code:', code);
+      console.log('Python stdout length:', stdout.length);
+      if (stderr) console.log('Python stderr:', stderr);
+
+      if (code !== 0) {
+        console.error('Python script failed with code:', code);
+        console.error('Stderr:', stderr);
+        console.error('Stdout:', stdout);
+
+        // Try to parse error from stdout
+        try {
+          const errorResult = JSON.parse(stdout);
+          return res.status(500).json(errorResult);
+        } catch (e) {
+          return res.status(500).json({
+            ok: false,
+            error: stderr || stdout || 'Reddit scan failed'
+          });
+        }
+      }
+
+      // Try to parse the result
+      try {
+        const result = JSON.parse(stdout.trim());
+        console.log('Reddit scan result:', result.ok ? `Success - ${result.participants?.length || 0} participants` : result.error);
+
+        // FILTER OUT DUPLICATES - Get existing participants from DB
+        if (result.ok && result.participants && result.participants.length > 0) {
+          // Get username from headers (set by FastAPI proxy)
+          const username = req.headers['x-user-name'];
+          
+          const existingResult = await pool.query(
+            'SELECT participants FROM active_raffle WHERE username = $1 LIMIT 1',
+            [username]
+          );
+
+          const existingParticipants = existingResult.rows[0]?.participants || [];
+
+          // Create a Set of existing USERNAMES (unique identifier)
+          const existingUsernames = new Set(
+            existingParticipants.map(p => (p.redditUser || p.username || '').trim().toLowerCase())
+          );
+
+          // Filter to only NEW participants (usernames not seen before)
+          const newParticipants = result.participants.filter(p => {
+            const username = (p.redditUser || p.username || '').trim().toLowerCase();
+            return username && !existingUsernames.has(username);
+          });
+
+          console.log(`Filtered: ${result.participants.length} total, ${newParticipants.length} new, ${result.participants.length - newParticipants.length} duplicates removed`);
+
+          // Return only new participants
+          result.participants = newParticipants;
+        }
+
+        res.json(result);
+      } catch (e) {
+        console.error('Failed to parse Python output:', e.message);
+        console.error('Raw stdout:', stdout);
+        res.status(500).json({
+          ok: false,
+          error: `Failed to parse scan results: ${e.message}. Output length: ${stdout.length}`
+        });
+      }
+    });
+
+    // Handle timeout
+    python.on('error', (err) => {
+      console.error('Python process error:', err);
+      res.status(500).json({
+        ok: false,
+        error: `Process error: ${err.message}`
+      });
+    });
+
+  } catch (error) {
+    console.error('Reddit scan error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// System Status endpoint
+app.get('/api/system/status', async (req, res) => {
+  try {
+    const fs = require('fs');
+    const path = require('path');
+
+    // Check Gmail OAuth credentials
+    const credPath = path.join(__dirname, 'credentials.json');
+    const gmailConnected = fs.existsSync(credPath);
+
+    // Check bot status (you can make this dynamic later)
+    const botOnline = true; // Change to false when you take it offline
+
+    // Last updated time (using process start time for now)
+    const lastUpdated = new Date();
+    const now = new Date();
+    const diffMs = now - lastUpdated;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    let lastUpdatedText;
+    if (diffMins < 1) lastUpdatedText = 'Just now';
+    else if (diffMins < 60) lastUpdatedText = `${diffMins}m ago`;
+    else if (diffMins < 1440) lastUpdatedText = `${Math.floor(diffMins / 60)}h ago`;
+    else lastUpdatedText = `${Math.floor(diffMins / 1440)}d ago`;
+
+    res.json({
+      ok: true,
+      data: {
+        gmailConnected,
+        botOnline,
+        lastUpdated: lastUpdatedText
+      }
+    });
+  } catch (error) {
+    console.error('System status error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ USER AUTHENTICATION ENDPOINTS ============
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+      return res.status(400).json({ ok: false, error: 'Username and password are required' });
+    }
+
+    const result = await pool.query(
+      'SELECT id, username, is_admin, password_hash FROM users WHERE LOWER(username) = LOWER($1)',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+
+    // Verify password
+    const bcrypt = require('bcrypt');
+    const isValid = await bcrypt.compare(password, user.password_hash);
+
+    if (!isValid) {
+      return res.status(401).json({ ok: false, error: 'Invalid credentials' });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        isAdmin: user.is_admin
+      }
+    });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Get current user endpoint (for checking admin status)
+app.get('/api/auth/current-user', async (req, res) => {
+  try {
+    // Get user info from headers (passed by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+    const isAdmin = req.headers['x-user-admin'] === 'true';
+    const userId = req.headers['x-user-id'];
+
+    if (!username || !userId) {
+      return res.json({ ok: false, data: null });
+    }
+
+    res.json({
+      ok: true,
+      data: {
+        id: parseInt(userId),
+        username: username,
+        isAdmin: isAdmin
+      }
+    });
+  } catch (error) {
+    console.error('Current user error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Logout endpoint
+app.post('/api/auth/logout', async (req, res) => {
+  try {
+    // TODO: Clear session when session-based authentication is implemented
+    // For now, just return success
+    res.json({ ok: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ADMIN ANALYTICS ENDPOINTS ============
+
+// Get admin analytics for a specific year
+app.get('/api/admin/analytics/:year', async (req, res) => {
+  try {
+    // Check admin access from headers (passed by FastAPI proxy)
+    const isAdmin = req.headers['x-user-admin'] === 'true';
+    const username = req.headers['x-user-name'];
+
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: 'Access denied. Admin only.' });
+    }
+
+    const year = parseInt(req.params.year);
+
+    // Get all raffles for the specified year
+    const raffleResult = await pool.query(
+      `SELECT * FROM raffle_history
+       WHERE EXTRACT(YEAR FROM raffle_date) = $1
+       ORDER BY raffle_date`,
+      [year]
+    );
+
+    const raffles = raffleResult.rows;
+
+    // Calculate monthly statistics
+    const monthlyStats = Array(12).fill(null).map((_, index) => {
+      const monthRaffles = raffles.filter(r => {
+        const raffleMonth = new Date(r.raffle_date).getMonth();
+        return raffleMonth === index;
+      });
+
+      const completed = monthRaffles.filter(r => r.status === 'completed').length;
+      const cancelled = monthRaffles.filter(r => r.status === 'cancelled').length;
+      const total = completed + cancelled;
+      const revenue = monthRaffles
+        .filter(r => r.status === 'completed')
+        .reduce((sum, r) => sum + (parseFloat(r.total_paid) || 0), 0);
+      const completionRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+      return {
+        month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][index],
+        completed,
+        cancelled,
+        total,
+        revenue: Math.round(revenue),
+        completionRate
+      };
+    });
+
+    // Calculate totals
+    const totalCompleted = raffles.filter(r => r.status === 'completed').length;
+    const totalCancelled = raffles.filter(r => r.status === 'cancelled').length;
+    const totalRevenue = raffles
+      .filter(r => r.status === 'completed')
+      .reduce((sum, r) => sum + (parseFloat(r.total_paid) || 0), 0);
+
+    // Get unique participants count (rough estimate based on participants array)
+    const allParticipants = new Set();
+    raffles.forEach(raffle => {
+      if (raffle.participants) {
+        raffle.participants.forEach(p => {
+          if (p.redditUser || p.username) {
+            allParticipants.add(p.redditUser || p.username);
+          }
+        });
+      }
+    });
+    const uniqueUsers = allParticipants.size;
+
+    res.json({
+      ok: true,
+      data: {
+        year,
+        monthly: monthlyStats,
+        totalCompleted,
+        totalCancelled,
+        totalRevenue: Math.round(totalRevenue),
+        uniqueUsers
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin analytics error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ PROFILE ENDPOINTS ============
+
+// Get profile
+app.get('/api/profile', async (req, res) => {
+  try {
+    // Get user info from headers (passed by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+
+    if (!username) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    const result = await pool.query(
+      'SELECT id, username, email, fullname, is_admin, default_polling, timezone, bio, created_at FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'User not found' });
+    }
+
+    const user = result.rows[0];
+    res.json({
+      ok: true,
+      data: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        fullname: user.fullname,
+        isAdmin: user.is_admin,
+        defaultPolling: user.default_polling,
+        timezone: user.timezone,
+        bio: user.bio,
+        createdAt: user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Update profile
+app.put('/api/profile', async (req, res) => {
+  try {
+    const username = 'maki'; // TODO: Replace with session
+    const { email, fullname, defaultPolling, timezone, bio } = req.body;
+
+    const result = await pool.query(
+      `UPDATE users
+       SET email = $1, fullname = $2, default_polling = $3, timezone = $4, bio = $5, updated_at = NOW()
+       WHERE username = $6
+       RETURNING id, username, email, fullname, is_admin, default_polling, timezone, bio, created_at`,
+      [email, fullname, defaultPolling, timezone, bio, username]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'User not found' });
+    }
+
+    res.json({ ok: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Get profile stats
+app.get('/api/profile/stats', async (req, res) => {
+  try {
+    // Get user info from headers (passed by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+
+    if (!username) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    // Get user join date
+    const userResult = await pool.query(
+      'SELECT created_at FROM users WHERE username = $1',
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'User not found' });
+    }
+
+    // Get raffle stats - FILTERED BY USERNAME
+    const raffleResult = await pool.query(
+      `SELECT 
+        COUNT(*) as total, 
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed, 
+        SUM(CASE WHEN status = 'completed' THEN total_paid ELSE 0 END) as revenue 
+       FROM raffle_history 
+       WHERE username = $1`,
+      [username]
+    );
+
+    const stats = raffleResult.rows[0];
+
+    res.json({
+      ok: true,
+      data: {
+        totalRaffles: parseInt(stats.total) || 0,
+        completedRaffles: parseInt(stats.completed) || 0,
+        totalRevenue: parseFloat(stats.revenue) || 0,
+        joinDate: userResult.rows[0].created_at
+      }
+    });
+  } catch (error) {
+    console.error('Profile stats error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============================================
+// USER MANAGEMENT ROUTES
+// ============================================
+require('./user-routes')(app, pool);
+require('./password-reset-routes')(app, pool);
+
+// Start server
+app.listen(port, () => {
+  console.log(`🚀 Raffle Manager API running on http://localhost:${port}`);
+  console.log(`📊 Test endpoint: http://localhost:${port}/api/test`);
+});

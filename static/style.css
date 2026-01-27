@@ -1,0 +1,89 @@
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+
+body {
+    background-color: #2e2e2e; /* Gray background */
+    color: white; /* Optional: Adjust text color to contrast with the gray background */
+    font-family: Arial, sans-serif; /* Optional: Add a basic font */
+    text-align: center; /* Optional: Center the text on the page */
+    padding-top: 20%; /* Optional: Add some space at the top */
+}
+
+h1 {
+    font-size: 48px; /* Optional: Adjust the title font size */
+}
+
+/* White square */
+.white-square {
+    width: 1440px;  /* Set width to 1440px */
+    height: 962px;  /* Set height to 962px */
+    background-color: #ffffff; /* White background */
+    border-radius: 10px; /* Optional: Rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid #1b2433;
+  background: #0e1420;
+}
+
+
+.brand { font-weight: 700; letter-spacing: 0.2px; }
+.hint { opacity: 0.7; font-size: 13px; }
+
+.container { max-width: 900px; margin: 26px auto; padding: 0 16px; }
+.card {
+  background: #0f1726;
+  border: 1px solid #1b2433;
+  border-radius: 14px;
+  padding: 18px;
+}
+h1 { margin: 0 0 8px; font-size: 22px; }
+.sub { margin: 0 0 16px; opacity: 0.8; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.btn {
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid #263246;
+  background: #121c2f;
+  color: #e7eaf0;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn:hover { background: #16223a; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.logwrap {
+  border: 1px solid #263246;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.logtitle {
+  padding: 10px 12px;
+  background: #0e1420;
+  border-bottom: 1px solid #263246;
+  font-weight: 700;
+  font-size: 13px;
+  opacity: 0.9;
+}
+.log {
+  margin: 0;
+  padding: 12px;
+  min-height: 140px;
+  max-height: 340px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  background: #0b1020;
+}
