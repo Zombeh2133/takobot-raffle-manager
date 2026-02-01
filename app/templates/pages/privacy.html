@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy - TakoBot</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #FAF8F6;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    /* PAGE HEADER */
+    .page-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .page-title {
+      font-size: 44px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.4px;
+      margin-bottom: 12px;
+    }
+
+    .page-subtitle {
+      font-size: 16px;
+      font-weight: 500;
+      color: #7A7D8C;
+      line-height: 1.5;
+    }
+
+    /* QUICK LINKS */
+    .quick-links {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .quick-link-btn {
+      padding: 10px 20px;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      background: white;
+      color: #6B7280;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .quick-link-btn:hover {
+      border-color: #7C3AED;
+      color: #7C3AED;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+    }
+
+    /* SECTION CARD */
+    .section-card {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
+      padding: 32px 36px;
+      margin-bottom: 26px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #F3F4F6;
+    }
+
+    .section-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      background: rgba(124, 58, 237, 0.12);
+      color: #7C3AED;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+      color: #111;
+    }
+
+    .section-subtitle {
+      margin: 6px 0 0 0;
+      font-size: 15px;
+      color: #7A7D8C;
+      font-weight: 500;
+    }
+
+    .section-content h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111;
+      margin: 28px 0 12px 0;
+    }
+
+    .section-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .section-content p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #475569;
+      margin: 0 0 16px 0;
+    }
+
+    .section-content ul {
+      margin: 12px 0 20px 0;
+      padding-left: 24px;
+    }
+
+    .section-content li {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .section-content strong {
+      color: #111;
+      font-weight: 700;
+    }
+
+    .section-content code {
+      background: #F3F4F6;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      color: #6D28D9;
+    }
+
+    .info-box {
+      background: linear-gradient(135deg, #DBEAFE 0%, #BFDBFE 100%);
+      border-left: 4px solid #3B82F6;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+
+    .info-box p {
+      margin: 0;
+      color: #1E40AF;
+      font-weight: 600;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .last-updated {
+      text-align: center;
+      font-size: 14px;
+      color: #9CA3AF;
+      font-weight: 500;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #E5E7EB;
+    }
+
+    /* Back to Login Link */
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      color: #7C3AED;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .back-link a:hover {
+      color: #6D28D9;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <h1 class="page-title">Privacy Policy</h1>
+      <p class="page-subtitle">How we collect, use, and protect your data</p>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="quick-links">
+      <a href="/terms" class="quick-link-btn">📜 Terms of Service</a>
+      <a href="/login" class="quick-link-btn">← Back to Login</a>
+    </div>
+
+    <!-- PRIVACY POLICY -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">🔒</div>
+        <div>
+          <h2 class="section-title">Privacy Policy</h2>
+          <p class="section-subtitle">Last updated: February 1, 2026</p>
+        </div>
+      </div>
+
+      <div class="section-content">
+        <h3>1. Information We Collect</h3>
+        <p>TakoBot collects and stores the following information:</p>
+        <ul>
+          <li><strong>Account Information:</strong> Username, password (hashed with bcrypt), email address, and role (admin/user)</li>
+          <li><strong>Raffle Data:</strong> Reddit links, participant names, spot assignments, payment status, raffle configurations</li>
+          <li><strong>Reddit Usernames:</strong> Parsed from Reddit comments for raffle participation tracking</li>
+          <li><strong>Name Mappings:</strong> Reddit username to real name mappings (stored in browser localStorage)</li>
+          <li><strong>Gmail OAuth Credentials:</strong> If you enable email scanning (stored encrypted per user in PostgreSQL)</li>
+          <li><strong>Activity Logs:</strong> Actions performed within the Application for audit and troubleshooting purposes</li>
+          <li><strong>Session Data:</strong> Node.js session cookies for authentication</li>
+        </ul>
+
+        <h3>2. How We Use Your Information</h3>
+        <p>Your information is used to:</p>
+        <ul>
+          <li>Authenticate and authorize access to your account</li>
+          <li>Display and manage your active raffles and raffle history</li>
+          <li>Parse Reddit comments to identify raffle participants and spot requests</li>
+          <li>Scan Gmail for PayPal payment notifications (if enabled by you)</li>
+          <li>Map Reddit usernames to real names for easier participant identification</li>
+          <li>Provide analytics, activity tracking, and dashboard statistics</li>
+          <li>Generate raffle reports and export data</li>
+          <li>Improve the Application and troubleshoot issues</li>
+        </ul>
+
+        <h3>3. Data Storage and Security</h3>
+        <p>
+          All data is stored in a PostgreSQL database hosted on AWS EC2 infrastructure. Security measures include:
+        </p>
+        <ul>
+          <li><strong>Password Hashing:</strong> All passwords are hashed using bcrypt with salt rounds</li>
+          <li><strong>Session-Based Authentication:</strong> Node.js sessions (no JWT tokens in headers)</li>
+          <li><strong>Encrypted OAuth Storage:</strong> Gmail OAuth credentials are stored securely per user</li>
+          <li><strong>Database Backups:</strong> Regular automated backups are performed</li>
+          <li><strong>Role-Based Access Control:</strong> Admin features are restricted to authorized users only</li>
+          <li><strong>HTTPS:</strong> All communications are encrypted in transit (when deployed with SSL)</li>
+          <li><strong>User-Specific Data Isolation:</strong> Each user's data is isolated using <code>user_id</code> columns</li>
+        </ul>
+
+        <div class="info-box">
+          <p>
+            <strong>🔐 Security Note:</strong> While we implement industry-standard security practices, no system is 100% secure. Please use strong, unique passwords and do not share your account credentials with anyone.
+          </p>
+        </div>
+
+        <h3>4. Third-Party Services</h3>
+        <p>TakoBot integrates with the following third-party services:</p>
+        <ul>
+          <li><strong>Reddit:</strong> To fetch and parse raffle comments from PokemonRaffles community posts</li>
+          <li><strong>Gmail (Google):</strong> To scan for PayPal payment notifications (optional, requires your OAuth consent)</li>
+          <li><strong>OpenAI API:</strong> To parse complex Reddit comments using AI natural language processing (if configured)</li>
+        </ul>
+        <p>
+          Each service has its own privacy policy and terms of service. We recommend reviewing their policies:
+        </p>
+        <ul>
+          <li>Reddit Privacy Policy: <code>reddit.com/policies/privacy-policy</code></li>
+          <li>Google Privacy Policy: <code>policies.google.com/privacy</code></li>
+          <li>OpenAI Privacy Policy: <code>openai.com/policies/privacy-policy</code></li>
+        </ul>
+
+        <h3>5. Data Sharing</h3>
+        <p>
+          We do <strong>NOT</strong> sell, trade, or rent your personal information to third parties. Your data is only accessible to:
+        </p>
+        <ul>
+          <li><strong>You:</strong> The account owner with full access to your own data</li>
+          <li><strong>Administrators:</strong> For support, moderation, and system maintenance purposes</li>
+        </ul>
+        <p>
+          We may disclose your information only if required by law or to protect the rights, property, or safety of TakoBot, its users, or the public.
+        </p>
+
+        <h3>6. Data Retention</h3>
+        <p>
+          Your data is retained as follows:
+        </p>
+        <ul>
+          <li><strong>Account Data:</strong> Retained indefinitely until you request account deletion</li>
+          <li><strong>Raffle History:</strong> Stored indefinitely unless manually deleted</li>
+          <li><strong>Activity Logs:</strong> Retained for system monitoring and troubleshooting</li>
+          <li><strong>Gmail OAuth Credentials:</strong> Stored until you delete them via Settings page</li>
+          <li><strong>Name Mappings:</strong> Stored in browser localStorage (can be cleared anytime)</li>
+        </ul>
+
+        <h3>7. Your Rights</h3>
+        <p>You have the right to:</p>
+        <ul>
+          <li><strong>Access:</strong> View all personal data stored about you in the Application</li>
+          <li><strong>Correction:</strong> Update or correct inaccurate account information via Profile page</li>
+          <li><strong>Deletion:</strong> Request deletion of your account and associated data</li>
+          <li><strong>Export:</strong> Download your raffle data as CSV or JSON files</li>
+          <li><strong>Revoke Access:</strong> Remove Gmail OAuth credentials at any time via Settings page</li>
+          <li><strong>Opt-Out:</strong> Disable optional features like Gmail scanning</li>
+        </ul>
+
+        <h3>8. Cookies and Tracking</h3>
+        <p>
+          TakoBot uses <strong>session cookies only</strong> for authentication purposes. We do NOT use:
+        </p>
+        <ul>
+          <li>Third-party tracking cookies</li>
+          <li>Advertising cookies</li>
+          <li>Analytics cookies (e.g., Google Analytics)</li>
+          <li>Social media tracking pixels</li>
+        </ul>
+        <p>
+          Session cookies are automatically deleted when you log out or close your browser.
+        </p>
+
+        <h3>9. Local Storage</h3>
+        <p>
+          TakoBot uses browser localStorage to store:
+        </p>
+        <ul>
+          <li>Reddit username to real name mappings</li>
+          <li>Dark mode preferences</li>
+          <li>UI preferences</li>
+        </ul>
+        <p>
+          This data is stored locally on your device and is NOT transmitted to our servers. You can clear localStorage at any time through your browser settings.
+        </p>
+
+        <h3>10. Children's Privacy</h3>
+        <p>
+          TakoBot is <strong>not intended for use by individuals under the age of 18</strong>. We do not knowingly collect personal information from children. If we become aware that a child under 18 has provided us with personal information, we will take steps to delete such information.
+        </p>
+
+        <h3>11. International Users</h3>
+        <p>
+          TakoBot is hosted on AWS EC2 infrastructure. By using the Application, you consent to the transfer and processing of your data in accordance with this Privacy Policy.
+        </p>
+
+        <h3>12. Data Breach Notification</h3>
+        <p>
+          In the unlikely event of a data breach that affects your personal information, we will notify you promptly via email and through the Application interface.
+        </p>
+
+        <h3>13. Changes to Privacy Policy</h3>
+        <p>
+          We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify users of significant changes by:
+        </p>
+        <ul>
+          <li>Updating the "Last Updated" date at the top of this page</li>
+          <li>Displaying a notification within the Application</li>
+        </ul>
+        <p>
+          Continued use of the Application after changes constitutes acceptance of the updated Privacy Policy.
+        </p>
+
+        <h3>14. Contact Information</h3>
+        <p>
+          If you have questions, concerns, or requests regarding this Privacy Policy or your personal data, please contact:
+        </p>
+        <ul>
+          <li>TakoBot administrators through the PokemonRaffles community</li>
+          <li>Visit the <strong>Help</strong> page within the Application for support resources</li>
+        </ul>
+
+        <h3>15. Compliance</h3>
+        <p>
+          TakoBot is designed to respect user privacy. While we are not subject to specific privacy regulations (as we are a community tool, not a commercial service), we strive to follow best practices aligned with privacy principles.
+        </p>
+      </div>
+
+      <div class="last-updated">
+        Last updated: February 1, 2026 • TakoBot v1.0.0
+      </div>
+    </div>
+
+    <!-- BACK TO LOGIN -->
+    <div class="back-link">
+      <a href="/login">← Back to Login</a>
+    </div>
+  </div>
+</body>
+</html>

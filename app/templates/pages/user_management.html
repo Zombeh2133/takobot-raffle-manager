@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management - Admin Dashboard</title>
+  <script src="/static/api.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Dark Mode System -->
+  <link rel="stylesheet" href="/static/dark-mode.css" />
+  <script src="/static/dark-mode.js"></script>
+
+  <style>
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+    }
+
+      body{
+      background-color:#FAF8F6;
+      display:flex;
+      justify-content:flex-start;  /* Align left instead of center */
+      align-items:flex-start;      /* Align top instead of center */
+      height:100vh;
+      margin:0;
+      font-family:'Inter',sans-serif;
+      overflow: hidden;
+    }
+
+    /* Scale down for smaller screens */
+    @media (max-width: 1600px), (max-height: 1020px) {
+      .white-square {
+        transform-origin: top left;  /* Scale from top-left corner */
+        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
+      }
+    }
+
+    .top-sidebar{
+      position:absolute; top:0; left:-30px;
+      width: calc(var(--sidebar-width) + 30px);
+      height:200px;
+      clip-path: inset(0 0 0 30px);
+      background-image:url('/static/assets/Background/Top-Sidebar.png');
+      background-size:cover; background-repeat:no-repeat;
+      z-index:5;
+    }
+
+    .tako{
+      position:absolute;
+      top:60px; left:calc(var(--sidebar-width) / 2);
+      transform:translate(-50%,-50%);
+      width:148px; height:148px;
+      background-image:url('/static/assets/Icons/TAKO%201.png');
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:25;
+      pointer-events:none;
+    }
+
+    .sidebar{
+      position:absolute;
+      left:-30px; bottom:0px;
+      width: calc(var(--sidebar-width) + 30px);
+      clip-path: inset(0 0 0 30px);
+      height:900px;
+      background-image:url('/static/assets/Background/Sidebar.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      z-index:10;
+    }
+
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    /* APP VERSION */
+    .app-version {
+      position: absolute;
+      bottom: 78px;
+      left: 30px;
+      width: 192px;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+      z-index: 45;
+      letter-spacing: 0.5px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 2px 0 0 0;
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(236, 72, 153, 0.85);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(236, 72, 153, 1);
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 130px; width: 44px; height: 24px; cursor: pointer; z-index: 100; }
+    #settingsBtn { position: absolute; top: 48px; right: 70px; width: 24px; height: 24px; cursor: pointer; z-index: 100; }
+
+    /* USER MANAGEMENT CONTENT */
+    .user-content {
+      position: absolute;
+      top: 20px;
+      left: 0;
+      width: 100%;
+      height: 980px;
+      overflow-y: auto;
+      padding: 0 24px 16px 24px;
+    }
+
+    .user-header {
+      margin-bottom: 16px;
+    }
+
+    .user-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 4px 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .user-subtitle {
+      font-size: 11px;
+      color: #64748b;
+      margin: 0;
+    }
+
+    /* TOOLBAR */
+    .toolbar {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 12px 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 102px;
+    }
+
+    .search-input-wrapper {
+      position: relative;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+      font-size: 18px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 12px 10px 40px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input:focus {
+      border-color: #6E5FFC;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6E5FFC 0%, #9D5FFC 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(110, 95, 252, 0.3);
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+
+    .btn-ghost:hover {
+      background: #f9fafb;
+    }
+
+    /* TABLE */
+    .table-card {
+      background: #ffffff;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .user-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .user-table thead th {
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      border-bottom: 2px solid #f1f5f9;
+      background: #f9fafb;
+    }
+
+    .user-table tbody td {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #111827;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .user-table tbody tr:hover {
+      background: #f9fafb;
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .username {
+      font-weight: 600;
+      color: #111827;
+      font-size: 13px;
+    }
+
+    .email {
+      font-size: 11px;
+      color: #64748b;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge.admin {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .badge.moderator {
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .badge.user {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .role-select {
+      appearance: none;
+      background: transparent;
+      border: none;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      padding: 4px 24px 4px 10px;
+      border-radius: 999px;
+      outline: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='currentColor' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 6px center;
+      transition: all 0.2s;
+    }
+
+    .role-select:hover {
+      opacity: 0.8;
+    }
+
+    .role-select.admin {
+      background-color: #fee2e2;
+      color: #991b1b;
+    }
+
+    .role-select.moderator {
+      background-color: #dbeafe;
+      color: #1e40af;
+    }
+
+    .role-select.user {
+      background-color: #e0e7ff;
+      color: #3730a3;
+    }
+
+    .role-select option {
+      background: white;
+      color: #111827;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .status-badge.active {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-badge.inactive {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .action-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px;
+      border-radius: 6px;
+      transition: background 0.2s;
+      color: #ef4444;
+    }
+
+    .action-btn:hover {
+      background: #fee2e2;
+    }
+
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #64748b;
+    }
+
+    .empty-icon {
+      font-size: 48px;
+      margin-bottom: 16px;
+      opacity: 0.5;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-header {
+      margin-bottom: 24px;
+    }
+
+    .modal-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 8px 0;
+    }
+
+    .modal-description {
+      font-size: 14px;
+      color: #64748b;
+      margin: 0;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      border-color: #6E5FFC;
+    }
+
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #9ca3af;
+      font-size: 18px;
+    }
+
+    .password-toggle:hover {
+      color: #6b7280;
+    }
+
+    .validation-error {
+      font-size: 12px;
+      color: #ef4444;
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    /* TOAST NOTIFICATION */
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 300px;
+      z-index: 2000;
+      transform: translateY(200%);
+      transition: transform 0.3s ease;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+    }
+
+    .toast.success {
+      border-left: 4px solid #10b981;
+    }
+
+    .toast.error {
+      border-left: 4px solid #ef4444;
+    }
+
+    .toast-icon {
+      font-size: 20px;
+    }
+
+    .toast-message {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: #111827;
+    }
+
+    /* ==============================
+       ACCESS DENIED MODAL
+       ============================== */
+    .access-denied-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 999999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .access-denied-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .access-denied-modal {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 440px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .access-modal-header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .access-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .access-modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .access-modal-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .access-modal-body {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .access-modal-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+
+    .access-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .access-modal-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .access-modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      color: white;
+    }
+
+    .access-modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .access-modal-btn-primary:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+<div class="white-square">
+    <!-- USER MANAGEMENT CONTENT -->
+    <div class="user-content">
+      <!-- ✅ ADMIN PAGE NAVIGATION -->
+      <div class="admin-page-nav" style="display: flex; gap: 12px; margin-bottom: 20px;">
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/admin'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          📊 Analytics
+        </button>
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/raffle-monitor'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          📡 Raffle Monitor
+        </button>
+        <button class="admin-page-btn active" style="padding: 10px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: 2px solid #8b5cf6; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: white; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/user-management'">
+          👥 User Management
+        </button>
+      </div>
+
+      <div class="user-header">
+        <h1 class="user-title">
+          <span>👥</span>
+          User Management
+        </h1>
+        <p class="user-subtitle">Manage user accounts and access control</p>
+      </div>
+
+      <!-- TOOLBAR -->
+      <div class="toolbar">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input
+            type="text"
+            class="search-input"
+            placeholder="Search by username or email..."
+            id="userSearch"
+          >
+        </div>
+        <button class="btn btn-primary" id="createUserBtn">
+          <span>➕</span> Create User
+        </button>
+      </div>
+
+      <!-- USER TABLE -->
+      <div class="table-card">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Last Login</th>
+              <th>Created</th>
+              <th>Created By</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="userTableBody">
+            <!-- Populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+</div>
+
+<!-- CREATE USER MODAL -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Create New User</h2>
+      <p class="modal-description">Add a new user account to the system</p>
+    </div>
+
+    <form id="createUserForm">
+      <div class="form-group">
+        <label class="form-label">Username *</label>
+        <input
+          type="text"
+          class="form-input"
+          id="createUsername"
+          placeholder="Enter username"
+          required
+        >
+        <div class="validation-error" id="createUsernameError" style="display: none;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email (optional)</label>
+        <input
+          type="email"
+          class="form-input"
+          id="createEmail"
+          placeholder="user@example.com"
+        >
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password *</label>
+        <div class="password-wrapper">
+          <input
+            type="password"
+            class="form-input"
+            id="createPassword"
+            placeholder="Minimum 8 characters"
+            required
+          >
+          <button type="button" class="password-toggle" id="createPasswordToggle">👁️</button>
+        </div>
+        <div class="validation-error" id="createPasswordError" style="display: none;"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Role *</label>
+        <select class="form-select" id="createRole" required>
+          <option value="">Select a role</option>
+          <option value="admin">Admin - Full access</option>
+          <option value="moderator">Moderator - Limited access</option>
+          <option value="user">User - Basic access</option>
+        </select>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" id="createCancelBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DELETE CONFIRMATION MODAL -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 class="modal-title">Delete User</h2>
+      <p class="modal-description">Are you sure you want to delete this user?</p>
+    </div>
+
+    <div style="padding: 20px; background: #fef2f2; border-radius: 8px; margin-bottom: 24px;">
+      <div style="font-weight: 600; color: #991b1b; margin-bottom: 4px;" id="deleteUsername"></div>
+      <div style="font-size: 13px; color: #b91c1c;" id="deleteEmail"></div>
+    </div>
+
+    <p style="color: #64748b; font-size: 14px; margin-bottom: 24px;">
+      ⚠️ This action cannot be undone. The user will be deactivated.
+    </p>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-ghost" id="deleteCancelBtn">Cancel</button>
+      <button type="button" class="btn btn-danger" id="deleteConfirmBtn">Delete User</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <div class="toast-message" id="toastMessage"></div>
+</div>
+
+<script>
+  // Sidebar highlight
+  (function () {
+    const nav = document.getElementById("sidebarNav");
+    const square = document.getElementById("activeSquare");
+    if (!nav || !square) return;
+
+    function moveSquareTo(item) {
+      const navRect = nav.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+      const navTop = parseFloat(getComputedStyle(nav).top) || 0;
+      square.style.top = navTop + (itemRect.top - navRect.top) + "px";
+    }
+
+    const active = nav.querySelector(".is-active");
+    if (active) {
+      // Disable transition for initial positioning
+      square.style.transition = "none";
+      moveSquareTo(active);
+      // Re-enable transition after positioning
+      setTimeout(() => {
+        square.style.transition = "top 140ms ease";
+      }, 50);
+    }
+  })();
+
+  // ============ ADMIN ACCESS CONTROL ============
+  (async function checkAdminAccess() {
+    try {
+      console.log('🔍 Checking admin access for User Management page...');
+      
+      // Simple check - just verify API is loaded
+      if (typeof API === 'undefined') {
+        console.error('❌ API object not loaded!');
+        return; // Don't block access, backend will handle it
+      }
+      
+      const result = await API.checkAdminStatus();
+      console.log('🔍 Admin status result:', result);
+
+      if (result.ok && result.data && result.data.isAdmin) {
+        console.log('✅ Admin access confirmed for user:', result.data.username);
+      } else {
+        console.log('⚠️ Admin status check returned non-admin, but allowing page load (backend will enforce)');
+      }
+    } catch (e) {
+      console.error('⚠️ Admin access check error (non-blocking):', e);
+      // Don't block - let backend handle access control
+    }
+  })();
+
+  // ============ USER MANAGEMENT LOGIC ============
+  (function () {
+    let users = [];
+    let userToDelete = null;
+
+    // Elements
+    const userTableBody = document.getElementById('userTableBody');
+    const userSearchInput = document.getElementById('userSearch');
+
+    // Create modal
+    const createModal = document.getElementById('createModal');
+    const createUserBtn = document.getElementById('createUserBtn');
+    const createUserForm = document.getElementById('createUserForm');
+    const createCancelBtn = document.getElementById('createCancelBtn');
+    const createPasswordToggle = document.getElementById('createPasswordToggle');
+    const createPassword = document.getElementById('createPassword');
+
+    // Delete modal
+    const deleteModal = document.getElementById('deleteModal');
+    const deleteCancelBtn = document.getElementById('deleteCancelBtn');
+    const deleteConfirmBtn = document.getElementById('deleteConfirmBtn');
+
+    // Toast
+    const toast = document.getElementById('toast');
+    const toastIcon = document.getElementById('toastIcon');
+    const toastMessage = document.getElementById('toastMessage');
+
+    // Load users
+    async function loadUsers() {
+      try {
+        const response = await fetch('/api/admin/users');
+        const data = await response.json();
+
+        if (response.ok) {
+          users = data.data || data.users || [];
+          renderUsers();
+        } else {
+          showToast('error', 'Failed to load users');
+        }
+      } catch (e) {
+        console.error('Failed to load users:', e);
+        showToast('error', 'Failed to load users. Please try again.');
+      }
+    }
+
+    // Render users
+    function renderUsers(filter = '') {
+      const filteredUsers = users.filter(user => {
+        const query = filter.toLowerCase();
+        return user.username.toLowerCase().includes(query) ||
+               (user.email && user.email.toLowerCase().includes(query));
+      });
+
+      if (filteredUsers.length === 0) {
+        userTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="empty-state">
+              <div class="empty-icon">🔍</div>
+              <div style="font-weight: 600; margin-bottom: 4px;">No users found</div>
+              <div>Try adjusting your search query</div>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      userTableBody.innerHTML = filteredUsers.map(user => {
+        const isCurrentUser = user.username === 'admin'; // Replace with actual current user check
+
+        return `
+          <tr>
+            <td>
+              <div class="user-info">
+                <div class="username">${escapeHtml(user.username)}</div>
+                <div class="email">${escapeHtml(user.email || 'No email')}</div>
+              </div>
+            </td>
+            <td>
+              <select
+                class="role-select ${user.role}"
+                data-user-id="${user.id}"
+                data-current-role="${user.role}"
+                onchange="window.updateUserRole(${user.id}, this.value, '${escapeHtml(user.username)}')"
+              >
+                <option value="user" ${user.role === 'user' ? 'selected' : ''}>👤 user</option>
+                <option value="moderator" ${user.role === 'moderator' ? 'selected' : ''}>🔵 moderator</option>
+                <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>🔴 admin</option>
+              </select>
+            </td>
+            <td>${formatDate(user.last_login)}</td>
+            <td>${formatDate(user.created_at)}</td>
+            <td>${escapeHtml(user.created_by || 'system')}</td>
+            <td>
+              <button
+                class="action-btn"
+                onclick="window.deleteUser(${user.id}, '${escapeHtml(user.username)}', '${escapeHtml(user.email)}')"
+                ${isCurrentUser ? 'disabled title="Cannot delete your own account"' : ''}
+              >
+                🗑️
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Format date
+    function formatDate(dateString) {
+      if (!dateString) return 'Never';
+      const date = new Date(dateString);
+      const now = new Date();
+      const diffMs = now - date;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays < 7) return `${diffDays}d ago`;
+
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
+      }).format(date);
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Show toast
+    function showToast(type, message) {
+      toast.className = `toast ${type}`;
+      toastIcon.textContent = type === 'success' ? '✅' : '❌';
+      toastMessage.textContent = message;
+
+      toast.classList.add('show');
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+
+    // Search
+    userSearchInput.addEventListener('input', (e) => {
+      renderUsers(e.target.value);
+    });
+
+    // ===== CREATE USER MODAL =====
+
+    createUserBtn.addEventListener('click', () => {
+      createModal.classList.add('active');
+    });
+
+    createCancelBtn.addEventListener('click', () => {
+      createModal.classList.remove('active');
+      createUserForm.reset();
+      clearValidationErrors();
+    });
+
+    createModal.addEventListener('click', (e) => {
+      if (e.target === createModal) {
+        createModal.classList.remove('active');
+        createUserForm.reset();
+        clearValidationErrors();
+      }
+    });
+
+    createPasswordToggle.addEventListener('click', () => {
+      const type = createPassword.type === 'password' ? 'text' : 'password';
+      createPassword.type = type;
+      createPasswordToggle.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+
+    createUserForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearValidationErrors();
+
+      const username = document.getElementById('createUsername').value.trim();
+      const email = document.getElementById('createEmail').value.trim();
+      const password = createPassword.value;
+      const role = document.getElementById('createRole').value;
+
+      // Validation
+      if (password.length < 8) {
+        showValidationError('createPasswordError', 'Password must be at least 8 characters');
+        return;
+      }
+
+      if (!role) {
+        showToast('error', 'Please select a role');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, email, password, role })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('success', `User ${username} created successfully`);
+          createModal.classList.remove('active');
+          createUserForm.reset();
+          await loadUsers();
+        } else {
+          if (response.status === 409) {
+            showValidationError('createUsernameError', 'Username already exists');
+          } else {
+            showToast('error', data.error || 'Failed to create user');
+          }
+        }
+      } catch (error) {
+        console.error('Create user error:', error);
+        showToast('error', 'Network error. Please try again.');
+      }
+    });
+
+    function clearValidationErrors() {
+      document.getElementById('createUsernameError').style.display = 'none';
+      document.getElementById('createPasswordError').style.display = 'none';
+    }
+
+    function showValidationError(elementId, message) {
+      const errorEl = document.getElementById(elementId);
+      errorEl.textContent = `⚠️ ${message}`;
+      errorEl.style.display = 'flex';
+    }
+
+    // ===== DELETE USER MODAL =====
+
+    window.deleteUser = function(id, username, email) {
+      userToDelete = { id, username, email };
+      document.getElementById('deleteUsername').textContent = username;
+      document.getElementById('deleteEmail').textContent = email;
+      deleteModal.classList.add('active');
+    };
+
+    deleteCancelBtn.addEventListener('click', () => {
+      deleteModal.classList.remove('active');
+      userToDelete = null;
+    });
+
+    deleteModal.addEventListener('click', (e) => {
+      if (e.target === deleteModal) {
+        deleteModal.classList.remove('active');
+        userToDelete = null;
+      }
+    });
+
+    deleteConfirmBtn.addEventListener('click', async () => {
+      if (!userToDelete) return;
+
+      try {
+        const response = await fetch(`/api/admin/users/${userToDelete.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          showToast('success', `User ${userToDelete.username} deleted successfully`);
+          deleteModal.classList.remove('active');
+          userToDelete = null;
+          await loadUsers();
+        } else {
+          const data = await response.json();
+          showToast('error', data.error || 'Failed to delete user');
+        }
+      } catch (error) {
+        console.error('Delete user error:', error);
+        showToast('error', 'Network error. Please try again.');
+      }
+    });
+
+    // Update user role
+    window.updateUserRole = async function(userId, newRole, username) {
+      try {
+        const response = await fetch(`/api/admin/users/${userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ role: newRole })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          showToast('success', `User ${username} role updated to ${newRole}`);
+          await loadUsers();
+        } else {
+          showToast('error', data.error || 'Failed to update user role');
+        }
+      } catch (error) {
+        console.error('Update user role error:', error);
+        showToast('error', 'Network error. Please try again.');
+      }
+    };
+
+    // Initial load
+    loadUsers();
+  })();
+
+  // ============ USER SECTION & LOGOUT ============
+  (async function() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+    // Fetch current user info
+    try {
+      const response = await fetch('/api/auth/current-user');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data) {
+          const user = result.data;
+          
+          // Update username (only if element exists)
+          if (user.username && userName) {
+            userName.textContent = user.username;
+            // Update avatar with first letter
+            if (userAvatar) {
+              userAvatar.textContent = user.username.charAt(0).toUpperCase();
+            }
+          }
+          
+          // Update role (only if element exists)
+          if (userRole) {
+            if (user.role) {
+              userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+            } else if (user.isAdmin) {
+              userRole.textContent = 'Admin';
+            } else {
+              userRole.textContent = 'User';
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+
+    // Logout button handler
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('❌ Logout failed: ' + error.message);
+      }
+    });
+  })();
+</script>
+
+<!-- SETTINGS BUTTON -->
+<script>
+  // Settings button
+  (function () {
+    const settingsBtn = document.getElementById("settingsBtn");
+    if (settingsBtn) {
+      settingsBtn.style.cursor = "pointer";
+      settingsBtn.addEventListener("click", () => {
+        window.location.href = "/settings";
+      });
+    }
+  })();
+</script>
+
+<!-- CLIENT-SIDE NAVIGATION TO ACTIVE RAFFLE -->
+<script>
+(function() {
+  const sidebarNav = document.getElementById('sidebarNav');
+  if (!sidebarNav) return;
+  
+  // Find the Active Raffle link
+  const activeRaffleLink = Array.from(sidebarNav.querySelectorAll('.nav-item')).find(link => 
+    link.getAttribute('href') === '/active-raffle'
+  );
+  
+  if (activeRaffleLink) {
+    activeRaffleLink.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Navigate without full page reload
+      window.location.replace('/active-raffle');
+    });
+  }
+})();
+</script>
+
+<!-- ACCESS DENIED MODAL -->
+<div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
+  <div class="access-denied-modal" onclick="event.stopPropagation()">
+    <div class="access-modal-header">
+      <div class="access-modal-icon">🔒</div>
+      <h2 class="access-modal-title">Access Denied</h2>
+      <p class="access-modal-subtitle">Admin privileges required</p>
+    </div>
+    <div class="access-modal-body">
+      <p class="access-modal-message">
+        You don't have permission to access this page. This area is restricted to administrators only.
+      </p>
+      <div class="access-modal-actions">
+        <button class="access-modal-btn access-modal-btn-primary" onclick="closeAccessDenied()">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== ACCESS DENIED MODAL =====
+  function showAccessDenied() {
+    const overlay = document.getElementById('accessDeniedOverlay');
+    if (!overlay) {
+      alert('Access Denied\n\nAdmins only');
+      return;
+    }
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAccessDenied(event) {
+    // Go back to previous page when closing
+    window.history.back();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (overlay && overlay.classList.contains('show')) {
+        closeAccessDenied({ target: overlay });
+      }
+    }
+  });
+</script>
+
+</body>
+</html>

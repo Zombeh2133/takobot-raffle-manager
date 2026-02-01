@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Support TakoBot</title>
+  <script src="/static/api.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Dark Mode System -->
+  <link rel="stylesheet" href="/static/dark-mode.css" />
+  <script src="/static/dark-mode.js"></script>
+
+  <style>
+    /* ============================== MASTER LAYOUT VARIABLES ============================== */
+    :root{
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 360px;
+      --content-width: 1120px;
+    }
+
+     body{
+      background-color:#FAF8F6;
+      display:flex;
+      justify-content:flex-start;  /* Align left instead of center */
+      align-items:flex-start;      /* Align top instead of center */
+      height:100vh;
+      margin:0;
+      font-family:'Inter',sans-serif;
+      overflow: hidden;
+    }
+
+    /* Scale down for smaller screens */
+    @media (max-width: 1600px), (max-height: 1020px) {
+      .white-square {
+        transform-origin: top left;  /* Scale from top-left corner */
+        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
+      }
+    }
+
+    .top-sidebar{
+      position:absolute; top:0; left:-30px;
+      width: calc(var(--sidebar-width) + 30px);
+      height:200px;
+      clip-path: inset(0 0 0 30px);
+      background-image:url('/static/assets/Background/Top-Sidebar.png');
+      background-size:cover; background-repeat:no-repeat;
+      z-index:5;
+    }
+
+    .tako{
+      position:absolute;
+      top:60px; left:calc(var(--sidebar-width) / 2);
+      transform:translate(-50%,-50%);
+      width:148px; height:148px;
+      background-image:url('/static/assets/Icons/TAKO%201.png');
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:25;
+      pointer-events:none;
+    }
+
+    .sidebar{
+      position:absolute;
+      left:-30px; bottom:0px;
+      width: calc(var(--sidebar-width) + 30px);
+      clip-path: inset(0 0 0 30px);
+      height:900px;
+      background-image:url('/static/assets/Background/Sidebar.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      z-index:10;
+    }
+
+    .rectangle{
+      position:absolute;
+      top:135px; left:0;
+      width:165px; height:48px;
+      background-image:url('/static/assets/Background/Rectangle.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      z-index:20;
+      pointer-events:none;
+    }
+
+    .square{
+      position:absolute;
+      top:140px; left:30px;
+      width:244px; height:52px;
+      background-image:url('/static/assets/Background/Square.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:30;
+      pointer-events:none;
+      transition:top 140ms ease;
+    }
+
+    /* NAV */
+    .sidebar-nav{
+      position:absolute;
+      top:140px; left:55px;
+      width:244px;
+      font-size:16px;
+      line-height:58px;
+      z-index:40;
+    }
+
+    .sidebar-nav a{
+      display:block;
+      position:relative;
+      padding-left:26px;
+      color:#ffffff;
+      text-decoration:none;
+      font-weight:400;
+      user-select:none;
+      cursor:pointer;
+    }
+
+    .sidebar-nav a.is-active{
+      color:#6E5FFC;
+      font-weight:600;
+    }
+
+    .nav-icon{
+      position:absolute;
+      left:-5px; top:17px;
+      width:20px; height:20px;
+      filter:brightness(0) invert(1);
+      pointer-events:none;
+      z-index:41;
+    }
+
+    .sidebar-nav a.is-active .nav-icon{
+      filter:brightness(0) saturate(100%) invert(46%) sepia(82%) saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    /* APP VERSION */
+    .app-version {
+      position: absolute;
+      bottom: 78px;
+      left: 30px;
+      width: 192px;
+      text-align: right;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.4);
+      z-index: 45;
+      letter-spacing: 0.5px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .user-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      flex-shrink: 0;
+    }
+
+    .user-details {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .user-name {
+      font-size: 16px;
+      font-weight: 600;
+      color: #fff;
+      margin: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-role {
+      font-size: 13px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      margin: 2px 0 0 0;
+    }
+
+    .logout-btn {
+      width: 100%;
+      height: 42px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(236, 72, 153, 0.85);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .logout-btn:hover {
+      background: rgba(236, 72, 153, 1);
+      transform: translateY(-1px);
+    }
+
+    .logout-btn:active {
+      transform: translateY(0);
+    }
+
+    /* TOP RIGHT ICONS */
+    #themeToggle { position: absolute; top: 48px; right: 130px; width: 44px; height: 24px; cursor: pointer; z-index: 100; }
+    #settingsBtn { position: absolute; top: 48px; right: 70px; width: 24px; height: 24px; cursor: pointer; z-index: 100; }
+
+    /* CONTENT AREA */
+    .content-wrap{
+      position:absolute;
+      top:40px;
+      left:var(--content-left);
+      right:0; /* Extend to right edge */
+      height:940px;
+      padding:40px;
+      overflow-y:auto;
+      z-index:5;
+    }
+
+    .content-wrap::-webkit-scrollbar{
+      width:8px;
+    }
+
+    .content-wrap::-webkit-scrollbar-track{
+      background:transparent;
+    }
+
+    .content-wrap::-webkit-scrollbar-thumb{
+      background:#d1d5db;
+      border-radius:4px;
+    }
+
+    /* PAGE HEADER */
+    .page-header{
+      margin-bottom:32px;
+      text-align:center;
+    }
+
+    .page-title{
+      font-size:32px;
+      font-weight:700;
+      background:linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+      background-clip:text;
+      margin:0 0 12px 0;
+    }
+
+    .page-subtitle{
+      font-size:15px;
+      color:#6b7280;
+      margin:0;
+      line-height:1.6;
+      max-width:700px;
+      margin:0 auto;
+    }
+
+    /* HERO CARD */
+    .hero-card{
+      background:#fff;
+      border-radius:20px;
+      padding:48px;
+      margin:40px 0;
+      box-shadow:0 4px 24px rgba(168,85,247,0.12);
+      border:2px solid transparent;
+      background-image:linear-gradient(#fff, #fff), linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      background-origin:border-box;
+      background-clip:padding-box, border-box;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .hero-card::before{
+      content:'';
+      position:absolute;
+      top:-50%;
+      right:-50%;
+      width:200%;
+      height:200%;
+      background:radial-gradient(circle, rgba(168,85,247,0.05) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    .hero-content{
+      display:flex;
+      align-items:center;
+      gap:60px;
+      position:relative;
+      z-index:2;
+    }
+
+    .hero-left{
+      flex:1;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .tako-hero{
+      width:280px;
+      height:280px;
+      background-image:url('/static/assets/Icons/TAKO%201.png');
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+      animation:float 3s ease-in-out infinite;
+      filter:drop-shadow(0 8px 24px rgba(168,85,247,0.2));
+    }
+
+    @keyframes float{
+      0%, 100%{ transform:translateY(0px); }
+      50%{ transform:translateY(-15px); }
+    }
+
+    .hero-heart{
+      font-size:48px;
+      margin-top:-20px;
+      animation:heartbeat 1.5s ease-in-out infinite;
+    }
+
+    @keyframes heartbeat{
+      0%, 100%{ transform:scale(1); }
+      25%{ transform:scale(1.1); }
+    }
+
+    .hero-right{
+      flex:1.2;
+    }
+
+    .hero-heading{
+      font-size:28px;
+      font-weight:700;
+      color:#1f2937;
+      margin:0 0 16px 0;
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+
+    .hero-description{
+      font-size:15px;
+      color:#4b5563;
+      line-height:1.7;
+      margin-bottom:24px;
+    }
+
+    .hero-description ul{
+      margin:12px 0;
+      padding-left:20px;
+    }
+
+    .hero-description li{
+      margin:8px 0;
+      color:#6b7280;
+    }
+
+    .paypal-btn{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      padding:18px 48px;
+      background:linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      font-size:18px;
+      font-weight:700;
+      font-family:'Inter',sans-serif;
+      cursor:pointer;
+      transition:all 0.3s ease;
+      box-shadow:0 8px 24px rgba(168,85,247,0.3);
+      text-decoration:none;
+    }
+
+    .paypal-btn:hover{
+      transform:translateY(-3px);
+      box-shadow:0 12px 32px rgba(168,85,247,0.4);
+    }
+
+    .paypal-btn:active{
+      transform:translateY(-1px);
+    }
+
+    .paypal-logo{
+      font-size:24px;
+    }
+
+    /* FEATURES GRID */
+    .features-grid{
+      display:grid;
+      grid-template-columns:repeat(3, 1fr);
+      gap:24px;
+      margin:48px 0;
+    }
+
+    .feature-card{
+      background:#fff;
+      border-radius:16px;
+      padding:32px;
+      text-align:center;
+      box-shadow:0 2px 12px rgba(0,0,0,0.06);
+      border:1px solid #e5e7eb;
+      transition:all 0.3s ease;
+    }
+
+    .feature-card:hover{
+      transform:translateY(-4px);
+      box-shadow:0 8px 24px rgba(168,85,247,0.15);
+      border-color:#a855f7;
+    }
+
+    .feature-icon{
+      font-size:48px;
+      margin-bottom:16px;
+      display:inline-block;
+    }
+
+    .feature-title{
+      font-size:18px;
+      font-weight:700;
+      color:#1f2937;
+      margin:0 0 12px 0;
+    }
+
+    .feature-text{
+      font-size:14px;
+      color:#6b7280;
+      line-height:1.6;
+      margin:0;
+    }
+
+    /* THANK YOU SECTION */
+    .thank-you-section{
+      background:linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(236,72,153,0.08) 100%);
+      border-radius:16px;
+      padding:40px;
+      text-align:center;
+      border:2px solid rgba(168,85,247,0.15);
+      margin-top:48px;
+      position:relative;
+      overflow:hidden;
+    }
+
+    .thank-you-section::before{
+      content:'';
+      position:absolute;
+      top:50%;
+      left:50%;
+      transform:translate(-50%, -50%);
+      width:600px;
+      height:600px;
+      background:radial-gradient(circle, rgba(168,85,247,0.1) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    .thank-you-title{
+      font-size:24px;
+      font-weight:700;
+      color:#1f2937;
+      margin:0 0 12px 0;
+      position:relative;
+      z-index:2;
+    }
+
+    .thank-you-text{
+      font-size:15px;
+      color:#6b7280;
+      line-height:1.7;
+      max-width:600px;
+      margin:0 auto;
+      position:relative;
+      z-index:2;
+    }
+
+    /* SUPPORTER TIERS */
+    .supporter-tiers{
+      display:flex;
+      justify-content:center;
+      gap:16px;
+      margin-top:32px;
+      flex-wrap:wrap;
+      position:relative;
+      z-index:2;
+    }
+
+    .tier-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      padding:12px 20px;
+      background:#fff;
+      border-radius:12px;
+      font-size:14px;
+      font-weight:600;
+      color:#4b5563;
+      border:2px solid #e5e7eb;
+      transition:all 0.2s ease;
+    }
+
+    .tier-badge:hover{
+      border-color:#a855f7;
+      transform:scale(1.05);
+    }
+
+    .tier-icon{
+      font-size:20px;
+    }
+
+    /* ==============================
+       ACCESS DENIED MODAL
+       ============================== */
+    .access-denied-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 999999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .access-denied-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .access-denied-modal {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 440px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .access-modal-header {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .access-modal-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-10deg); }
+      75% { transform: rotate(10deg); }
+    }
+
+    .access-modal-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .access-modal-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .access-modal-body {
+      padding: 32px;
+      text-align: center;
+    }
+
+    .access-modal-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 24px 0;
+    }
+
+    .access-modal-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .access-modal-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .access-modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+      color: white;
+    }
+
+    .access-modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+    }
+
+    .access-modal-btn-primary:active {
+      transform: translateY(0);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="white-square">
+    <div class="top-sidebar"></div>
+    <div class="tako"></div>
+    <div class="sidebar"></div>
+    <div class="rectangle"></div>
+    <div class="square" id="activeSquare"></div>
+
+    <div id="themeToggle" title="Theme Toggle">
+      <img src="/static/assets/Icons/OFF.png" alt="Theme toggle">
+    </div>
+    <div id="settingsBtn" title="Settings">
+      <img src="/static/assets/Icons/Notifications%20Copy.png" alt="Settings">
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="content-wrap">
+      <div class="page-header">
+        <h1 class="page-title">Support TakoBot</h1>
+        <p class="page-subtitle">Help us keep the raffles running smoothly! Your support covers server costs, development, and keeps TakoBot free for everyone.</p>
+      </div>
+
+      <!-- HERO CARD -->
+      <div class="hero-card">
+        <div class="hero-content">
+          <div class="hero-left">
+            <img src="/static/assets/Icons/TAKO%201.png" alt="Tako Mascot" class="tako-hero">
+            <div class="hero-heart">💜</div>
+          </div>
+          <div class="hero-right">
+            <h2 class="hero-heading">Buy Tako a Coffee ☕</h2>
+            <div class="hero-description">
+              <p>Running TakoBot takes resources! Your generous donations help us cover:</p>
+              <ul>
+                <li>🖥️ Server hosting & infrastructure costs</li>
+                <li>💾 Database maintenance & backups</li>
+                <li>⚡ Bot development & feature updates</li>
+                <li>🔄 24/7 uptime monitoring & support</li>
+              </ul>
+              <p>Every contribution, big or small, helps keep Tako swimming! 🐙</p>
+            </div>
+            <a href="https://www.paypal.com/paypalme/Makiisbae" target="_blank" class="paypal-btn">
+              <span class="paypal-logo">💳</span>
+              <span>Donate via PayPal</span>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- FEATURES GRID -->
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🖥️</div>
+          <h3 class="feature-title">Server Costs</h3>
+          <p class="feature-text">Reliable hosting ensures TakoBot is always available when you need it for your raffles.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💻</div>
+          <h3 class="feature-title">Development</h3>
+          <p class="feature-text">Continuous improvements, new features, and bug fixes to make your raffle experience better.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💜</div>
+          <h3 class="feature-title">Community Support</h3>
+          <p class="feature-text">Keeping TakoBot free and accessible for all raffle enthusiasts across multiple communities.</p>
+        </div>
+      </div>
+
+      <!-- THANK YOU SECTION -->
+      <div class="thank-you-section">
+        <h3 class="thank-you-title">Every contribution matters! 🙏</h3>
+        <p class="thank-you-text">From a $1 coffee to a $100 mega supporter - every bit helps keep Tako swimming and ensures TakoBot continues to serve the community!</p>
+      </div>
+    </div>
+
+    <!-- NAV -->
+    <nav class="sidebar-nav" id="sidebarNav">
+      <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+      <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+      <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+      <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/activity.png" alt="">Activity Log</a>
+      <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+      <a class="nav-item" href="/discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+      <a class="nav-item" href="/help"><img class="nav-icon" src="/static/assets/Icons/help.png" alt="">Help</a>
+      <a class="nav-item is-active" href="/donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+      <a class="nav-item" href="/admin">Admin</a>
+    </nav>
+
+    <!-- USER SECTION -->
+    <div class="user-section" id="userSection">
+      <div class="user-info">
+        <div class="user-avatar" id="userAvatar">U</div>
+        <div class="user-details">
+          <p class="user-name" id="userName">User</p>
+          <p class="user-role" id="userRole">Admin</p>
+        </div>
+      </div>
+      <button class="logout-btn" id="sidebarLogoutBtn">Logout</button>
+    </div>
+
+    <!-- APP VERSION -->
+    <div class="app-version">v1.0.0</div>
+  </div>
+
+<script>
+  // ============ USER SECTION & LOGOUT ============
+  (async function() {
+    const userAvatar = document.getElementById('userAvatar');
+    const userName = document.getElementById('userName');
+    const userRole = document.getElementById('userRole');
+    const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+    // Fetch current user info
+    try {
+      const response = await fetch('/api/auth/current-user');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.ok && result.data) {
+          const user = result.data;
+
+          // Update username
+          if (user.username) {
+            userName.textContent = user.username;
+            // Update avatar with first letter
+            userAvatar.textContent = user.username.charAt(0).toUpperCase();
+          }
+
+          // Update role
+          if (user.role) {
+            userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
+          } else if (user.isAdmin) {
+            userRole.textContent = 'Admin';
+          } else {
+            userRole.textContent = 'User';
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+
+    // Logout button handler
+    logoutBtn?.addEventListener('click', async () => {
+      try {
+        const response = await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (result.ok) {
+          window.location.href = '/login';
+        } else {
+          alert('❌ Logout failed: ' + (result.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('Logout error:', error);
+        alert('❌ Logout failed: ' + error.message);
+      }
+    });
+  })();
+
+  // Move sidebar highlight square to active item
+  (function () {
+    const nav = document.getElementById("sidebarNav");
+    const square = document.getElementById("activeSquare");
+    if (!nav || !square) return;
+
+    function moveSquareTo(item) {
+      const navRect = nav.getBoundingClientRect();
+      const itemRect = item.getBoundingClientRect();
+      const navTop = parseFloat(getComputedStyle(nav).top) || 0;
+      square.style.top = navTop + (itemRect.top - navRect.top) + "px";
+    }
+
+    const active = nav.querySelector(".is-active");
+    if (active) {
+      // Disable transition for initial positioning
+      square.style.transition = "none";
+      moveSquareTo(active);
+      // Re-enable transition after positioning
+      setTimeout(() => {
+        square.style.transition = "top 140ms ease";
+      }, 50);
+    }
+  })();
+
+  // Settings button
+  (function () {
+    const settingsBtn = document.getElementById("settingsBtn");
+    if (settingsBtn) {
+      settingsBtn.style.cursor = "pointer";
+      settingsBtn.addEventListener("click", () => {
+        window.location.href = "/settings";
+      });
+    }
+  })();
+
+  // Profile button
+  (function () {
+    const profileBtn = document.getElementById("profileBtn");
+    if (profileBtn) {
+      profileBtn.style.cursor = "pointer";
+      profileBtn.addEventListener("click", () => {
+        window.location.href = "/profile";
+      });
+    }
+  })();
+
+  // Bell/Notifications button
+  (function () {
+    const bellBtn = document.getElementById("bellBtn");
+    if (bellBtn) {
+      bellBtn.style.cursor = "pointer";
+      bellBtn.addEventListener("click", () => {
+        alert("Notifications feature coming soon!");
+      });
+    }
+  })();
+
+  // Theme toggle is handled by dark-mode.js
+
+  // Sidebar Admin Control - Intercept admin links for non-admin users
+  (function() {
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (!sidebarNav) return;
+
+    // Find admin links
+    const allLinks = sidebarNav.querySelectorAll('.nav-item');
+    allLinks.forEach(link => {
+      const href = link.getAttribute('href');
+
+      // Prevent reload when clicking donate link on donate page
+      if (href === '/donate') {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Do nothing - already on this page
+        });
+      }
+
+      if (href === '/admin' || href === '/user-management' || href === './admin.html' || href === './user_management.html') {
+        // Add click handler that runs BEFORE navigation - block by default, only allow if admin
+        link.addEventListener('click', async function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Check if user is admin
+          if (window.adminCheckComplete === true) {
+            // Admin confirmed - allow navigation
+            window.location.href = href;
+          } else {
+            // Non-admin or check not complete - show modal and stay here
+            showAccessDenied();
+          }
+        }, true);
+      }
+    });
+
+    // Check if user is admin (async)
+    (async function() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (!response.ok) {
+          console.log('🔒 Admin check: endpoint returned', response.status);
+          return;
+        }
+
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.log('🔒 Admin check: non-JSON response, assuming non-admin');
+          return;
+        }
+
+        const data = await response.json();
+        if (data.data?.isAdmin === true) {
+          window.adminCheckComplete = true;
+          console.log('✅ Admin access granted');
+        } else {
+          console.log('🔒 Admin links blocked for non-admin user');
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    })();
+  })();
+
+  // ===== ACCESS DENIED MODAL =====
+  function showAccessDenied() {
+    const overlay = document.getElementById('accessDeniedOverlay');
+    if (!overlay) {
+      alert('Access Denied\n\nAdmins only');
+      return;
+    }
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeAccessDenied(event) {
+    if (!event || event.target === document.getElementById('accessDeniedOverlay')) {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (overlay) {
+        overlay.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+    }
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const overlay = document.getElementById('accessDeniedOverlay');
+      if (overlay && overlay.classList.contains('show')) {
+        closeAccessDenied({ target: overlay });
+      }
+    }
+  });
+</script>
+
+<!-- ACCESS DENIED MODAL -->
+<div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
+  <div class="access-denied-modal" onclick="event.stopPropagation()">
+    <div class="access-modal-header">
+      <div class="access-modal-icon">🔒</div>
+      <h2 class="access-modal-title">Access Denied</h2>
+      <p class="access-modal-subtitle">Admin privileges required</p>
+    </div>
+    <div class="access-modal-body">
+      <p class="access-modal-message">
+        You don't have permission to access this page. This area is restricted to administrators only.
+      </p>
+      <div class="access-modal-actions">
+        <button class="access-modal-btn access-modal-btn-primary" onclick="closeAccessDenied()">
+          Got it
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

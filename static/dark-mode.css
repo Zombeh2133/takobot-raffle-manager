@@ -1,0 +1,532 @@
+/* ============================== DARK MODE SYSTEM ============================== */
+
+/* Light Mode (Default) */
+:root {
+  /* Background Colors */
+  --bg-primary: #FAF8F6;
+  --bg-secondary: #ffffff;
+  --bg-tertiary: #f5f5f5;
+  --bg-hover: #f0f0f0;
+  --bg-sidebar: transparent; /* Uses background images */
+  --bg-modal: #ffffff;
+  --bg-input: #ffffff;
+  --bg-dark-outer: #303149;
+  
+  /* Text Colors */
+  --text-primary: #1a1a1a;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --text-white: #ffffff;
+  --text-inverse: #ffffff;
+  
+  /* Border Colors */
+  --border-light: #e0e0e0;
+  --border-medium: #cccccc;
+  --border-dark: #999999;
+  
+  /* Purple Brand Colors (remain consistent) */
+  --purple-primary: #7C3AED;
+  --purple-secondary: #EC4899;
+  --purple-light: #f3e8ff;
+  --purple-dark: #5b21b6;
+  
+  /* Status Colors */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.15);
+}
+
+/* Dark Mode - Navy Blue Theme */
+[data-theme="dark"] {
+  /* Background Colors - Matching your screenshot navy color */
+  --bg-primary: #2E3047;
+  --bg-secondary: #3C3F58;
+  --bg-tertiary: #4A4D66;
+  --bg-hover: #525571;
+  --bg-modal: #3C3F58;
+  --bg-input: #4A4D66;
+  --bg-dark-outer: #1C1E2E;
+  
+  /* Text Colors */
+  --text-primary: #f0f0f0;
+  --text-secondary: #b0b0b0;
+  --text-muted: #808080;
+  --text-white: #ffffff;
+  --text-inverse: #1a1a1a;
+  
+  /* Border Colors */
+  --border-light: #4A4D66;
+  --border-medium: #5A5D76;
+  --border-dark: #6A6D86;
+  
+  /* Purple Brand Colors (slightly adjusted for dark mode) */
+  --purple-primary: #8b5cf6;
+  --purple-secondary: #f472b6;
+  --purple-light: #2d1b4e;
+  --purple-dark: #7c3aed;
+  
+  /* Status Colors (slightly brighter for dark mode) */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --info: #60a5fa;
+  
+  /* Shadows (darker and more subtle) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+  --shadow-xl: 0 20px 25px rgba(0,0,0,0.6);
+}
+
+/* Apply dark mode to specific elements */
+[data-theme="dark"] body {
+  background-color: var(--bg-dark-outer);
+}
+
+[data-theme="dark"] .white-square {
+  background-color: var(--bg-primary);
+}
+
+/* All content boxes - but NOT stat cards or tables */
+[data-theme="dark"] .raffle-config,
+[data-theme="dark"] .history-wrap,
+[data-theme="dark"] .activity-wrap,
+[data-theme="dark"] .settings-container,
+[data-theme="dark"] .profile-container {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary);
+}
+
+/* Headers */
+[data-theme="dark"] .p-title,
+[data-theme="dark"] .c-title,
+[data-theme="dark"] .h-title,
+[data-theme="dark"] .a-title,
+[data-theme="dark"] .page-title {
+  color: #ffffff !important;
+}
+
+/* Subtitles */
+[data-theme="dark"] .p-sub,
+[data-theme="dark"] .c-sub,
+[data-theme="dark"] .h-sub,
+[data-theme="dark"] .a-sub,
+[data-theme="dark"] .page-subtitle {
+  color: #d1d5db !important;
+}
+
+/* Input fields */
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: #9ca3af !important;
+  opacity: 1;
+}
+
+/* ============================== 
+   KEEP ALL TABLES WHITE 
+   ============================== */
+[data-theme="dark"] table,
+[data-theme="dark"] .participant-list,
+[data-theme="dark"] .history-wrap table,
+[data-theme="dark"] .activity-wrap table,
+[data-theme="dark"] .admin-content table,
+[data-theme="dark"] .user-content table {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+}
+
+[data-theme="dark"] thead,
+[data-theme="dark"] thead th {
+  background-color: #f5f5f5 !important;
+  color: #1a1a1a !important;
+}
+
+[data-theme="dark"] tbody,
+[data-theme="dark"] tbody tr,
+[data-theme="dark"] tbody td {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+}
+
+[data-theme="dark"] tbody tr:hover,
+[data-theme="dark"] tbody tr:hover td {
+  background-color: #f9f9f9 !important;
+}
+
+/* Keep participant list white */
+[data-theme="dark"] .participant-list {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .p-title {
+  color: #1a1a1a !important;
+}
+
+[data-theme="dark"] .p-sub {
+  color: #666666 !important;
+}
+
+/* ============================== 
+   STAT CARDS & METRIC CARDS (KEEP WHITE)
+   ============================== */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .card {
+  background-color: #ffffff !important;
+  border-color: #e0e0e0 !important;
+}
+
+/* Text in white cards should be DARK for readability */
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .stat-card *,
+[data-theme="dark"] .metric-card,
+[data-theme="dark"] .metric-card *,
+[data-theme="dark"] .card,
+[data-theme="dark"] .card *,
+[data-theme="dark"] .card-title,
+[data-theme="dark"] .card-desc,
+[data-theme="dark"] .label {
+  color: #1a1a1a !important;
+}
+
+/* EXCEPTION: Active Raffle stat cards keep their original gradient colors */
+[data-theme="dark"] .stat-card.c-pink,
+[data-theme="dark"] .stat-card.c-purple,
+[data-theme="dark"] .stat-card.c-green,
+[data-theme="dark"] .stat-card.c-orange,
+[data-theme="dark"] .stat-card.c-blue {
+  background: none !important;
+}
+
+[data-theme="dark"] .stat-card.c-pink {
+  background: #ff4fb2 !important;
+}
+
+[data-theme="dark"] .stat-card.c-purple {
+  background: #a855f7 !important;
+}
+
+[data-theme="dark"] .stat-card.c-green {
+  background: #00c26f !important;
+}
+
+[data-theme="dark"] .stat-card.c-orange {
+  background: #f59e0b !important;
+}
+
+[data-theme="dark"] .stat-card.c-blue {
+  background: #3b82f6 !important;
+}
+
+/* Active Raffle colorful stat cards text stays white */
+[data-theme="dark"] .stat-card.c-pink,
+[data-theme="dark"] .stat-card.c-pink *,
+[data-theme="dark"] .stat-card.c-purple,
+[data-theme="dark"] .stat-card.c-purple *,
+[data-theme="dark"] .stat-card.c-green,
+[data-theme="dark"] .stat-card.c-green *,
+[data-theme="dark"] .stat-card.c-orange,
+[data-theme="dark"] .stat-card.c-orange *,
+[data-theme="dark"] .stat-card.c-blue,
+[data-theme="dark"] .stat-card.c-blue * {
+  color: #fff !important;
+}
+
+/* Keep admin content tables and cards white */
+[data-theme="dark"] .admin-content {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .user-content {
+  background-color: transparent !important;
+}
+
+/* ============================== 
+   TEXT ON DARK BACKGROUNDS (WHITE TEXT)
+   ============================== */
+
+/* Raffle Config section text (dark navy background needs white text) */
+[data-theme="dark"] .raffle-config label,
+[data-theme="dark"] .raffle-config span,
+[data-theme="dark"] .raffle-config p,
+[data-theme="dark"] .c-label,
+[data-theme="dark"] .field-row label,
+[data-theme="dark"] .field-row span {
+  color: #ffffff !important;
+}
+
+/* Profile page text on dark background */
+[data-theme="dark"] .profile-container:not(.card) label,
+[data-theme="dark"] .profile-container:not(.card) p {
+  color: #ffffff !important;
+}
+
+/* Modal text on dark background */
+[data-theme="dark"] .modal-content p,
+[data-theme="dark"] .modal-content label,
+[data-theme="dark"] .modal-content span:not(.status-paid):not(.status-unpaid) {
+  color: #f0f0f0 !important;
+}
+
+/* ============================== 
+   MODALS
+   ============================== */
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal {
+  background-color: var(--bg-modal) !important;
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .modal-header {
+  border-bottom: 1px solid var(--border-light);
+}
+
+[data-theme="dark"] .modal-footer {
+  border-top: 1px solid var(--border-light);
+}
+
+/* ============================== 
+   SCROLLBARS
+   ============================== */
+[data-theme="dark"] ::-webkit-scrollbar {
+  background-color: var(--bg-tertiary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: var(--border-dark);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+
+/* ============================== 
+   STATUS BADGES
+   ============================== */
+[data-theme="dark"] .status-paid {
+  background-color: rgba(52, 211, 153, 0.2);
+  color: var(--success);
+}
+
+[data-theme="dark"] .status-unpaid {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--error);
+}
+
+[data-theme="dark"] .status-completed {
+  background-color: rgba(52, 211, 153, 0.2);
+  color: var(--success);
+}
+
+[data-theme="dark"] .status-cancelled {
+  background-color: rgba(239, 68, 68, 0.2);
+  color: var(--error);
+}
+
+/* ============================== 
+   BUTTONS
+   ============================== */
+
+/* Gradient buttons stay vibrant */
+[data-theme="dark"] button.primary-btn,
+[data-theme="dark"] .scan-btn,
+[data-theme="dark"] .setup-btn {
+  /* Keep gradient buttons as-is */
+}
+
+/* Secondary buttons */
+[data-theme="dark"] button.secondary-btn {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+[data-theme="dark"] button.secondary-btn:hover {
+  background-color: var(--bg-hover);
+}
+
+[data-theme="dark"] button,
+[data-theme="dark"] .btn {
+  font-weight: 600;
+}
+
+/* ============================== 
+   DONATE PAGE
+   ============================== */
+
+/* Donate page keeps white background but needs DARK TEXT */
+[data-theme="dark"] .content-wrap,
+[data-theme="dark"] .page-header {
+  /* Let the page keep its white background */
+}
+
+/* Make donate page titles DARK for readability on white (ONLY on donate page) */
+[data-theme="dark"] body[data-page="donate"] .page-title,
+[data-theme="dark"] body[data-page="donate"] .page-subtitle {
+  color: #1f2937 !important;
+}
+
+/* For ALL OTHER pages, keep titles WHITE on dark background */
+[data-theme="dark"] .page-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .page-subtitle {
+  color: #b0b0b0 !important;
+}
+
+/* Override for donate page specifically */
+[data-theme="dark"] body[data-page="donate"] .page-subtitle {
+  color: #6b7280 !important;
+}
+
+[data-theme="dark"] .hero-card {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .hero-heading {
+  color: #1f2937 !important;
+}
+
+[data-theme="dark"] .hero-description,
+[data-theme="dark"] .hero-description p,
+[data-theme="dark"] .hero-description li {
+  color: #4b5563 !important;
+}
+
+[data-theme="dark"] .feature-card {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .feature-title {
+  color: #1f2937 !important;
+}
+
+[data-theme="dark"] .feature-text {
+  color: #6b7280 !important;
+}
+
+[data-theme="dark"] .thank-you-title {
+  color: #1f2937 !important;
+}
+
+[data-theme="dark"] .thank-you-text {
+  color: #6b7280 !important;
+}
+
+/* ============================== 
+   DISCORD PAGE
+   ============================== */
+
+/* Discord cards keep white background with DARK TEXT */
+[data-theme="dark"] .discord-card {
+  background-color: #ffffff !important;
+}
+
+[data-theme="dark"] .discord-name {
+  color: #1f2937 !important;
+}
+
+[data-theme="dark"] .discord-description {
+  color: #4b5563 !important;
+}
+
+[data-theme="dark"] .discord-members,
+[data-theme="dark"] .member-count {
+  color: #6b7280 !important;
+}
+
+[data-theme="dark"] .tag {
+  background-color: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+
+[data-theme="dark"] .tag.primary {
+  background: linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(236,72,153,0.1) 100%) !important;
+  color: #a855f7 !important;
+  border: 1px solid rgba(168,85,247,0.2) !important;
+}
+
+/* ============================== 
+   SETTINGS PAGE
+   ============================== */
+[data-theme="dark"] .settings-wrap {
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .upload-box,
+[data-theme="dark"] .select {
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  border-color: #D6D9E6 !important;
+}
+
+[data-theme="dark"] .stat-box {
+  background-color: #F8FAFC !important;
+  color: #1a1a1a !important;
+}
+
+[data-theme="dark"] .stat-value,
+[data-theme="dark"] .stat-label {
+  color: #1a1a1a !important;
+}
+
+/* ============================== 
+   OTHER ELEMENTS
+   ============================== */
+
+/* Dropdown/Select */
+[data-theme="dark"] select option {
+  background-color: #4A4D66;
+  color: #ffffff;
+}
+
+/* Links */
+[data-theme="dark"] a:not(.nav-item) {
+  color: #8b5cf6;
+}
+
+[data-theme="dark"] a:not(.nav-item):hover {
+  color: #a78bfa;
+}
+
+/* Messages */
+[data-theme="dark"] .error-text,
+[data-theme="dark"] .error-message {
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .success-text,
+[data-theme="dark"] .success-message {
+  color: #6ee7b7 !important;
+}
+
+[data-theme="dark"] .info-text,
+[data-theme="dark"] .info-message {
+  color: #93c5fd !important;
+}
+
+/* Checkbox and radio labels */
+[data-theme="dark"] input[type="checkbox"] + label,
+[data-theme="dark"] input[type="radio"] + label {
+  color: #ffffff !important;
+}

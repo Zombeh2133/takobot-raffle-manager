@@ -133,3 +133,43 @@ coverage/
 # Uncomment if you need to force-include certain files
 # !example.env.template
 # !config.example.json
+venv/
+
+# Python virtual environments
+venv/
+path/to/venv/
+env/
+ENV/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# User data and credentials
+app/data/
+app/data/users/
+
+# Backup and temporary files
+*.backup
+*.save
+*.bak
+*.swp
+*.swo
+*~
+tmp_*.txt
+temp_*.txt
+
+# Logs
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+backups/

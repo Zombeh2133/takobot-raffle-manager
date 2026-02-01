@@ -1,0 +1,52 @@
+/* =========================================
+   VIEW TRANSITIONS API - CROSS-FADE EFFECT
+   ========================================= */
+
+/* Keyframes for fade animations */
+@keyframes fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Configure the page transition */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: ease-in-out;
+}
+
+/* Apply fade-out to the old page */
+::view-transition-old(root) {
+  animation-name: fade-out;
+}
+
+/* Apply fade-in to the new page */
+::view-transition-new(root) {
+  animation-name: fade-in;
+}
+
+/* FIX: Prevent active sidebar square from animating during transitions */
+#activeSquare {
+  view-transition-name: none !important;
+}
+
+/* Optional: Add a slight blur during transition for extra smoothness */
+/* Uncomment if you want this effect:
+::view-transition-old(root) {
+  animation-name: fade-out;
+  filter: blur(2px);
+}
+
+::view-transition-new(root) {
+  animation-name: fade-in;
+  filter: blur(2px);
+}
+*/
+

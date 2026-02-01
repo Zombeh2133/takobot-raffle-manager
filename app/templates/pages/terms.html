@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Terms of Service - TakoBot</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #FAF8F6;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    /* PAGE HEADER */
+    .page-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .page-title {
+      font-size: 44px;
+      font-weight: 700;
+      color: #111;
+      letter-spacing: -0.4px;
+      margin-bottom: 12px;
+    }
+
+    .page-subtitle {
+      font-size: 16px;
+      font-weight: 500;
+      color: #7A7D8C;
+      line-height: 1.5;
+    }
+
+    /* QUICK LINKS */
+    .quick-links {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 30px;
+    }
+
+    .quick-link-btn {
+      padding: 10px 20px;
+      border: 2px solid #E5E7EB;
+      border-radius: 10px;
+      background: white;
+      color: #6B7280;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    .quick-link-btn:hover {
+      border-color: #7C3AED;
+      color: #7C3AED;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.15);
+    }
+
+    /* SECTION CARD */
+    .section-card {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 14px 30px rgba(0, 0, 0, 0.06);
+      padding: 32px 36px;
+      margin-bottom: 26px;
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #F3F4F6;
+    }
+
+    .section-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      flex-shrink: 0;
+      background: rgba(124, 58, 237, 0.12);
+      color: #7C3AED;
+    }
+
+    .section-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin: 0;
+      color: #111;
+    }
+
+    .section-subtitle {
+      margin: 6px 0 0 0;
+      font-size: 15px;
+      color: #7A7D8C;
+      font-weight: 500;
+    }
+
+    .section-content h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: #111;
+      margin: 28px 0 12px 0;
+    }
+
+    .section-content h3:first-child {
+      margin-top: 0;
+    }
+
+    .section-content p {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #475569;
+      margin: 0 0 16px 0;
+    }
+
+    .section-content ul {
+      margin: 12px 0 20px 0;
+      padding-left: 24px;
+    }
+
+    .section-content li {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #475569;
+      margin-bottom: 8px;
+    }
+
+    .section-content strong {
+      color: #111;
+      font-weight: 700;
+    }
+
+    .highlight-box {
+      background: linear-gradient(135deg, #F3E8FF 0%, #E9D5FF 100%);
+      border-left: 4px solid #7C3AED;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 24px 0;
+    }
+
+    .highlight-box p {
+      margin: 0;
+      color: #5B21B6;
+      font-weight: 600;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    .last-updated {
+      text-align: center;
+      font-size: 14px;
+      color: #9CA3AF;
+      font-weight: 500;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #E5E7EB;
+    }
+
+    /* Back to Login Link */
+    .back-link {
+      text-align: center;
+      margin-top: 30px;
+    }
+
+    .back-link a {
+      color: #7C3AED;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .back-link a:hover {
+      color: #6D28D9;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <!-- PAGE HEADER -->
+    <div class="page-header">
+      <h1 class="page-title">Terms of Service</h1>
+      <p class="page-subtitle">Legal terms and conditions for using TakoBot</p>
+    </div>
+
+    <!-- QUICK LINKS -->
+    <div class="quick-links">
+      <a href="/privacy" class="quick-link-btn">🔒 Privacy Policy</a>
+      <a href="/login" class="quick-link-btn">← Back to Login</a>
+    </div>
+
+    <!-- TERMS OF SERVICE -->
+    <div class="section-card">
+      <div class="section-header">
+        <div class="section-icon">📜</div>
+        <div>
+          <h2 class="section-title">Terms of Service</h2>
+          <p class="section-subtitle">Last updated: February 1, 2026</p>
+        </div>
+      </div>
+
+      <div class="section-content">
+        <h3>1. Acceptance of Terms</h3>
+        <p>
+          By accessing and using TakoBot ("the Application"), you accept and agree to be bound by the terms and provisions of this agreement. If you do not agree to these terms, please do not use this Application.
+        </p>
+
+        <h3>2. Description of Service</h3>
+        <p>
+          TakoBot is a raffle management application designed specifically for the PokemonRaffles Reddit community. The Application helps raffle hosts manage participants, track payments, and organize raffle configurations.
+        </p>
+
+        <h3>3. User Responsibilities</h3>
+        <p>You agree to:</p>
+        <ul>
+          <li>Use the Application only for its intended purpose of managing raffles</li>
+          <li>Not use the Application to collect personally identifiable information (PII) or sensitive data</li>
+          <li>Maintain the confidentiality of your account credentials</li>
+          <li>Comply with all applicable Reddit community rules and guidelines</li>
+          <li>Not attempt to reverse engineer, decompile, or hack the Application</li>
+          <li>Not use automated tools to abuse or overload the Application</li>
+        </ul>
+
+        <div class="highlight-box">
+          <p>
+            <strong>⚠️ Important:</strong> TakoBot is NOT intended for collecting personally identifiable information (PII) or securing highly sensitive data. Do not store confidential personal information, financial account details, or other sensitive data in this Application.
+          </p>
+        </div>
+
+        <h3>4. Reddit Integration</h3>
+        <p>
+          The Application integrates with Reddit to parse raffle comments. You understand that:
+        </p>
+        <ul>
+          <li>Reddit data is accessed in accordance with Reddit's Terms of Service and API guidelines</li>
+          <li>The Application does not store Reddit passwords or authentication tokens</li>
+          <li>You are responsible for ensuring your Reddit activity complies with community rules</li>
+        </ul>
+
+        <h3>5. Gmail OAuth Integration</h3>
+        <p>
+          If you choose to enable Gmail scanning for PayPal payment notifications:
+        </p>
+        <ul>
+          <li>You grant the Application read-only access to your Gmail messages</li>
+          <li>OAuth credentials are stored securely in the Application database</li>
+          <li>You can revoke Gmail access at any time through your Google Account settings</li>
+          <li>The Application only scans for PayPal payment notification emails</li>
+        </ul>
+
+        <h3>6. Data Ownership</h3>
+        <p>
+          You retain all rights to your raffle data, participant information, and configurations. The Application acts as a tool to organize and display your data, but you maintain ownership.
+        </p>
+
+        <h3>7. Limitation of Liability</h3>
+        <p>
+          TakoBot is provided "as is" without warranties of any kind. The developers are not liable for:
+        </p>
+        <ul>
+          <li>Data loss or corruption</li>
+          <li>Service interruptions or downtime</li>
+          <li>Errors in raffle calculations or participant tracking</li>
+          <li>Any disputes arising from raffle management</li>
+          <li>Unauthorized access to your data due to your own security practices</li>
+        </ul>
+
+        <h3>8. Prohibited Activities</h3>
+        <p>
+          You may not use TakoBot to:
+        </p>
+        <ul>
+          <li>Conduct illegal gambling or lottery activities</li>
+          <li>Violate Reddit's Terms of Service or subreddit rules</li>
+          <li>Collect or store sensitive personal information</li>
+          <li>Engage in fraudulent or deceptive practices</li>
+          <li>Harm, interfere with, or disrupt the Application or its servers</li>
+        </ul>
+
+        <h3>9. Account Termination</h3>
+        <p>
+          We reserve the right to suspend or terminate your account if you violate these Terms of Service. You may delete your account at any time through the Profile page.
+        </p>
+
+        <h3>10. Changes to Terms</h3>
+        <p>
+          We reserve the right to modify these terms at any time. Continued use of the Application after changes constitutes acceptance of the new terms. Material changes will be communicated through the Application.
+        </p>
+
+        <h3>11. Disclaimer of Warranties</h3>
+        <p>
+          THE APPLICATION IS PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NON-INFRINGEMENT.
+        </p>
+
+        <h3>12. Indemnification</h3>
+        <p>
+          You agree to indemnify and hold harmless TakoBot, its developers, and affiliates from any claims, damages, losses, or expenses arising from your use of the Application or violation of these Terms.
+        </p>
+
+        <h3>13. Governing Law</h3>
+        <p>
+          These Terms shall be governed by and construed in accordance with applicable laws, without regard to conflict of law provisions.
+        </p>
+
+        <h3>14. Contact Information</h3>
+        <p>
+          If you have questions about these Terms of Service, please contact the TakoBot administrators through the PokemonRaffles community or visit the Help page within the Application.
+        </p>
+      </div>
+
+      <div class="last-updated">
+        Last updated: February 1, 2026 • TakoBot v1.0.0
+      </div>
+    </div>
+
+    <!-- BACK TO LOGIN -->
+    <div class="back-link">
+      <a href="/login">← Back to Login</a>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raffle Monitor - Admin Dashboard</title>
+  <script src="/static/api.js"></script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Dark Mode System -->
+  <link rel="stylesheet" href="/static/dark-mode.css" />
+  <script src="/static/dark-mode.js"></script>
+
+  <style>
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+    }
+
+    body{
+      background-color:#FAF8F6;
+      display:flex;
+      justify-content:flex-start;
+      align-items:flex-start;
+      height:100vh;
+      margin:0;
+      font-family:'Inter',sans-serif;
+      overflow: hidden;
+    }
+
+    /* Scale down for smaller screens */
+    @media (max-width: 1600px), (max-height: 1020px) {
+      .white-square {
+        transform-origin: top left;
+        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
+      }
+    }
+
+    .top-sidebar{
+      position:absolute; top:0; left:-30px;
+      width: calc(var(--sidebar-width) + 30px);
+      height:200px;
+      clip-path: inset(0 0 0 30px);
+      background-image:url('/static/assets/Background/Top-Sidebar.png');
+      background-size:cover; background-repeat:no-repeat;
+      z-index:5;
+    }
+
+    .tako{
+      position:absolute;
+      top:60px; left:calc(var(--sidebar-width) / 2);
+      transform:translate(-50%,-50%);
+      width:148px; height:148px;
+      background-image:url('/static/assets/Icons/TAKO%201.png');
+      background-size:contain;
+      background-repeat:no-repeat;
+      background-position:center;
+      z-index:25;
+      pointer-events:none;
+    }
+
+    .sidebar{
+      position:absolute;
+      left:-30px; bottom:0px;
+      width: calc(var(--sidebar-width) + 30px);
+      clip-path: inset(0 0 0 30px);
+      height:900px;
+      background-image:url('/static/assets/Background/Sidebar.png');
+      background-size:cover;
+      background-repeat:no-repeat;
+      z-index:10;
+    }
+
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('/static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('/static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 140ms ease;
+    }
+
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* USER SECTION */
+    .user-section {
+      position: absolute;
+      bottom: 20px;
+      left: 30px;
+      width: 192px;
+      z-index: 45;
+    }
+
+    /* APP VERSION */
+    .app-version {
+      position: absolute;
+      bottom: 78px;
+      left: 30px;
+      width: 192px;
+      text-align: right;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.5);
+      z-index: 45;
+      font-weight: 300;
+      padding-right: 25px;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background-color: #6E5FFC;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      margin-right: 10px;
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .user-name {
+      color: white;
+      font-size: 14px;
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .user-role {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 12px;
+      margin: 0;
+    }
+
+    /* MAIN CONTENT */
+    .white-square {
+      position: relative;
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: white;
+      display: flex;
+    }
+
+    .content-area {
+      margin-left: 0;
+      width: 100%;
+      flex: 1;
+      overflow-y: auto;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #fce7f3 100%);
+      padding: 20px;
+    }
+
+    /* MONITOR STYLES */
+    .monitor-header {
+      margin-bottom: 20px;
+    }
+
+    .monitor-title {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .live-indicator {
+      position: relative;
+      width: 8px;
+      height: 8px;
+    }
+
+    .live-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .live-ping {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border-radius: 50%;
+      animation: ping 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    @keyframes ping {
+      0% { transform: scale(1); opacity: 0.5; }
+      75%, 100% { transform: scale(2); opacity: 0; }
+    }
+
+    .monitor-title h1 {
+      font-size: 18px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+
+    .monitor-subtitle {
+      color: #6b7280;
+      font-size: 11px;
+    }
+
+    .last-updated {
+      text-align: right;
+    }
+
+    .last-updated-label {
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .last-updated-time {
+      font-size: 12px;
+      font-weight: 600;
+      color: #8b5cf6;
+    }
+
+    /* STATS CARDS */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .stat-card {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .stat-card-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #8b5cf6;
+    }
+
+    .stat-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stat-icon svg {
+      width: 16px;
+      height: 16px;
+      color: #8b5cf6;
+    }
+
+    /* RAFFLE CARDS */
+    .raffles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+    }
+
+    .raffle-card {
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(20px);
+      border-radius: 12px;
+      padding: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.6);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .raffle-card::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.4), rgba(236, 72, 153, 0.4), rgba(59, 130, 246, 0.4));
+      border-radius: 12px;
+      opacity: 0;
+      filter: blur(10px);
+      transition: opacity 0.3s ease;
+      z-index: -1;
+    }
+
+    .raffle-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .raffle-card:hover::before {
+      opacity: 0.2;
+    }
+
+    .raffle-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .raffle-title-section {
+      flex: 1;
+    }
+
+    .raffle-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+
+    .raffle-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #111827;
+      text-decoration: none;
+      transition: color 0.2s;
+      line-height: 1.3;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .raffle-title:hover {
+      color: #8b5cf6;
+    }
+
+    .fast-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      background: linear-gradient(135deg, #fbbf24, #f97316);
+      border-radius: 6px;
+      padding: 3px 6px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      flex-shrink: 0;
+    }
+
+    .fast-badge svg {
+      width: 10px;
+      height: 10px;
+      fill: white;
+    }
+
+    .fast-badge span {
+      font-size: 9px;
+      font-weight: 700;
+      color: white;
+    }
+
+    .raffle-host {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #6b7280;
+    }
+
+    .raffle-host svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .raffle-host-name {
+      font-weight: 500;
+      color: #8b5cf6;
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 8px;
+      right: 48px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      border-radius: 12px;
+      padding: 4px 8px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.starting { background-color: #ef4444; }
+    .status-dot.filling { background-color: #eab308; }
+    .status-dot.almost-full { background-color: #22c55e; }
+    .status-dot.complete { background-color: #3b82f6; }
+
+    .status-text {
+      font-size: 9px;
+      font-weight: 600;
+      color: #374151;
+      text-transform: capitalize;
+    }
+
+    .progress-section {
+      margin-bottom: 10px;
+    }
+
+    .progress-stats {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+
+    .progress-count {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .progress-count span {
+      color: #9ca3af;
+    }
+
+    .progress-percentage {
+      font-size: 10px;
+      font-weight: 600;
+      color: #6b7280;
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 8px;
+      background: #e5e7eb;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #ef4444, #f87171);
+      transition: width 0.5s ease;
+      position: relative;
+    }
+
+    .progress-bar.medium {
+      background: linear-gradient(90deg, #eab308, #fbbf24);
+    }
+
+    .progress-bar.high {
+      background: linear-gradient(90deg, #22c55e, #4ade80);
+    }
+
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.3);
+      animation: pulse 2s infinite;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .info-card {
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(139, 92, 246, 0.1));
+      border-radius: 8px;
+      padding: 8px;
+    }
+
+    .info-label {
+      font-size: 9px;
+      color: #6b7280;
+      margin-bottom: 2px;
+    }
+
+    .info-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #8b5cf6;
+    }
+
+    .raffle-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 8px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .raffle-time {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #6b7280;
+    }
+
+    .raffle-time svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    .view-link {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      color: #8b5cf6;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .view-link:hover {
+      color: #7c3aed;
+    }
+
+    .view-link svg {
+      width: 12px;
+      height: 12px;
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+      background: rgba(255, 255, 255, 0.8);
+      backdrop-filter: blur(10px);
+      border-radius: 12px;
+      padding: 40px;
+      text-align: center;
+      border: 1px solid #e5e7eb;
+    }
+
+    .empty-icon {
+      width: 50px;
+      height: 50px;
+      background: #f3f4f6;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 10px;
+    }
+
+    .empty-icon svg {
+      width: 25px;
+      height: 25px;
+      color: #9ca3af;
+    }
+
+    .empty-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 4px;
+    }
+
+    .empty-message {
+      font-size: 11px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="white-square">
+    <!-- MAIN CONTENT -->
+    <div class="content-area">
+      <!-- ✅ ADMIN PAGE NAVIGATION -->
+      <div class="admin-page-nav" style="display: flex; gap: 12px; margin-bottom: 20px;">
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/admin'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          📊 Analytics
+        </button>
+        <button class="admin-page-btn active" style="padding: 10px 20px; background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); border: 2px solid #8b5cf6; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: white; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/raffle-monitor'">
+          📡 Raffle Monitor
+        </button>
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/user-management'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          👥 User Management
+        </button>
+      </div>
+
+      <!-- Header -->
+      <div class="monitor-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <div class="monitor-title">
+            <div class="live-indicator">
+              <div class="live-dot"></div>
+              <div class="live-ping"></div>
+            </div>
+            <h1>Live Raffle Monitor</h1>
+          </div>
+          <p class="monitor-subtitle">Real-time tracking of all active raffles across the community (updates every 5 seconds)</p>
+        </div>
+        <div class="last-updated">
+          <div class="last-updated-label">Last updated</div>
+          <div class="last-updated-time" id="lastUpdatedTime">--:--:--</div>
+          <button onclick="fetchRaffles()" style="margin-top: 8px; padding: 6px 12px; background: #8b5cf6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600;">↻ Refresh Now</button>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-content">
+            <div>
+              <div class="stat-label">Active Raffles</div>
+              <div class="stat-value" id="statActiveRaffles">0</div>
+            </div>
+            <div class="stat-icon" style="background: rgba(139, 92, 246, 0.1);">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #8b5cf6;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-content">
+            <div>
+              <div class="stat-label">Available Spots</div>
+              <div class="stat-value" id="statAvailableSpots">0</div>
+            </div>
+            <div class="stat-icon" style="background: rgba(59, 130, 246, 0.1);">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #3b82f6;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-card-content">
+            <div>
+              <div class="stat-label">Top Host</div>
+              <div class="stat-value" id="statTopHost" style="font-size: 20px;">--</div>
+            </div>
+            <div class="stat-icon" style="background: rgba(236, 72, 153, 0.1);">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" style="color: #ec4899;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Raffles Grid -->
+      <div class="raffles-grid" id="rafflesGrid">
+        <!-- Populated by JavaScript -->
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
+        </div>
+        <h3 class="empty-title">No Active Raffles</h3>
+        <p class="empty-message">There are currently no active raffles. Check back soon!</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin access control -->
+  <script src="/static/sidebar-admin-control.js"></script>
+
+  <script>
+    // Initial load
+    fetchRaffles();
+
+    // Auto-refresh every 5 seconds
+    setInterval(() => {
+      fetchRaffles();
+    }, 5000);
+
+    // Fetch raffles from API
+    async function fetchRaffles() {
+      try {
+        const response = await fetch('/api/raffles/active');
+        if (!response.ok) {
+          throw new Error('Failed to fetch raffles');
+        }
+        
+        const data = await response.json();
+        
+        if (data.ok && data.raffles) {
+          // Transform API data to match our display format
+          const transformedRaffles = data.raffles
+            .filter(raffle => {
+              // ✅ Filter out bugged raffles
+              const title = raffle.itemName || raffle.title || '';
+              return title.toLowerCase() !== 'unknown item' && 
+                     title.trim() !== '' && 
+                     raffle.redditLink && 
+                     raffle.redditLink.trim() !== '';
+            })
+            .map(raffle => ({
+              id: raffle.id,
+              title: raffle.itemName || raffle.title,  // Use itemName for cleaner display
+              redditLink: raffle.redditLink,
+              host: raffle.host,
+              totalSpots: raffle.totalSpots,
+              filledSpots: raffle.filledSpots,
+              spotCost: raffle.costPerSpot,
+              startedAt: formatTimeAgo(raffle.updatedAt),
+              status: raffle.status,
+              isFast: raffle.isFast
+            }));
+          
+          updateDisplay(transformedRaffles);
+        } else {
+          updateDisplay([]);
+        }
+      } catch (error) {
+        console.error('Error fetching raffles:', error);
+        // Show empty state on error
+        updateDisplay([]);
+      }
+    }
+
+    // Format timestamp to relative time
+    function formatTimeAgo(timestamp) {
+      if (!timestamp) return 'Unknown';
+      
+      const now = new Date();
+      const then = new Date(timestamp);
+      const diffMs = now - then;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins} minute${diffMins !== 1 ? 's' : ''} ago`;
+      
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+      
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`;
+    }
+
+    // Helper function to clean title
+    function cleanTitle(title) {
+      const match = title.match(/^(.+?)\s*-\s*\d+\s*spots?\s*@/i);
+      return match ? match[1].trim() : title;
+    }
+
+    // Helper function to get progress bar class
+    function getProgressBarClass(percentage) {
+      if (percentage < 30) return '';
+      if (percentage < 70) return 'medium';
+      return 'high';
+    }
+
+    function renderRaffleCard(raffle) {
+      const fillPercentage = (raffle.filledSpots / raffle.totalSpots) * 100;
+      const isFast = raffle.isFast;
+      const cleanedTitle = cleanTitle(raffle.title);
+      
+      // Determine status text - show "Filled" when 100%
+      const statusText = fillPercentage >= 100 ? 'Filled' : raffle.status.replace('-', ' ');
+
+      return `
+        <div class="raffle-card" style="position: relative;">
+          <!-- ✅ Admin Delete Button -->
+          <button 
+            onclick="deleteRaffle(${raffle.id})" 
+            style="position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; z-index: 10;"
+            onmouseover="this.style.background='rgba(239, 68, 68, 0.2)'; this.style.borderColor='rgba(239, 68, 68, 0.5)';"
+            onmouseout="this.style.background='rgba(239, 68, 68, 0.1)'; this.style.borderColor='rgba(239, 68, 68, 0.3)';"
+            title="Delete this raffle"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#ef4444">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+
+          <div class="raffle-header">
+            <div class="raffle-title-section">
+              <div class="raffle-title-row">
+                <a href="${raffle.redditLink}" target="_blank" class="raffle-title">
+                  ${cleanedTitle}
+                </a>
+                ${isFast ? `
+                  <div class="fast-badge">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z" />
+                    </svg>
+                    <span>FAST</span>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="raffle-host">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span class="raffle-host-name">${raffle.host}</span>
+              </div>
+            </div>
+            <div class="status-badge">
+              <div class="status-dot ${raffle.status}"></div>
+              <span class="status-text">${statusText}</span>
+            </div>
+          </div>
+
+          <div class="progress-section">
+            <div class="progress-stats">
+              <span class="progress-count">${raffle.filledSpots}<span>/${raffle.totalSpots}</span></span>
+              <span class="progress-percentage">${fillPercentage.toFixed(1)}% filled</span>
+            </div>
+            <div class="progress-bar-container">
+              <div class="progress-bar ${getProgressBarClass(fillPercentage)}" style="width: ${fillPercentage}%"></div>
+            </div>
+          </div>
+
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-label">Spot Cost</div>
+              <div class="info-value">$${(parseFloat(raffle.spotCost) || 0).toFixed(2)}</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Spots Left</div>
+              <div class="info-value">${(parseInt(raffle.totalSpots) || 0) - (parseInt(raffle.filledSpots) || 0)}</div>
+            </div>
+          </div>
+
+          <div class="raffle-footer">
+            <div class="raffle-time">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span>${raffle.startedAt}</span>
+            </div>
+            <a href="${raffle.redditLink}" target="_blank" class="view-link">
+              <span>View Details</span>
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
+        </div>
+      `;
+    }
+
+    function calculateStats(raffles) {
+      const totalActive = raffles.length;
+      const totalSpots = raffles.reduce((sum, r) => sum + (r.totalSpots - r.filledSpots), 0);
+      const hosts = {};
+      raffles.forEach(r => {
+        hosts[r.host] = (hosts[r.host] || 0) + 1;
+      });
+      const mostActiveHost = Object.keys(hosts).reduce((a, b) => hosts[a] > hosts[b] ? a : b, raffles[0]?.host || '--');
+
+      return { totalActive, totalSpots, mostActiveHost };
+    }
+
+    function updateDisplay(raffles) {
+      const rafflesGrid = document.getElementById('rafflesGrid');
+      const emptyState = document.getElementById('emptyState');
+      const lastUpdatedTime = document.getElementById('lastUpdatedTime');
+
+      // Update time
+      lastUpdatedTime.textContent = new Date().toLocaleTimeString();
+
+      if (raffles.length === 0) {
+        rafflesGrid.style.display = 'none';
+        emptyState.style.display = 'block';
+        document.getElementById('statActiveRaffles').textContent = '0';
+        document.getElementById('statAvailableSpots').textContent = '0';
+        document.getElementById('statTopHost').textContent = '--';
+      } else {
+        rafflesGrid.style.display = 'grid';
+        emptyState.style.display = 'none';
+
+        // Render cards
+        rafflesGrid.innerHTML = raffles.map(renderRaffleCard).join('');
+
+        // Update stats
+        const stats = calculateStats(raffles);
+        document.getElementById('statActiveRaffles').textContent = stats.totalActive;
+        document.getElementById('statAvailableSpots').textContent = stats.totalSpots;
+        document.getElementById('statTopHost').textContent = stats.mostActiveHost;
+      }
+    }
+
+    // Sidebar navigation
+    document.addEventListener('DOMContentLoaded', function() {
+      const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
+      const activeSquare = document.getElementById('activeSquare');
+
+      function updateSquarePosition() {
+        const activeItem = document.querySelector('.sidebar-nav .nav-item.is-active');
+        if (activeItem) {
+          const topPosition = 140 + (Array.from(navItems).indexOf(activeItem) * 58);
+          activeSquare.style.top = topPosition + 'px';
+        }
+      }
+
+      updateSquarePosition();
+    });
+
+    // Load user info
+    async function loadUserInfo() {
+      try {
+        const response = await fetch('/api/auth/current-user');
+        if (response.ok) {
+          const data = await response.json();
+          const user = data.data;
+          
+          document.getElementById('userName').textContent = user.username || 'User';
+          document.getElementById('userRole').textContent = user.isAdmin ? 'Admin' : 'User';
+          document.getElementById('userAvatar').textContent = (user.username || 'U')[0].toUpperCase();
+        }
+      } catch (error) {
+        console.error('Failed to load user info:', error);
+      }
+    }
+
+    // loadUserInfo(); // Commented out - elements do not exist on this page
+
+    // ✅ DELETE RAFFLE FUNCTION
+    async function deleteRaffle(raffleId) {
+      if (!confirm('Are you sure you want to delete this raffle? This action cannot be undone.')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/admin/raffle/${raffleId}`, {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await response.json();
+
+        if (data.ok) {
+          console.log('✅ Raffle deleted successfully');
+          // Refresh the list
+          fetchRaffles();
+        } else {
+          alert(`Failed to delete raffle: ${data.error || 'Unknown error'}`);
+        }
+      } catch (error) {
+        console.error('Error deleting raffle:', error);
+        alert('Failed to delete raffle. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

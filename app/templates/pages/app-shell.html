@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Raffle Manager</title>
+
+  <!-- Inter Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+  <style>
+    /* ==============================
+       MASTER LAYOUT VARIABLES
+       ============================== */
+    :root {
+      --app-width: 1600px;
+      --app-height: 1020px;
+      --sidebar-width: 252px;
+      --content-left: 280px;
+      --content-width: 1300px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #303149;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    .app-container {
+      width: var(--app-width);
+      height: var(--app-height);
+      background-color: #FAF8F6;
+      position: relative;
+      border-radius: 30px;
+      overflow: hidden;
+      display: flex;
+    }
+
+    /* ==============================
+       PERSISTENT SIDEBAR
+       ============================== */
+    .app-sidebar {
+      position: relative;
+      width: var(--sidebar-width);
+      height: 100%;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .top-sidebar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 200px;
+      background-image: url('./static/assets/Background/Top-Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-top-left-radius: 30px;
+      z-index: 5;
+    }
+
+    .tako {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 148px;
+      height: 148px;
+      background-image: url('./static/assets/Icons/TAKO%201.png');
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 25;
+      pointer-events: none;
+    }
+
+    .sidebar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 900px;
+      background-image: url('./static/assets/Background/Sidebar.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      border-bottom-left-radius: 30px;
+      z-index: 10;
+    }
+
+    .rectangle {
+      position: absolute;
+      top: 135px;
+      left: 0;
+      width: 165px;
+      height: 48px;
+      background-image: url('./static/assets/Background/Rectangle.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    .square {
+      position: absolute;
+      left: 30px;
+      width: 244px;
+      height: 52px;
+      background-image: url('./static/assets/Background/Square.png');
+      background-size: cover;
+      background-repeat: no-repeat;
+      background-position: center;
+      z-index: 30;
+      pointer-events: none;
+      transition: top 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .sidebar-nav {
+      position: absolute;
+      top: 140px;
+      left: 55px;
+      width: 244px;
+      font-size: 16px;
+      line-height: 58px;
+      z-index: 70;
+    }
+
+    .sidebar-nav a {
+      display: block;
+      position: relative;
+      padding-left: 26px;
+      color: #ffffff;
+      text-decoration: none;
+      font-weight: 400;
+      user-select: none;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .sidebar-nav a:hover {
+      opacity: 1 !important;
+    }
+
+    .sidebar-nav a.is-active {
+      color: #6E5FFC;
+      font-weight: 600;
+    }
+
+    .sidebar-nav a:not(.is-active) {
+      opacity: 0.85;
+    }
+
+    .nav-icon {
+      position: absolute;
+      left: -5px;
+      top: 17px;
+      width: 20px;
+      height: 20px;
+      filter: brightness(0) invert(1);
+      pointer-events: none;
+    }
+
+    .sidebar-nav a.is-active .nav-icon {
+      filter: brightness(0) saturate(100%) invert(46%) sepia(82%)
+              saturate(2780%) hue-rotate(222deg);
+    }
+
+    /* ==============================
+       MAIN CONTENT AREA
+       ============================== */
+    .app-content {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    #pageContent {
+      width: 100%;
+      height: 100%;
+      transition: opacity 150ms ease;
+    }
+
+    /* Top bar in content area */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 100px;
+      background: #FAF8F6;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      padding: 0 80px;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+      font-size: 14px;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .top-icons {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-left: auto;
+    }
+
+    .top-icon {
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .top-icon:hover {
+      opacity: 0.7;
+    }
+
+    .top-icon img {
+      display: block;
+    }
+
+    #themeToggle img { width: 44px; height: 24px; }
+    #settingsBtn img { width: 24px; height: 24px; }
+    #bellBtn img { width: 24px; height: 24px; }
+    #profileBtn img { width: 24px; height: 24px; }
+
+    /* Smooth scrollbar */
+    .app-content::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .app-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .app-content::-webkit-scrollbar-thumb {
+      background: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+
+    .app-content::-webkit-scrollbar-thumb:hover {
+      background: rgba(0,0,0,0.3);
+    }
+  </style>
+    <link rel="stylesheet" href="./static/loading-states.css" />
+  <script src="/static/config.js"></script>
+</head>
+
+<body>
+  <div class="app-container">
+    <!-- PERSISTENT SIDEBAR -->
+    <aside class="app-sidebar">
+      <div class="top-sidebar"></div>
+      <div class="tako"></div>
+      <div class="sidebar"></div>
+      <div class="rectangle"></div>
+      <div class="square" id="activeSquare"></div>
+
+      <nav class="sidebar-nav" id="sidebarNav">
+        <a class="nav-item" href="./index.html">
+          <img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard
+        </a>
+        <a class="nav-item" href="./active_raffle.html">
+          <img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle
+        </a>
+        <a class="nav-item" href="./raffle_history.html">
+          <img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History
+        </a>
+        <a class="nav-item" href="./activity_log.html">
+          <img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Activity Log
+        </a>
+        <a class="nav-item" href="./profile.html">
+          <img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile
+        </a>
+        <a class="nav-item" href="#">
+          <img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord
+        </a>
+        <a class="nav-item" href="#">
+          <img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate
+        </a>
+        <a class="nav-item" href="./admin.html">
+          <img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Admin
+        </a>
+        <a class="nav-item" href="./user_management.html">
+          <img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">User Management
+        </a>
+      </nav>
+    </aside>
+
+    <!-- MAIN CONTENT (SWAPPED DYNAMICALLY) -->
+    <main class="app-content">
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="search-bar">
+          <img src="/static/assets/Icons/Normal.png" alt="Search">
+          <input placeholder="Search here..." type="text">
+        </div>
+
+        <div class="top-icons">
+          <div id="themeToggle" class="top-icon">
+            <img src="/static/assets/Icons/OFF.png" alt="Theme">
+          </div>
+          <div id="settingsBtn" class="top-icon">
+            <img src="/static/assets/Icons/Notifications%20Copy.png" alt="Settings">
+          </div>
+          <div id="bellBtn" class="top-icon">
+            <img src="/static/assets/Icons/bell.png" alt="Notifications">
+          </div>
+          <div id="profileBtn" class="top-icon">
+            <img src="/static/assets/Icons/images-removebg-preview%201.png" alt="Profile">
+          </div>
+        </div>
+      </div>
+
+      <!-- DYNAMIC CONTENT AREA -->
+      <div id="pageContent">
+        <!-- Content loaded here by SPA router -->
+        <div style="display: flex; align-items: center; justify-content: center; height: 400px; color: #64748B;">
+          <div style="text-align: center;">
+            <div style="font-size: 48px; margin-bottom: 16px;">📦</div>
+            <div style="font-size: 18px; font-weight: 600;">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Admin Control Script -->
+  <script>
+    (function() {
+      const sidebarNav = document.getElementById('sidebarNav');
+      if (!sidebarNav) return;
+      
+      const allLinks = sidebarNav.querySelectorAll('.nav-item');
+      allLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        if (href === '/admin' || href === '/user-management') {
+          link.addEventListener('click', function(e) {
+            if (!window.adminCheckComplete) {
+              e.preventDefault();
+              e.stopPropagation();
+              alert('Access Denied\n\nAdmins only');
+            }
+          }, true);
+        }
+      });
+      
+      (async function() {
+        try {
+          const response = await fetch(window.API_BASE_URL + '/api/auth/current-user');
+          if (!response.ok) {
+            console.log('🔒 Admin check: endpoint returned', response.status);
+            return;
+          }
+          
+          const contentType = response.headers.get('content-type');
+          if (!contentType || !contentType.includes('application/json')) {
+            console.log('🔒 Admin check: non-JSON response, assuming non-admin');
+            return;
+          }
+          
+          const data = await response.json();
+          if (data.data?.isAdmin === true) {
+            window.adminCheckComplete = true;
+            console.log('✅ Admin access granted');
+          } else {
+            console.log('🔒 Admin links blocked for non-admin user');
+          }
+        } catch (error) {
+          console.log('🔒 Admin check failed, assuming non-admin');
+        }
+      })();
+    })();
+  </script>
+
+  <!-- Settings Button Handler -->
+  <script>
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+      settingsBtn.addEventListener('click', () => {
+        if (window.spaRouter) {
+          window.spaRouter.navigate('/settings');
+        } else {
+          window.location.href = '/settings';
+        }
+      });
+    }
+  </script>
+
+  <!-- SPA Router -->
+    <script src="/static/loading-states.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+{
+  "name": "tako-raffle-manager",
+  "version": "1.0.0",
+  "description": "TakoBot Raffle Manager Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build": "electron-builder --win --x64",
+    "publish": "electron-builder --win --x64 --publish always"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^40.1.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.takobot.rafflemanager",
+    "productName": "TakoBot Raffle Manager",
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "files": [
+      "**/*",
+      "!venv/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "venv",
+        "to": "venv",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "publish": {
+      "provider": "generic",
+      "url": "http://107.22.96.217/updates/"
+    }
+  },
+  "dependencies": {
+    "electron-log": "^5.0.1",
+    "electron-updater": "^6.7.3"
+  }
+}
