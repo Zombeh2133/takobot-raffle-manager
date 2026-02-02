@@ -380,6 +380,7 @@
 
     .p-table col.col-reddit  { width:260px; }
     .p-table col.col-name    { width:170px; }
+    .p-table col.col-tabbed  { width:180px; }
     .p-table col.col-comment { width:auto;  }
     .p-table col.col-spots   { width:90px;  }
     .p-table col.col-owed    { width:90px;  }
@@ -494,6 +495,46 @@
       cursor: pointer;
       accent-color: #16a34a;
       transform: scale(1.2);
+    }
+
+    .paid-checkbox:hover {
+      opacity: 0.8;
+    }
+
+    /* Tabbed Dropdown Styling */
+    .tabbed-dropdown {
+      width: 100%;
+      max-width: 170px;
+      padding: 6px 10px;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+      color: #334155;
+      font-size: 13px;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      outline: none;
+    }
+
+    .tabbed-dropdown:hover {
+      border-color: #8b5cf6;
+      background: #faf5ff;
+    }
+
+    .tabbed-dropdown:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+    }
+
+    .tabbed-dropdown option {
+      padding: 8px;
+      background: #ffffff;
+      color: #334155;
+    }
+
+    .tabbed-dropdown option:hover {
+      background: #f3f4f6;
     }
 
     .paid-checkbox:hover {
@@ -1633,6 +1674,7 @@
           <colgroup>
             <col class="col-reddit">
             <col class="col-name">
+            <col class="col-tabbed">
             <col class="col-comment">
             <col class="col-spots">
             <col class="col-owed">
@@ -1644,16 +1686,17 @@
             <tr>
               <th data-col="0"><div class="th-inner">Reddit User<span class="col-resizer"></span></div></th>
               <th data-col="1"><div class="th-inner">Name<span class="col-resizer"></span></div></th>
-              <th data-col="2"><div class="th-inner">Comment<span class="col-resizer"></span></div></th>
-              <th data-col="3"><div class="th-inner">Spots<span class="col-resizer"></span></div></th>
-              <th data-col="4"><div class="th-inner">Owed<span class="col-resizer"></span></div></th>
-              <th data-col="5"><div class="th-inner">Paid<span class="col-resizer"></span></div></th>
-              <th data-col="6"><div class="th-inner">Status<span class="col-resizer"></span></div></th>
+              <th data-col="2"><div class="th-inner">Tabbed<span class="col-resizer"></span></div></th>
+              <th data-col="3"><div class="th-inner">Comment<span class="col-resizer"></span></div></th>
+              <th data-col="4"><div class="th-inner">Spots<span class="col-resizer"></span></div></th>
+              <th data-col="5"><div class="th-inner">Owed<span class="col-resizer"></span></div></th>
+              <th data-col="6"><div class="th-inner">Paid<span class="col-resizer"></span></div></th>
+              <th data-col="7"><div class="th-inner">Status<span class="col-resizer"></span></div></th>
             </tr>
           </thead>
           <tbody id="participantsTbody">
             <tr id="emptyRow">
-              <td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">
+              <td colspan="8" style="padding:26px 24px; text-align:center; color:#64748b;">
                 No participants yet. Click "Setup" to configure your raffle.
               </td>
             </tr>
@@ -2231,7 +2274,7 @@
 
       if (appState.participants.length === 0) {
         if (!emptyRow) {
-          tbody.innerHTML = '<tr id="emptyRow"><td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
+          tbody.innerHTML = '<tr id="emptyRow"><td colspan="8" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
         }
         return;
       }
@@ -2250,6 +2293,10 @@
 
       // Batch localStorage lookups - read once instead of per participant
       const nameMappings = JSON.parse(localStorage.getItem('raffleui_reddit_name_mapping') || '{}');
+      const tabbedMappings = JSON.parse(localStorage.getItem('raffleui_tabbed_mapping') || '{}');
+      
+      // Get all unique Reddit usernames for dropdown
+      const allRedditUsers = Object.keys(nameMappings).sort();
 
       displayParticipants.forEach((participant, index) => {
         // Index is already correct since we're not reversing
@@ -2274,6 +2321,16 @@
         const storedName = nameMappings[participant.redditUser];
         const displayName = storedName || participant.name || '';
 
+        // Build dropdown options (use participant.tabbed for THIS row only)
+        const currentTabbed = participant.tabbed || '';
+        let dropdownOptions = '<option value="">— None —</option>';
+        allRedditUsers.forEach(redditUser => {
+          const selected = redditUser === currentTabbed ? 'selected' : '';
+          const name = nameMappings[redditUser] || '';
+          const displayText = name ? `${redditUser} (${name})` : redditUser;
+          dropdownOptions += `<option value="${redditUser}" ${selected}>${displayText}</option>`;
+        });
+
         row.innerHTML = `
           <td>
             <div class="user-cell">
@@ -2283,6 +2340,11 @@
             </div>
           </td>
           <td><span class="name-field" data-index="${index}" style="cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;" title="Click to edit name">${displayName || '<span style="color: #94a3b8;">—</span>'}</span></td>
+          <td>
+            <select class="tabbed-dropdown" data-index="${index}" data-reddit="${participant.redditUser}">
+              ${dropdownOptions}
+            </select>
+          </td>
           <td><span class="comment-muted">${participant.comment || ''}</span></td>
           <td><span class="spots-pill" data-index="${index}" style="cursor: pointer;" title="Double-click to edit">${participant.spots}</span></td>
           <td>$${parseFloat(participant.owed).toFixed(2)}</td>
@@ -2306,6 +2368,9 @@
 
       // Add checkbox event listeners
       attachPaidCheckboxListeners();
+
+      // Add tabbed dropdown listeners
+      attachTabbedDropdownListeners();
 
       // Add click handlers for tab rows
       if (typeof window.attachTabRowClickHandlers === 'function') {
@@ -2432,6 +2497,61 @@
         csv += `${reddit},${name}\n`;
       }
       return csv;
+    }
+
+    // ============ TABBED MAPPING LOCALSTORAGE ============
+    const TABBED_MAPPING_KEY = 'raffleui_tabbed_mapping';
+
+    function saveTabbedMapping(redditUser, tabbedToUser) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(TABBED_MAPPING_KEY) || '{}');
+        if (tabbedToUser) {
+          mappings[redditUser] = tabbedToUser;
+        } else {
+          delete mappings[redditUser]; // Remove if set to empty
+        }
+        localStorage.setItem(TABBED_MAPPING_KEY, JSON.stringify(mappings));
+        console.log('✅ Tabbed mapping saved:', redditUser, '→', tabbedToUser || 'none');
+      } catch (e) {
+        console.error('Failed to save tabbed mapping:', e);
+      }
+    }
+
+    function getTabbedMapping(redditUser) {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(TABBED_MAPPING_KEY) || '{}');
+        return mappings[redditUser] || '';
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function attachTabbedDropdownListeners() {
+      const dropdowns = document.querySelectorAll('.tabbed-dropdown');
+      
+      dropdowns.forEach(dropdown => {
+        dropdown.addEventListener('change', async function() {
+          const index = parseInt(this.dataset.index);
+          const redditUser = this.dataset.reddit;
+          const tabbedToUser = this.value;
+          
+          // Save to THIS SPECIFIC participant row (not all rows with same user)
+          if (appState.participants[index]) {
+            appState.participants[index].tabbed = tabbedToUser || null;
+            await saveState();
+          }
+          
+          // Show feedback
+          if (tabbedToUser) {
+            showToast('Tab Assignment Updated', [`${redditUser} tabbed to ${tabbedToUser}`]);
+          } else {
+            showToast('Tab Removed', [`${redditUser} tab assignment cleared`]);
+          }
+          
+          // Refresh table to update display
+          renderParticipantsTable();
+        });
+      });
     }
 
     // ============ NAME EDIT FUNCTIONALITY ============
@@ -2713,7 +2833,7 @@ function updateStats() {
       stopFastRaffleTimer();
 
       const tbody = document.getElementById("participantsTbody");
-      tbody.innerHTML = '<tr id="emptyRow"><td colspan="7" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
+      tbody.innerHTML = '<tr id="emptyRow"><td colspan="8" style="padding:26px 24px; text-align:center; color:#64748b;">No participants yet. Click "Setup" to configure your raffle.</td></tr>';
 
       document.getElementById("redditLinkInput").value = '';
       document.getElementById("totalSpotsInput").value = ''; // CHANGED from '100' to ''
@@ -3027,17 +3147,33 @@ function updateStats() {
       });
 
       function populateSummary() {
-        // Combine duplicates by reddit username
+        // Combine duplicates by reddit username (with TAB swap logic)
+        // IMPORTANT: TAB spots go to the TABBED user, not the requester
         const combinedParticipants = {};
         appState.participants.forEach(p => {
-          const key = p.redditUser;
+          // Check if this is a TAB entry
+          const isTab = p.comment && (p.comment.toLowerCase().includes('tab') || p.comment.toLowerCase().includes('tabbed'));
+          const tabbedUser = p.tabbed || '';  // Use participant.tabbed instead of shared mapping
+          
+          // For TAB: spots go to TABBED user, requester pays
+          let displayUser = p.redditUser;
+          let paidBy = null;
+          let key = p.redditUser;
+          
+          if (isTab && tabbedUser) {
+            displayUser = tabbedUser;  // Tabbed user gets the spots
+            paidBy = p.redditUser;  // Original requester is paying
+            key = `${tabbedUser}__TAB__${p.redditUser}`;  // Unique key per row
+          }
+          
           if (!combinedParticipants[key]) {
             combinedParticipants[key] = {
-              redditUser: p.redditUser,
+              redditUser: displayUser,
               name: p.name,
               spots: 0,
               owed: 0,
-              paid: p.paid
+              paid: p.paid,
+              paidBy: paidBy  // Store who is paying
             };
           }
           combinedParticipants[key].spots += parseInt(p.spots) || 0;
@@ -3045,8 +3181,9 @@ function updateStats() {
         });
 
         const combinedArray = Object.values(combinedParticipants);
-        const paidParticipants = combinedArray.filter(p => p.paid);
-        const unpaidParticipants = combinedArray.filter(p => !p.paid);
+        // Filter out participants with 0 spots
+        const paidParticipants = combinedArray.filter(p => p.paid && p.spots > 0);
+        const unpaidParticipants = combinedArray.filter(p => !p.paid && p.spots > 0);
 
         const totalOwed = unpaidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
         const totalPaid = paidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
@@ -3089,6 +3226,9 @@ function updateStats() {
             const initial = participant.redditUser.charAt(2).toUpperCase();
             const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
             const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
+            
+            // Add "(via ...)" note if someone else is paying
+            const viaNote = participant.paidBy ? ` <span style="font-size: 11px; color: #94a3b8;">(via ${participant.paidBy})</span>` : '';
 
             const participantEl = document.createElement('div');
             participantEl.className = 'summary-participant';
@@ -3097,7 +3237,7 @@ function updateStats() {
               <div class="summary-user-info">
                 <div class="summary-avatar">${initial}</div>
                 <div>
-                  <div class="summary-username">${participant.redditUser}</div>
+                  <div class="summary-username">${participant.redditUser}${viaNote}</div>
                   ${nameDisplay}
                 </div>
               </div>
@@ -3127,6 +3267,9 @@ function updateStats() {
             const initial = participant.redditUser.charAt(2).toUpperCase();
             const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
             const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
+            
+            // Add "(via ...)" note if someone else is paying
+            const viaNote = participant.paidBy ? ` <span style="font-size: 11px; color: #94a3b8;">(via ${participant.paidBy})</span>` : '';
 
             const participantEl = document.createElement('div');
             participantEl.className = 'summary-participant';
@@ -3135,7 +3278,7 @@ function updateStats() {
               <div class="summary-user-info">
                 <div class="summary-avatar">${initial}</div>
                 <div>
-                  <div class="summary-username">${participant.redditUser}</div>
+                  <div class="summary-username">${participant.redditUser}${viaNote}</div>
                   ${nameDisplay}
                 </div>
               </div>

@@ -219,9 +219,15 @@ app.delete('/api/admin/raffle/:id', async (req, res) => {
 app.get('/api/raffles/active', async (req, res) => {
   try {
     // Get all active raffles with their current state (NO CACHING)
-    const result = await pool.query(
-      'SELECT * FROM active_raffle ORDER BY updated_at DESC'
-    );
+    // ✅ FIX: JOIN with users table to get the correct username
+    const result = await pool.query(`
+      SELECT 
+        ar.*,
+        u.username as actual_username
+      FROM active_raffle ar
+      LEFT JOIN users u ON ar.user_id = u.id
+      ORDER BY ar.updated_at DESC
+    `);
 
     console.log('📊 Fetched', result.rows.length, 'active raffle(s)');
 
@@ -332,7 +338,7 @@ app.get('/api/raffles/active', async (req, res) => {
         id: raffle.id,
         title: raffleTitle,
         itemName: itemName,
-        host: raffle.username || 'Unknown User',
+        host: raffle.actual_username || raffle.username || 'Unknown User',  // ✅ Use actual_username from JOIN
         totalSpots: parseInt(raffle.total_spots) || 0,
         filledSpots: filledSpots,
         remainingSpots: remainingSpots,
@@ -353,6 +359,183 @@ app.get('/api/raffles/active', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching active raffles:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ADMIN: GET ALL RAFFLES (ACTIVE + HISTORY) ============
+app.get('/api/admin/all-raffles', async (req, res) => {
+  try {
+    const isAdmin = req.headers['x-user-is-admin'] === 'true';
+
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: 'Admin access required' });
+    }
+
+    // Fetch all active raffles
+    const activeResult = await pool.query(`
+      SELECT 
+        ar.id,
+        ar.user_id,
+        ar.reddit_link,
+        ar.total_spots,
+        ar.cost_per_spot,
+        ar.participants,
+        ar.created_at,
+        ar.updated_at,
+        u.username,
+        'Active' as status
+      FROM active_raffle ar
+      LEFT JOIN users u ON ar.user_id = u.id
+      ORDER BY ar.created_at DESC
+    `);
+
+    // Fetch all raffle history
+    const historyResult = await pool.query(`
+      SELECT 
+        id,
+        NULL as user_id,
+        reddit_link,
+        total_spots,
+        cost_per_spot,
+        participants,
+        raffle_date as created_at,
+        raffle_date as updated_at,
+        username,
+        status
+      FROM raffle_history
+      ORDER BY raffle_date DESC
+    `);
+
+    // Combine and format the results
+    const allRaffles = [];
+
+    // Process active raffles
+    activeResult.rows.forEach(raffle => {
+      let participants = [];
+      try {
+        if (Array.isArray(raffle.participants)) {
+          participants = raffle.participants;
+        } else if (typeof raffle.participants === 'string') {
+          participants = JSON.parse(raffle.participants);
+        } else if (raffle.participants && typeof raffle.participants === 'object') {
+          participants = raffle.participants;
+        }
+      } catch (e) {
+        participants = [];
+      }
+
+      const filledSpots = participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+      const totalRevenue = filledSpots * parseFloat(raffle.cost_per_spot || 0);
+
+      allRaffles.push({
+        id: raffle.id,
+        type: 'active',
+        username: raffle.username || 'Unknown',
+        redditLink: raffle.reddit_link || '',
+        status: 'Active',
+        date: raffle.created_at,
+        totalSpots: parseInt(raffle.total_spots) || 0,
+        filledSpots: filledSpots,
+        costPerSpot: parseFloat(raffle.cost_per_spot) || 0,
+        totalRevenue: totalRevenue.toFixed(2),
+        participants: participants
+      });
+    });
+
+    // Process history raffles
+    historyResult.rows.forEach(raffle => {
+      let participants = [];
+      try {
+        if (Array.isArray(raffle.participants)) {
+          participants = raffle.participants;
+        } else if (typeof raffle.participants === 'string') {
+          participants = JSON.parse(raffle.participants);
+        } else if (raffle.participants && typeof raffle.participants === 'object') {
+          participants = raffle.participants;
+        }
+      } catch (e) {
+        participants = [];
+      }
+
+      const filledSpots = participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+      const totalRevenue = filledSpots * parseFloat(raffle.cost_per_spot || 0);
+
+      allRaffles.push({
+        id: raffle.id,
+        type: 'history',
+        username: raffle.username || 'Unknown',
+        redditLink: raffle.reddit_link || '',
+        status: raffle.status || 'Unknown',
+        date: raffle.created_at,
+        totalSpots: parseInt(raffle.total_spots) || 0,
+        filledSpots: filledSpots,
+        costPerSpot: parseFloat(raffle.cost_per_spot) || 0,
+        totalRevenue: totalRevenue.toFixed(2),
+        participants: participants
+      });
+    });
+
+    // Sort by date (most recent first)
+    allRaffles.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Calculate stats
+    const totalCompleted = allRaffles.filter(r => r.status.toLowerCase() === 'completed').length;
+    const totalCancelled = allRaffles.filter(r => r.status.toLowerCase() === 'cancelled').length;
+
+    console.log('📊 Admin fetched', allRaffles.length, 'total raffles (' + activeResult.rows.length + ' active, ' + historyResult.rows.length + ' history)');
+
+    res.json({
+      ok: true,
+      raffles: allRaffles,
+      stats: {
+        totalActive: activeResult.rows.length,
+        totalHistory: historyResult.rows.length,
+        total: allRaffles.length,
+        totalCompleted: totalCompleted,
+        totalCancelled: totalCancelled
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all raffles:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ADMIN: DELETE ANY RAFFLE (ACTIVE OR HISTORY) ============
+app.delete('/api/admin/delete-raffle', async (req, res) => {
+  try {
+    const isAdmin = req.headers['x-user-is-admin'] === 'true';
+
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: 'Admin access required' });
+    }
+
+    const { id, type } = req.body;
+
+    if (!id || !type) {
+      return res.status(400).json({ ok: false, error: 'ID and type are required' });
+    }
+
+    console.log('🗑️  Admin deleting raffle - ID:', id, 'Type:', type);
+
+    let result;
+    if (type === 'active') {
+      result = await pool.query('DELETE FROM active_raffle WHERE id = $1 RETURNING *', [id]);
+    } else if (type === 'history') {
+      result = await pool.query('DELETE FROM raffle_history WHERE id = $1 RETURNING *', [id]);
+    } else {
+      return res.status(400).json({ ok: false, error: 'Invalid type. Must be "active" or "history"' });
+    }
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Raffle not found' });
+    }
+
+    console.log('✅ Successfully deleted raffle ID:', id, 'from', type);
+    res.json({ ok: true, message: 'Raffle deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting raffle:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
@@ -485,8 +668,24 @@ app.post('/api/activity/log', async (req, res) => {
 // Get activity log
 app.get('/api/activity/list', async (req, res) => {
   try {
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+
+    // DEBUG: Log what we received
+    console.log('🔍 GET /api/activity/list - Headers:');
+    console.log('  X-User-Name:', username);
+    console.log('  All headers:', JSON.stringify(req.headers, null, 2));
+
+    if (!username) {
+      console.warn('⚠️ No username header found, returning empty activity log');
+      // Return empty array instead of 401 - this is more graceful
+      return res.json({ ok: true, data: [] });
+    }
+
+    // ✅ FIX: Filter activities by username
     const result = await pool.query(
-      'SELECT * FROM activity_log ORDER BY timestamp DESC LIMIT 100'
+      'SELECT * FROM activity_log WHERE username = $1 ORDER BY timestamp DESC LIMIT 100',
+      [username]
     );
 
     const activities = result.rows.map(row => ({
@@ -500,6 +699,7 @@ app.get('/api/activity/list', async (req, res) => {
       timestamp: row.timestamp
     }));
 
+    console.log(`✅ Returning ${activities.length} activities for user: ${username}`);
     res.json({ ok: true, data: activities });
   } catch (error) {
     console.error('Error fetching activities:', error);
@@ -510,7 +710,21 @@ app.get('/api/activity/list', async (req, res) => {
 // Clear activity log
 app.delete('/api/activity/clear', async (req, res) => {
   try {
-    await pool.query('DELETE FROM activity_log');
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+
+    // DEBUG: Log what we received
+    console.log('🔍 DELETE /api/activity/clear - Headers:');
+    console.log('  X-User-Name:', username);
+
+    if (!username) {
+      console.warn('⚠️ No username header found, cannot clear activities');
+      return res.status(401).json({ ok: false, error: 'User not authenticated' });
+    }
+
+    // ✅ FIX: Only clear THIS user's activities
+    const result = await pool.query('DELETE FROM activity_log WHERE username = $1', [username]);
+    console.log(`✅ Cleared ${result.rowCount} activities for user: ${username}`);
     res.json({ ok: true });
   } catch (error) {
     console.error('Error clearing activity log:', error);
@@ -1307,9 +1521,6 @@ app.get('/api/profile/comparison', async (req, res) => {
 // USER MANAGEMENT ROUTES
 // ============================================
 require('./user-routes')(app, pool);
-
-// PASSWORD RESET ROUTES
-require('./password-reset-routes')(app, pool);
 
 // Start server
 app.listen(port, () => {

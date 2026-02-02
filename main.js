@@ -25,54 +25,37 @@ function createWindow() {
     width: 1600,
     height: 1020,
     resizable: true,
-    minWidth: 1200,
-    minHeight: 800,
+    minWidth: 800,      // Reduced minimum for better flexibility
+    minHeight: 600,     // Reduced minimum for better flexibility
     webPreferences: {
-      partition: 'persist:raffle-app',
       nodeIntegration: false,
       contextIsolation: true,
       devTools: true,
       webSecurity: false,  // Allow localhost requests
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      partition: 'persist:raffle-app'  // CRITICAL: Enable persistent session storage
     },
     icon: path.join(__dirname, 'icon.ico')
   });
 
   // Configure session to persist cookies - CRITICAL FIX
   const session = mainWindow.webContents.session;
-
+  
   // Enable persistent storage for cookies
   session.setUserAgent(session.getUserAgent() + ' RaffleApp/1.0');
-
-  // Log ALL cookies on startup to verify persistence
-  session.cookies.get({}).then((cookies) => {
-    log.info(`📦 Found ${cookies.length} stored cookies on startup`);
-    const sessionCookie = cookies.find(c => c.name === 'session');
-    if (sessionCookie) {
-      log.info(`✅ Session cookie found: domain=${sessionCookie.domain}, expires=${sessionCookie.expirationDate}`);
-    } else {
-      log.info('❌ No session cookie found on startup');
-    }
-  }).catch(err => {
-    log.error('Error reading cookies:', err);
-  });
-
+  
   // Log cookie changes for debugging
   session.cookies.on('changed', (event, cookie, cause, removed) => {
-    if (cookie.name === 'session') {
-      if (removed) {
-        log.info(`❌ Session cookie removed: ${cause}`);
-      } else {
-        log.info(`✅ Session cookie ${cause}: domain=${cookie.domain}, expires=${cookie.expirationDate}, httpOnly=${cookie.httpOnly}`);
-      }
+    if (!removed && cookie.name === 'session') {
+      log.info(`✅ Session cookie ${cause}: domain=${cookie.domain}, expires=${cookie.expirationDate}`);
     }
   });
 
-  // Set zoom level to 85% to reduce scrolling
-  mainWindow.webContents.setZoomFactor(0.85);
-
- // Remove the menu bar
-  mainWindow.setMenu(null);
+  // REMOVED: Fixed zoom - now using responsive CSS
+  // mainWindow.webContents.setZoomFactor(0.85);
+  
+  // Dev Tools available but not auto-opened (press F12 or Ctrl+Shift+I to open)
+  // mainWindow.webContents.openDevTools();
 
   // Open external links in system browser instead of in-app
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -100,16 +83,24 @@ function createWindow() {
   // Check if user is already logged in before deciding which page to load
   const checkSession = async () => {
     try {
-      // Check if we have a session cookie stored
-      const cookies = await session.cookies.get({ name: 'session' });
-      
-      if (cookies && cookies.length > 0) {
-        log.info(`✅ Session cookie exists, attempting to restore session...`);
-        // Load dashboard, which will check auth on the server side
+      // Wait a moment for session to be ready
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const response = await fetch('http://107.22.96.217/api/auth/current-user', {
+        credentials: 'include',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+      const data = await response.json();
+
+      if (data.ok && data.data) {
+        // User is logged in, go to dashboard
+        log.info(`✅ User session restored: ${data.data.username}`);
         mainWindow.loadURL('http://107.22.96.217/dashboard');
       } else {
-        // No session cookie, go to login
-        log.info('❌ No session cookie found, redirecting to login');
+        // Not logged in, go to login page
+        log.info('No active session found, redirecting to login');
         mainWindow.loadURL('http://107.22.96.217/login');
       }
     } catch (error) {
@@ -119,10 +110,7 @@ function createWindow() {
     }
   };
 
-  // Wait a moment for session to be fully initialized
-  setTimeout(() => {
-    checkSession();
-  }, 500);
+  checkSession();
 
   // Send version to renderer
   mainWindow.webContents.on('did-finish-load', () => {
@@ -194,11 +182,6 @@ app.whenReady().then(async () => {
     // Backends are already running via systemctl services
     console.log('✅ Connecting to localhost backends via nginx...');
     console.log('✅ Persistent session enabled with partition: persist:raffle-app');
-    
-    // Log where cookies are stored
-    const userData = app.getPath('userData');
-    console.log(`📁 User data directory: ${userData}`);
-    
     createWindow();
 
   } catch (error) {

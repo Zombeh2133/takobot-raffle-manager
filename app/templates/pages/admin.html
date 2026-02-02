@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -245,13 +246,13 @@
       position: absolute;
       top: 60px;
       left: 280px;
-      width: 1600px;
+      width: 1350px;
       height: 900px;
       overflow-y: auto;
       padding: 0 20px 20px 0;
     }
 
-    /* ✅ ADMIN PAGE NAVIGATION BUTTONS */
+    /* ✅ ADMIN PAGE NAVIGATION */
     .admin-page-nav {
       display: flex;
       gap: 12px;
@@ -582,6 +583,16 @@
       color: #991B1B;
     }
 
+    .badge.active {
+      background: #DBEAFE;
+      color: #1E40AF;
+    }
+
+    .badge.warning {
+      background: #FEF3C7;
+      color: #92400E;
+    }
+
     .empty-state {
       text-align: center;
       padding: 60px 20px;
@@ -845,6 +856,9 @@
             </button>
             <button class="admin-page-btn" onclick="window.location.href='/user-management'">
               👥 User Management
+            </button>
+            <button class="admin-page-btn" onclick="window.location.href='/master-tracker'">
+              🗂️ Master Tracker
             </button>
           </div>
         </div>

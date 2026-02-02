@@ -65,7 +65,7 @@ DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:makii@local
 EMAIL_HOST = os.environ.get("EMAIL_HOST", "smtp.gmail.com")
 EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
 EMAIL_USER = os.environ.get("EMAIL_USER", "littlesharksaba@gmail.com")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "yntfjvfkwfscsxlx")  # Gmail app password
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")  # Gmail app password
 EMAIL_FROM = os.environ.get("EMAIL_FROM", EMAIL_USER)
 FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8000")
 
@@ -217,6 +217,22 @@ def get_or_create_active_raffle_id(user_id: int) -> int:
     conn.close()
     return int(new_row["id"])
 
+def get_active_raffle_id(user_id: int):
+    """Get active raffle ID for the user WITHOUT creating one (returns None if not found)"""
+    conn = get_pg_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id FROM active_raffle
+        WHERE user_id=%s
+        ORDER BY id DESC
+        LIMIT 1
+    """, (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    
+    return int(row["id"]) if row else None
+
 def now_iso():
     return datetime.utcnow().isoformat(timespec="seconds") + "Z"
 
@@ -353,7 +369,14 @@ async def load_raffle(request: Request):
         return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
     
     try:
-        raffle_id = get_or_create_active_raffle_id(user["id"])
+        # ✅ FIX: Only GET raffle, don't create if it doesn't exist
+        raffle_id = get_active_raffle_id(user["id"])
+        
+        # If no active raffle exists, return None (user hasn't clicked "Save Setup" yet)
+        if raffle_id is None:
+            print(f"[LOAD] No active raffle found for user={user['username']}")
+            return {"ok": True, "data": None}
+        
         print(f"[LOAD] Loading raffle_id={raffle_id} for user={user['username']}")
         
         conn = get_pg_connection()
@@ -615,6 +638,74 @@ async def admin_delete_user(request: Request, user_id: int):
         return {"ok": True, "data": {"id": user_id, "deleted": True}}
     except Exception as e:
         print(f"Error deleting user: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+# ✅ NEW: Admin Get All Raffles (Active + History)
+@app.get("/api/admin/all-raffles")
+async def admin_get_all_raffles(request: Request):
+    """Proxy to Node.js to get all raffles (active + history combined)"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Admin access required"}, status_code=403)
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://localhost:3001/api/admin/all-raffles",
+                headers={
+                    "X-User-Id": str(user["id"]),
+                    "X-User-Name": user["username"],
+                    "X-User-Is-Admin": "true" if user.get("is_admin") else "false"
+                },
+                timeout=30.0
+            )
+            return JSONResponse(content=response.json(), status_code=response.status_code)
+    except Exception as e:
+        print(f"Error fetching all raffles: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+# ✅ NEW: Admin Delete Any Raffle (Active or History)
+@app.delete("/api/admin/delete-raffle")
+async def admin_delete_any_raffle(request: Request):
+    """Proxy to Node.js to delete any raffle (active or history)"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Admin access required"}, status_code=403)
+    
+    try:
+        body = await request.json()
+        raffle_id = body.get("id")
+        raffle_type = body.get("type")
+        
+        if not raffle_id or not raffle_type:
+            return JSONResponse({"ok": False, "error": "ID and type are required"}, status_code=400)
+        
+        import httpx
+        import json as json_lib
+        async with httpx.AsyncClient() as client:
+            # Use request() method instead of delete() since httpx.delete() doesn't support json/content
+            response = await client.request(
+                "DELETE",
+                "http://localhost:3001/api/admin/delete-raffle",
+                headers={
+                    "X-User-Id": str(user["id"]),
+                    "X-User-Name": user["username"],
+                    "X-User-Is-Admin": "true" if user.get("is_admin") else "false",
+                    "Content-Type": "application/json"
+                },
+                content=json_lib.dumps({"id": raffle_id, "type": raffle_type}),
+                timeout=30.0
+            )
+            return JSONResponse(content=response.json(), status_code=response.status_code)
+    except Exception as e:
+        print(f"Error deleting raffle: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 @app.get("/api/whoami")
@@ -1012,14 +1103,13 @@ async def register_page(request: Request):
     if not page.exists():
         return HTMLResponse(
             "<h1>register.html not found</h1><p>Create: app/templates/pages/register.html</p>",
-            status_code=500
+            status_code=404,
         )
     return templates.TemplateResponse("pages/register.html", {"request": request, "error": None})
 
 @app.post("/register")
-async def register_post(request: Request, username: str = Form(...), email: str = Form(...), password: str = Form(...)):
+async def register_post(request: Request, username: str = Form(...), password: str = Form(...)):
     username = username.strip()
-    email = email.strip().lower()
 
     # Simple username rules (safe + predictable)
     if len(username) < 3 or len(username) > 24:
@@ -1034,15 +1124,6 @@ async def register_post(request: Request, username: str = Form(...), email: str 
             {"request": request, "error": "Username can only contain letters, numbers, - or _."},
             status_code=400
         )
-    
-    # Email validation
-    if not email or "@" not in email or "." not in email.split("@")[-1]:
-        return templates.TemplateResponse(
-            "pages/register.html",
-            {"request": request, "error": "Please enter a valid email address."},
-            status_code=400
-        )
-    
     if len(password) < 6:
         return templates.TemplateResponse(
             "pages/register.html",
@@ -1055,10 +1136,10 @@ async def register_post(request: Request, username: str = Form(...), email: str 
     try:
         conn = get_pg_connection()
         cur = conn.cursor()
-        # Insert with email and default is_admin=false
+        # Insert with default is_admin=false
         cur.execute(
-            "INSERT INTO users (username, email, password_hash, is_admin, created_at) VALUES (%s, %s, %s, %s, NOW()) RETURNING id",
-            (username, email, pw_hash, False)
+            "INSERT INTO users (username, password_hash, is_admin, created_at) VALUES (%s, %s, %s, NOW()) RETURNING id",
+            (username, pw_hash, False)
         )
         new_id = cur.fetchone()["id"]
         conn.commit()
@@ -1069,7 +1150,7 @@ async def register_post(request: Request, username: str = Form(...), email: str 
     except psycopg2.IntegrityError:
         return templates.TemplateResponse(
             "pages/register.html",
-            {"request": request, "error": "That username or email is already taken."},
+            {"request": request, "error": "That username is already taken."},
             status_code=400
         )
     except Exception as e:
@@ -1147,7 +1228,7 @@ def send_reset_email(to_email: str, reset_token: str, username: str) -> bool:
 
         # Create message
         msg = MIMEMultipart('alternative')
-        msg['Subject'] = "🔐 TakoBot - Password Reset Request"
+        msg['Subject'] = "🔐 PokemonRaffles - Password Reset Request"
         msg['From'] = EMAIL_FROM
         msg['To'] = to_email
 
@@ -1162,7 +1243,7 @@ def send_reset_email(to_email: str, reset_token: str, username: str) -> bool:
               <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2px; border-radius: 12px;">
                 <div style="background: white; padding: 40px 30px; border-radius: 10px;">
                   <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="color: #667eea; margin: 0; font-size: 28px;">🐙 TakoBot</h1>
+                    <h1 style="color: #667eea; margin: 0; font-size: 28px;">🎮 PokemonRaffles</h1>
                     <p style="color: #764ba2; margin: 5px 0 0 0; font-size: 14px;">Raffle Management System</p>
                   </div>
 
@@ -1209,8 +1290,8 @@ def send_reset_email(to_email: str, reset_token: str, username: str) -> bool:
 
                   <div style="margin-top: 30px; text-align: center;">
                     <p style="color: #999; font-size: 12px; margin: 0;">
-                      TakoBot Team 🐙<br>
-                      Community Raffle Management Platform
+                      PokemonRaffles Team 🐙<br>
+                      Secure Raffle Management for r/PokemonRaffles
                     </p>
                   </div>
                 </div>
@@ -1673,6 +1754,20 @@ async def admin_page(request: Request):
         return HTMLResponse("<h1>admin.html not found</h1><p>Create: app/templates/pages/admin.html</p>", status_code=404)
 
     return templates.TemplateResponse("pages/admin.html", {"request": request, "user": user})
+
+@app.get("/master-tracker", response_class=HTMLResponse)
+async def master_tracker_page(request: Request):
+    """Master Raffle Tracker page - requires admin privileges"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # Always render the page - let JavaScript handle access control with modal
+    page = TEMPLATES_DIR / "pages" / "master-tracker.html"
+    if not page.exists():
+        return HTMLResponse("<h1>master-tracker.html not found</h1><p>Create: app/templates/pages/master-tracker.html</p>", status_code=404)
+
+    return templates.TemplateResponse("pages/master-tracker.html", {"request": request, "user": user})
 
 @app.get("/user-management", response_class=HTMLResponse)
 async def user_management_page(request: Request):

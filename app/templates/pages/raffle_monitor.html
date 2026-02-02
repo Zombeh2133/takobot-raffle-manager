@@ -22,10 +22,10 @@
     }
 
     body{
-      background-color:#FAF8F6;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #fce7f3 100%);
       display:flex;
-      justify-content:flex-start;
-      align-items:flex-start;
+      justify-content:center;
+      align-items:center;
       height:100vh;
       margin:0;
       font-family:'Inter',sans-serif;
@@ -35,7 +35,7 @@
     /* Scale down for smaller screens */
     @media (max-width: 1600px), (max-height: 1020px) {
       .white-square {
-        transform-origin: top left;
+        transform-origin: center center;
         transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
       }
     }
@@ -214,7 +214,7 @@
       position: relative;
       width: var(--app-width);
       height: var(--app-height);
-      background-color: white;
+      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #fce7f3 100%);
       display: flex;
     }
 
@@ -223,13 +223,14 @@
       width: 100%;
       flex: 1;
       overflow-y: auto;
-      background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 50%, #fce7f3 100%);
-      padding: 20px;
+      background: transparent;
+      padding: 20px 0;
     }
 
     /* MONITOR STYLES */
     .monitor-header {
       margin-bottom: 20px;
+      padding: 0 20px;
     }
 
     .monitor-title {
@@ -307,6 +308,7 @@
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
       margin-bottom: 16px;
+      padding: 0 20px;
     }
 
     .stat-card {
@@ -357,6 +359,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 12px;
+      padding: 0 20px;
     }
 
     .raffle-card {
@@ -631,6 +634,7 @@
       padding: 40px;
       text-align: center;
       border: 1px solid #e5e7eb;
+      margin: 0 20px;
     }
 
     .empty-icon {
@@ -668,7 +672,7 @@
     <!-- MAIN CONTENT -->
     <div class="content-area">
       <!-- ✅ ADMIN PAGE NAVIGATION -->
-      <div class="admin-page-nav" style="display: flex; gap: 12px; margin-bottom: 20px;">
+      <div class="admin-page-nav" style="display: flex; gap: 12px; margin-bottom: 20px; padding: 0 20px;">
         <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/admin'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
           📊 Analytics
         </button>
@@ -677,6 +681,9 @@
         </button>
         <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/user-management'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
           👥 User Management
+        </button>
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/master-tracker'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          🗂️ Master Tracker
         </button>
       </div>
 
@@ -763,7 +770,7 @@
   </div>
 
   <!-- Admin access control -->
-  <script src="/static/sidebar-admin-control.js"></script>
+  <script src="/sidebar-admin-control.js"></script>
 
   <script>
     // Initial load
@@ -1015,7 +1022,7 @@
       }
     }
 
-    // loadUserInfo(); // Commented out - elements do not exist on this page
+    loadUserInfo();
 
     // ✅ DELETE RAFFLE FUNCTION
     async function deleteRaffle(raffleId) {
