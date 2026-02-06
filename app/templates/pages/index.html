@@ -12,21 +12,24 @@
 
   <!-- Dark Mode System -->
   <link rel="stylesheet" href="./static/dark-mode.css" />
-  <script src="/static/dark-mode.js"></script>
+  <script src="./static/dark-mode.js"></script>
 
 <!-- Config File -->
-  <script src="/static/config.js"></script>
+  <script src="./static/config.js"></script>
+
+<!-- Update UI -->
+<link rel="stylesheet" href="./static/update-notifications.css">
 
   <style>
     /* ==============================
        MASTER LAYOUT VARIABLES
        ============================== */
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
-      --content-left: 360px;
-      --content-width: 1120px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
 /* CHANGE TO: */
@@ -41,12 +44,12 @@ body {
   overflow: hidden;
 }
 
-/* AND UPDATE the media query transform-origin: */
-@media (max-width: 1600px), (max-height: 1020px) {
-  .white-square {
-    transform-origin: top left;  /* Scale from top-left corner */
-    transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-  }
+/* Base white-square styling */
+.white-square {
+  position: relative;
+  width: var(--app-width);
+  height: var(--app-height);
+  z-index: 1; /* Lower z-index so modals appended to body appear above */
 }
 
     /* TOP SIDEBAR */
@@ -956,235 +959,6 @@ body {
     color: #f59e0b;
 }
 
-/* ==============================
-   UPDATE NOTIFICATION STYLES
-   ============================== */
-
-/* Toast Notification */
-.update-toast {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-  color: white;
-  padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.4);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  z-index: 999999;
-  opacity: 0;
-  transform: translateX(400px);
-  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-.update-toast.show {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.update-toast-icon {
-  font-size: 20px;
-  animation: rotate 2s linear infinite;
-}
-
-@keyframes rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-/* Modal Overlay */
-.update-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999999;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.update-modal-overlay.show {
-  opacity: 1;
-}
-
-/* Modal Box */
-.update-modal {
-  background: white;
-  border-radius: 24px;
-  width: 480px;
-  max-width: 90vw;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  overflow: hidden;
-  transform: scale(0.9) translateY(20px);
-  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.update-modal-overlay.show .update-modal {
-  transform: scale(1) translateY(0);
-}
-
-/* Modal Header */
-.update-modal-header {
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-  padding: 32px;
-  text-align: center;
-}
-
-.update-modal-icon {
-  width: 72px;
-  height: 72px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 16px;
-  font-size: 36px;
-}
-
-.update-modal-title {
-  font-size: 26px;
-  font-weight: 800;
-  color: white;
-  margin: 0 0 8px 0;
-  letter-spacing: -0.5px;
-}
-
-.update-modal-version {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.15);
-  padding: 6px 16px;
-  border-radius: 20px;
-  display: inline-block;
-}
-
-/* Modal Body */
-.update-modal-body {
-  padding: 32px;
-}
-
-.update-modal-message {
-  font-size: 16px;
-  font-weight: 500;
-  color: #374151;
-  line-height: 1.6;
-  margin: 0 0 24px 0;
-  text-align: center;
-}
-
-/* Modal Actions */
-.update-modal-actions {
-  display: flex;
-  gap: 12px;
-}
-
-.update-modal-btn {
-  flex: 1;
-  padding: 14px 24px;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 700;
-  font-family: 'Inter', sans-serif;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.update-modal-btn-primary {
-  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
-  color: white;
-}
-
-.update-modal-btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
-}
-
-.update-modal-btn-primary:active {
-  transform: translateY(0);
-}
-
-.update-modal-btn-secondary {
-  background: #F3F4F6;
-  color: #6B7280;
-}
-
-.update-modal-btn-secondary:hover {
-  background: #E5E7EB;
-}
-
-/* Download Progress */
-.update-downloading {
-  text-align: center;
-}
-
-.update-downloading-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111;
-  margin-bottom: 20px;
-}
-
-.update-progress-bar {
-  width: 100%;
-  height: 12px;
-  background: #E5E7EB;
-  border-radius: 999px;
-  overflow: hidden;
-  margin-bottom: 12px;
-}
-
-.update-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8B5CF6 0%, #7C3AED 100%);
-  border-radius: 999px;
-  width: 0%;
-  transition: width 0.3s ease;
-}
-
-.update-progress-text {
-  font-size: 14px;
-  font-weight: 600;
-  color: #6B7280;
-}
-
-/* Install Ready */
-.update-install-ready {
-  text-align: center;
-}
-
-.update-install-icon {
-  font-size: 64px;
-  margin-bottom: 16px;
-}
-
-.update-install-title {
-  font-size: 20px;
-  font-weight: 800;
-  color: #111;
-  margin-bottom: 12px;
-}
-
-.update-install-message {
-  font-size: 15px;
-  font-weight: 500;
-  color: #6B7280;
-  line-height: 1.6;
-  margin-bottom: 24px;
-}
-
     </style>
 
 <body>
@@ -1196,8 +970,8 @@ body {
     <div class="square" id="activeSquare"></div>
 
     <!-- ICONS -->
-    <div id="themeToggle"><img src="/static/assets/Icons/OFF.png"></div>
-    <div id="settingsBtn"><img src="/static/assets/Icons/Notifications%20Copy.png"></div>
+    <div id="themeToggle"><img src="./static/assets/Icons/OFF.png"></div>
+    <div id="settingsBtn"><img src="./static/assets/Icons/Notifications%20Copy.png"></div>
 
     <!-- CONTENT -->
     <div class="page-title">Overview</div>
@@ -1482,18 +1256,18 @@ body {
 
 </div> <!-- closes .mid-row -->
 
- <!-- NAV -->
-    <nav class="sidebar-nav" id="sidebarNav">
-      <a class="nav-item is-active" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
-      <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
-      <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
-      <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/activity.png" alt="">Activity Log</a>
-      <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
-      <a class="nav-item" href="/discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
-      <a class="nav-item" href="/help"><img class="nav-icon" src="/static/assets/Icons/help.png" alt="">Help</a>
-      <a class="nav-item" href="/donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
-      <a class="nav-item" href="/admin">Admin</a>
-    </nav>
+   <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item is-active" href="./index.html"><img class="nav-icon" src="./static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="./active_raffle.html"><img class="nav-icon" src="./static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item" href="./raffle_history.html"><img class="nav-icon" src="./static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="./activity_log.html"><img class="nav-icon" src="./static/assets/Icons/activity.png" alt="">Activity Log</a>
+  <a class="nav-item" href="./profile.html"><img class="nav-icon" src="./static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="./discord.html"><img class="nav-icon" src="./static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="./help.html"><img class="nav-icon" src="./static/assets/Icons/help.png" alt="">Help</a>
+  <a class="nav-item" href="./donate.html"><img class="nav-icon" src="./static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+  <a class="nav-item" href="./admin.html">Admin</a>
+</nav>
 
 <!-- USER SECTION -->
 <div class="user-section" id="userSection">
@@ -1520,7 +1294,9 @@ body {
 
     // Fetch current user info
     try {
-      const response = await fetch(window.API_BASE_URL + '/api/auth/current-user');
+      const response = await fetch(window.API_BASE_URL + '/api/auth/current-user', {
+        credentials: 'include'  // ✅ CRITICAL: Send session cookie
+      });
       if (response.ok) {
         const result = await response.json();
         if (result.ok && result.data) {
@@ -1610,7 +1386,9 @@ body {
     // Check if user is admin (async)
     (async function() {
       try {
-        const response = await fetch(window.API_BASE_URL + '/api/auth/current-user');
+        const response = await fetch(window.API_BASE_URL + '/api/auth/current-user', {
+          credentials: 'include'  // ✅ CRITICAL: Send session cookie
+        });
         if (!response.ok) {
           console.log('🔒 Admin check: endpoint returned', response.status);
           return;
@@ -2341,39 +2119,28 @@ if (window.electronAPI) {
     }
   });
 
- // Download progress - update the progress bar
+  // Download progress
   window.electronAPI.onUpdateProgress((percent) => {
     if (updateStatusEl) {
       updateStatusEl.textContent = `Downloading ${Math.round(percent)}%`;
       updateStatusEl.className = 'status-badge';
       updateStatusEl.style.color = '#8B5CF6';
     }
-    
-    // Update the beautiful progress bar in the modal
-    updateDownloadProgress(percent);
   });
 
- // Download progress - UPDATE THE PROGRESS BAR
-  window.electronAPI.onUpdateProgress((percent) => {
-    if (updateStatusEl) {
-      updateStatusEl.textContent = `Downloading ${Math.round(percent)}%`;
-      updateStatusEl.className = 'status-badge';
-      updateStatusEl.style.color = '#8B5CF6';
-    }
-    
-    // Update the modal progress bar
-    updateDownloadProgress(percent);
-  });
-
-  // Update downloaded - ready to install (USE CUSTOM MODAL, NOT NATIVE DIALOG)
-   window.electronAPI.onUpdateDownloaded(() => {
+  // Update downloaded - ready to install
+  window.electronAPI.onUpdateDownloaded(() => {
     if (updateStatusEl) {
       updateStatusEl.textContent = 'Ready to install';
+      updateStatusEl.className = 'status-badge';
       updateStatusEl.style.color = '#16A34A';
     }
 
-    // Show beautiful custom modal instead of ugly native dialog
-    showInstallReadyModal();
+    const confirmed = confirm('Update downloaded successfully!\n\nRestart now to install the update?');
+
+    if (confirmed) {
+      window.electronAPI.quitAndInstall();
+    }
   });
 }
 
@@ -2620,7 +2387,6 @@ if (window.electronAPI) {
 }
 
 </script>
-
   <!-- ACCESS DENIED MODAL -->
   <div class="access-denied-overlay" id="accessDeniedOverlay" onclick="closeAccessDenied(event)">
     <div class="access-denied-modal" onclick="event.stopPropagation()">
@@ -2642,7 +2408,7 @@ if (window.electronAPI) {
     </div>
   </div>
 
-<script src="/static/update-notifications.js"></script>
+<script src="./static/update-notifications.js"></script>
 
 </body>
 </html>

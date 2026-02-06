@@ -1013,9 +1013,14 @@
           const data = await response.json();
           const user = data.data;
           
-          document.getElementById('userName').textContent = user.username || 'User';
-          document.getElementById('userRole').textContent = user.isAdmin ? 'Admin' : 'User';
-          document.getElementById('userAvatar').textContent = (user.username || 'U')[0].toUpperCase();
+          // ✅ FIX: Add null checks before setting textContent
+          const userNameEl = document.getElementById('userName');
+          const userRoleEl = document.getElementById('userRole');
+          const userAvatarEl = document.getElementById('userAvatar');
+          
+          if (userNameEl) userNameEl.textContent = user.username || 'User';
+          if (userRoleEl) userRoleEl.textContent = user.isAdmin ? 'Admin' : 'User';
+          if (userAvatarEl) userAvatarEl.textContent = (user.username || 'U')[0].toUpperCase();
         }
       } catch (error) {
         console.error('Failed to load user info:', error);

@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  
+
   <!-- Dark Mode System -->
   <link rel="stylesheet" href="/static/dark-mode.css" />
   <script src="/static/dark-mode.js"></script>
@@ -19,11 +19,11 @@
        MASTER LAYOUT VARIABLES
        ============================== */
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
-      --content-left: 360px;
-      --content-width: 1120px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
      body{
@@ -37,13 +37,7 @@
       overflow: hidden;
     }
 
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: top left;  /* Scale from top-left corner */
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
-    }
+
 
    .top-sidebar{
       position:absolute; top:0; left:-30px;
@@ -1115,18 +1109,18 @@
   </div>
 </div>
 
- <!-- NAV -->
-    <nav class="sidebar-nav" id="sidebarNav">
-      <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
-      <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
-      <a class="nav-item is-active" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
-      <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/activity.png" alt="">Activity Log</a>
-      <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
-      <a class="nav-item" href="/discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
-      <a class="nav-item" href="/help"><img class="nav-icon" src="/static/assets/Icons/help.png" alt="">Help</a>
-      <a class="nav-item" href="/donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
-      <a class="nav-item" href="/admin">Admin</a>
-    </nav>
+   <!-- NAV -->
+<nav class="sidebar-nav" id="sidebarNav">
+  <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
+  <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
+  <a class="nav-item is-active" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
+  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/activity.png" alt="">Activity Log</a>
+  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
+  <a class="nav-item" href="/discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
+  <a class="nav-item" href="/help"><img class="nav-icon" src="/static/assets/Icons/help.png" alt="">Help</a>
+  <a class="nav-item" href="/donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
+  <a class="nav-item" href="/admin">Admin</a>
+</nav>
 
 <!-- USER SECTION -->
 <div class="user-section" id="userSection">
@@ -1142,7 +1136,7 @@
 
 <!-- APP VERSION -->
 <div class="app-version">v1.0.0</div>
-  
+
 <script>
   // ============ USER SECTION & LOGOUT ============
   (async function() {
@@ -1158,14 +1152,14 @@
         const result = await response.json();
         if (result.ok && result.data) {
           const user = result.data;
-          
+
           // Update username
           if (user.username) {
             userName.textContent = user.username;
             // Update avatar with first letter
             userAvatar.textContent = user.username.charAt(0).toUpperCase();
           }
-          
+
           // Update role
           if (user.role) {
             userRole.textContent = user.role.charAt(0).toUpperCase() + user.role.slice(1);
@@ -1208,12 +1202,12 @@
   (function() {
     const sidebarNav = document.getElementById('sidebarNav');
     if (!sidebarNav) return;
-    
+
     // Find admin links
     const allLinks = sidebarNav.querySelectorAll('.nav-item');
     allLinks.forEach(link => {
       const href = link.getAttribute('href');
-      
+
       // Prevent reload when clicking raffle history link on raffle history page
       if (href === '/raffle-history') {
         link.addEventListener('click', function(e) {
@@ -1221,25 +1215,31 @@
           // Do nothing - already on this page
         });
       }
-      
-      if (href === '/admin' || href === '/user-management') {
-        // Add click handler that runs BEFORE navigation
-        link.addEventListener('click', function(e) {
-          if (!window.adminCheckComplete) {
-            e.preventDefault();
-            e.stopPropagation();
+
+      if (href === '/admin' || href === '/user-management' || href === './admin.html' || href === './user_management.html') {
+        // Add click handler that runs BEFORE navigation - block by default, only allow if admin
+        link.addEventListener('click', async function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Check if user is admin
+          if (window.adminCheckComplete === true) {
+            // Admin confirmed - allow navigation
+            window.location.href = href;
+          } else {
+            // Non-admin or check not complete - show modal and stay here
             showAccessDenied();
           }
         }, true);
       }
     });
-    
+
     // Check if user is admin (async)
     (async function() {
       try {
         const response = await fetch('/api/auth/current-user');
         if (!response.ok) return;
-        
+
         const data = await response.json();
         if (data.data?.isAdmin === true) {
           window.adminCheckComplete = true;
@@ -1310,7 +1310,7 @@
       // Combine duplicates by reddit username
       const participants = raffle.participants || [];
       const combinedParticipants = {};
-      
+
       participants.forEach(p => {
         const key = p.redditUser;
         if (!combinedParticipants[key]) {
@@ -1421,7 +1421,7 @@
         try {
           const data = JSON.parse(cached);
           const cacheAge = Date.now() - (data.timestamp || 0);
-          
+
           // ✅ ONLY show cache if it's for the CURRENT USER
           if (cacheAge < 300000 && data.raffles && data.username === currentUsername) {
             allRaffles = data.raffles;
@@ -1461,19 +1461,19 @@
           // Filter raffles to only show those created by the current user
           allRaffles = allData.filter(raffle => {
             // Match by created_by field or host_username field
-            return raffle.created_by === currentUsername || 
+            return raffle.created_by === currentUsername ||
                    raffle.host_username === currentUsername ||
                    raffle.username === currentUsername;
           });
           console.log(`📊 Showing ${allRaffles.length} raffles for ${currentUsername} (out of ${allData.length} total)`);
-          
+
           // CACHE: Save filtered user-specific raffles
           localStorage.setItem('raffle_history_cache', JSON.stringify({
             raffles: allRaffles,
             username: currentUsername,
             timestamp: Date.now()
           }));
-          
+
           renderRaffles();
         } else {
           console.error('Failed to load raffle history:', result.error);
@@ -1670,14 +1670,14 @@ const winnerHtml = raffle.winner
           const result = await API.deleteRaffle(raffle.id);
           if (result.ok) {
             allRaffles = allRaffles.filter(r => r.id !== raffle.id);
-            
+
             // UPDATE CACHE: Remove deleted raffle
             localStorage.setItem('raffle_history_cache', JSON.stringify({
               raffles: allRaffles,
               username: currentUsername,
               timestamp: Date.now()
             }));
-            
+
             renderRaffles();
           } else {
             alert('Failed to delete raffle: ' + (result.error || 'Unknown error'));
@@ -1785,16 +1785,16 @@ const winnerHtml = raffle.winner
 (function() {
   const sidebarNav = document.getElementById('sidebarNav');
   if (!sidebarNav) return;
-  
+
   // Find the Active Raffle link
-  const activeRaffleLink = Array.from(sidebarNav.querySelectorAll('.nav-item')).find(link => 
+  const activeRaffleLink = Array.from(sidebarNav.querySelectorAll('.nav-item')).find(link =>
     link.getAttribute('href') === '/active-raffle'
   );
-  
+
   if (activeRaffleLink) {
     activeRaffleLink.addEventListener('click', function(e) {
       e.preventDefault();
-      
+
       // Navigate without full page reload
       window.location.replace('/active-raffle');
     });

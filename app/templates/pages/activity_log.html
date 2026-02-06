@@ -19,11 +19,11 @@
        MASTER LAYOUT VARIABLES
        ============================== */
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
-      --content-left: 360px;
-      --content-width: 1120px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
     body{
@@ -37,13 +37,7 @@
       overflow: hidden;
     }
 
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: top left;  /* Scale from top-left corner */
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
-    }
+
 
     .top-sidebar{
       position:absolute; top:0; left:-30px;
@@ -1036,7 +1030,11 @@
       async function loadActivities() {
         try {
           // Get current user first
-          const userRes = await fetch('/api/auth/current-user');
+          const userRes = await fetch('/api/auth/current-user').catch(err => {
+            console.warn('Network error fetching user:', err.message);
+            return { ok: false };
+          });
+          
           if (!userRes.ok) {
             console.error('Failed to get current user for activity log');
             allActivities = [];
@@ -1054,7 +1052,11 @@
           const currentUsername = userResult.data.username;
           
           // Get all activities
-          const result = await API.getActivities();
+          const result = await API.getActivities().catch(err => {
+            console.warn('Network error fetching activities:', err.message);
+            return { ok: false, data: [] };
+          });
+          
           if (result.ok) {
             const allData = result.data || [];
             

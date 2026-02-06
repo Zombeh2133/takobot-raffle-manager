@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -17,9 +16,11 @@
 
   <style>
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
     body{
@@ -33,13 +34,7 @@
       overflow: hidden;
     }
 
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: top left;  /* Scale from top-left corner */
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
-    }
+
 
     .top-sidebar{
       position:absolute; top:0; left:-30px;
@@ -901,12 +896,12 @@
 
         <div class="stat-card blue">
           <div class="stat-header">
-            <div class="stat-label">Active Users</div>
-            <div class="stat-icon">👥</div>
+            <div class="stat-label">Completion Rate</div>
+            <div class="stat-icon">📊</div>
           </div>
-          <div class="stat-value" id="statUsers">0</div>
-          <div class="stat-change neutral" id="usersChange">
-            <span>—</span> vs last year
+          <div class="stat-value" id="statCompletionRate">0%</div>
+          <div class="stat-change neutral" id="completionRateChange">
+            <span>All raffles</span>
           </div>
         </div>
       </div>
@@ -1238,6 +1233,7 @@
     const statCancelled = document.getElementById('statCancelled');
     const statRevenue = document.getElementById('statRevenue');
     const statUsers = document.getElementById('statUsers');
+    const statCompletionRate = document.getElementById('statCompletionRate');
 
     // Chart instances
     let monthlyChart = null;
@@ -1321,7 +1317,9 @@
       statCompleted.textContent = data.totalCompleted.toLocaleString();
       statCancelled.textContent = data.totalCancelled.toLocaleString();
       statRevenue.textContent = '$' + (data.totalRevenue / 1000).toFixed(1) + 'K';
-      statUsers.textContent = data.uniqueUsers.toLocaleString();
+      
+      // Use overallCompletionRate from backend (calculated from ALL raffles)
+      statCompletionRate.textContent = (data.overallCompletionRate || 0) + '%';
     }
 
     function renderMonthlyChart(monthlyData) {

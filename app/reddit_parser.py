@@ -87,6 +87,30 @@ def get_random_user_agent():
     """Get a random user agent"""
     return random.choice(USER_AGENTS)
 
+def clean_comment_text(text: str) -> str:
+    """Remove URLs, images, and other non-text content from comment"""
+    if not text:
+        return ""
+    
+    # Remove URLs (http, https, www)
+    text = re.sub(r'https?://[^\s]+', '', text)
+    text = re.sub(r'www\.[^\s]+', '', text)
+    
+    # Remove markdown image syntax ![alt](url)
+    text = re.sub(r'!\[([^\]]*)\]\([^\)]+\)', '', text)
+    
+    # Remove markdown link syntax [text](url) - keep the text part
+    text = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', text)
+    
+    # Remove image file extensions
+    text = re.sub(r'\S+\.(jpg|jpeg|png|gif|webp|svg|bmp)\b', '', text, flags=re.IGNORECASE)
+    
+    # Clean up extra whitespace
+    text = re.sub(r'\s+', ' ', text)
+    text = text.strip()
+    
+    return text
+
 def parse_spots_with_ai(text: str) -> Tuple[bool, Optional[int]]:
     """Use OpenAI to parse spot count from comment text"""
     if not OPENAI_API_KEY:
@@ -110,26 +134,39 @@ def parse_spots_with_ai(text: str) -> Tuple[bool, Optional[int]]:
                         'content': '''You are a Reddit raffle comment parser. Your job is to extract the TOTAL NUMBER OF SPOTS being requested from a comment.
 
 CRITICAL RULES:
+0. **REJECT COMMENTS WITH NO NUMBERS**: If a comment contains NO numbers at all, return 0. Only parse comments that contain at least one number.
+   - Example: "sorry for the slow day, will be cancelling" → 0 (no numbers = not a spot request)
+   - Example: "This raffle has been cancelled" → 0 (no numbers = not a spot request)
+   - Example: "good luck everyone!" → 0 (no numbers = not a spot request)
 1. Count EACH explicitly mentioned spot number as 1 spot (e.g., "5, 12, 99" = 3 spots)
 2. Count ranges inclusively (e.g., "1-20" = 20 spots, "5-8" = 4 spots)
-3. "random" or "rando" alone = 1 spot
+   - IMPORTANT: When you see MULTIPLE ranges separated by commas, count EACH range separately and ADD them together
+   - Example: "1-5, 17-21" means range 1 to 5 (that's 5 spots) PLUS range 17 to 21 (that's 5 spots) = 10 total spots
+3. "random" or "rando" alone (case-insensitive) = 1 spot (e.g., "Random", "random", "RANDOM" all = 1 spot)
+   - IMPORTANT: When "and random" or "and Random" appears AFTER a list of explicit numbers, add 1 spot to the count
+   - Example: "6,30,44,67 and Random" = count the 4 numbers (6, 30, 44, 67) PLUS the word "Random" = 5 total spots
 4. "X randoms" = X spots (e.g., "5 randoms" = 5 spots)
 5. "X spots" means X spots total (e.g., "5 spots" = 5 spots)
 6. ADD explicit spots + random spots together (e.g., "spot 5, 12 and 3 randoms" = 2 + 3 = 5 total)
 7. Ignore any names, dollar amounts, or non-spot-request text
 8. Return ONLY the total number, nothing else
 9. IGNORE numbers in usernames after "tabbed" or "tag" keywords (e.g., "tabbed chewy96" - ignore the 96)
-10. Handle slang: "booties" = randoms, "drama" = random
+   - EXCEPTION: When there are MULTIPLE comma-separated numbers BEFORE the word "tabbed", count ALL those numbers
+   - Example: "5,9,12,56,65 tabbed doublechen" = count all 5 numbers (5, 9, 12, 56, 65) = 5 spots (ignore "doublechen")
+   - Example: "37 tabbed slum" = only 1 number before "tabbed" = 1 spot
+10. Handle slang: "booties" = randoms, "drama" = 0 spots (parsed but defaults to 0)
 11. Handle typos/misspellings of "random": "tandom", "randon", "milking", etc.
 12. Words before "random" like "additional", "more", "extra" don't negate the quantity (e.g., "10 additional random" = 10 spots)
 13. "or" means ONE choice, not both (e.g., "spot 33 or 34" = 1 spot, not 2)
 14. "sub" or "if not available" indicates conditional/substitute - count only ONE set (e.g., "2,22 sub 13,10" = 2 spots, not 4)
 15. "spot X" refers to a specific spot NUMBER, which counts as 1 spot (e.g., "spot 82" = 1 spot, not 82 spots)
-16. "X tabbed [username]" or "Spot X tabbed to [username]" = requesting 1 specific spot number X (TAB format, e.g., "37 tabbed slum" = 1 spot, "Spot 32 tabbed to chen" = 1 spot)
-17. Ignore conversational context - only parse actual requests
-18. "close" or "closer" = 0 spots (special keyword for closing raffle)
+16. Ignore conversational context - only parse actual requests
+17. "close" or "closer" = 0 spots (special keyword for closing raffle)
 
 TRAINING EXAMPLES (learn from these mistakes):
+"Random" → 1 (just the word "random" alone, any capitalization)
+"random" → 1 (lowercase works too)
+"RANDOM" → 1 (uppercase works too)
 "5 booties please" → 5 (not 0, "booties" is slang for randoms)
 "10 additional random please" → 10 (not 1, "additional" doesn't negate the 10)
 "10 tandom" → 10 (not 1, "tandom" is a typo for "random")
@@ -152,6 +189,9 @@ TRAINING EXAMPLES (learn from these mistakes):
 "sniping" → 1 (variation of "sniper")
 "10-20 24 28 35 67 69 no sub" → Count the spots in the request, but NOTE: actual assigned spots depend on host confirmation
 "17 no sub" → Requested spot may result in 0 if taken (no substitution allowed, host won't reply)
+"1-5, 10 random" → 15 (range 1-5 = 5 spots, PLUS 10 random = 10 spots, ADD them: 5 + 10 = 15 total)
+"5 more tabbed to dr wins" → 5 (\"5 more\" means 5 spots, don't count it as 1 spot)
+"drama" → 0 (special keyword meaning participant wants to be on waitlist, no spots requested)
 
 MORE EXAMPLES:
 "Spot 5 and 12 please" → 2
@@ -167,7 +207,10 @@ MORE EXAMPLES:
 "3 even" → 3
 "5 odd" → 5
 "snipe" → 1
-"close" → 0'''
+"close" → 0
+"6,30,44,67 and Random" → 5 (4 explicit spots + 1 random = 5 total)
+"5,9,12,56,65 tabbed doublechen w/t" → 5 (5 explicit comma-separated spots)
+"1-5, 17-21" → 10 (range 1-5 = 5 spots, range 17-21 = 5 spots, total = 10)'''
                     },
                     {
                         'role': 'user',
@@ -224,27 +267,48 @@ def parse_spots_with_ai_batch(comments: List[str]) -> List[Tuple[bool, Optional[
                         'content': '''You are a Reddit raffle comment parser. Parse EACH numbered comment and return ONLY a JSON array of spot counts.
 
 CRITICAL RULES:
+0. **REJECT COMMENTS WITH NO NUMBERS**: If a comment contains NO numbers at all, return 0. Only parse comments that contain at least one number.
+   - Example: "sorry for the slow day, will be cancelling" → 0 (no numbers = not a spot request)
+   - Example: "This raffle has been cancelled" → 0 (no numbers = not a spot request)
+   - Example: "good luck everyone!" → 0 (no numbers = not a spot request)
 1. Count EACH explicitly mentioned spot number as 1 spot (e.g., "5, 12, 99" = 3 spots)
 2. Count ranges inclusively (e.g., "1-20" = 20 spots, "5-8" = 4 spots)
-3. "random" or "rando" alone = 1 spot
+   - IMPORTANT: When you see MULTIPLE ranges separated by commas, count EACH range separately and ADD them together
+   - Example: "1-5, 17-21" means range 1 to 5 (that's 5 spots) PLUS range 17 to 21 (that's 5 spots) = 10 total spots
+3. "random" or "rando" alone (case-insensitive) = 1 spot (e.g., "Random", "random", "RANDOM" all = 1 spot)
+   - IMPORTANT: When "and random" or "and Random" appears AFTER a list of explicit numbers, add 1 spot to the count
+   - Example: "6,30,44,67 and Random" = count the 4 numbers (6, 30, 44, 67) PLUS the word "Random" = 5 total spots
 4. "X randoms" = X spots (e.g., "5 randoms" = 5 spots)
 5. "X spots" means X spots total (e.g., "5 spots" = 5 spots)
 6. ADD explicit spots + random spots together (e.g., "spot 5, 12 and 3 randoms" = 2 + 3 = 5 total)
 7. Ignore any names, dollar amounts, or non-spot-request text
 8. IGNORE numbers in usernames after "tabbed" or "tag" keywords (e.g., "tabbed chewy96" - ignore the 96)
-9. Handle slang: "booties" = randoms, "drama" = random
+   - EXCEPTION: When there are MULTIPLE comma-separated numbers BEFORE the word "tabbed", count ALL those numbers
+   - Example: "5,9,12,56,65 tabbed doublechen" = count all 5 numbers (5, 9, 12, 56, 65) = 5 spots (ignore "doublechen")
+   - Example: "37 tabbed slum" = only 1 number before "tabbed" = 1 spot
+9. Handle slang: "booties" = randoms, "drama" = 0 spots (parsed but defaults to 0)
 10. Handle typos/misspellings of "random": "tandom", "randon", "milking", etc.
 11. Words before "random" like "additional", "more", "extra" don't negate the quantity (e.g., "10 additional random" = 10 spots)
 12. "or" means ONE choice, not both (e.g., "spot 33 or 34" = 1 spot, not 2)
 13. "sub" or "if not available" indicates conditional/substitute - count only ONE set (e.g., "2,22 sub 13,10" = 2 spots, not 4)
 14. "spot X" refers to a specific spot NUMBER, which counts as 1 spot (e.g., "spot 82" = 1 spot, not 82 spots)
-15. "X tabbed [username]" or "Spot X tabbed to [username]" = requesting 1 specific spot number X (TAB format, e.g., "37 tabbed slum" = 1 spot, "Spot 32 tabbed to chen" = 1 spot)
-16. Ignore conversational context - only parse actual requests
-17. "close" or "closer" = 0 spots (special keyword for closing raffle)
+15. Ignore conversational context - only parse actual requests
+16. "close" or "closer" = 0 spots (special keyword for closing raffle)
 
 OUTPUT FORMAT:
 Return ONLY a JSON array of numbers, one per comment, in order.
 Example: [2, 5, 20, 4, 1, 0]
+
+TRAINING EXAMPLES (learn from these):
+"Random" → 1
+"6,30,44,67 and Random" → 5 (4 explicit spots + 1 random = 5 total)
+"5,9,12,56,65 tabbed doublechen w/t" → 5 (5 explicit comma-separated spots)
+"1-5, 17-21" → 10 (range 1-5 = 5 spots, range 17-21 = 5 spots, total = 10)
+"37 tabbed slum" → 1 (single number with tabbed = 1 spot)
+"Spot 5 and 12 please" → 2
+"5 spots please" → 5
+"1-20" → 20
+"Spot 17, 23, and 2 randoms" → 4
 
 Do NOT include any other text, explanation, or formatting. JUST the JSON array.'''
                     },
@@ -314,30 +378,46 @@ def parse_spots_regex(text: str) -> Tuple[bool, Optional[int]]:
     # "close" or "closer" → return 0 as placeholder
     if re.search(r'\b(close|closer)\b', low, re.IGNORECASE):
         return (True, 0)
+    
+    # "drama" → return 0 spots (special keyword)
+    if re.search(r'^\s*drama\s*$', low, re.IGNORECASE):
+        return (True, 0)
 
     # "sniper", "snipe", "sniping" → return 1 spot (slang for grabbing last/winning spot)
     if re.search(r'\bsnip(e|er|ing)?\b', low, re.IGNORECASE):
         return (True, 1)
 
-    # Range syntax like "1-20" (inclusive count)
-    range_match = re.search(r"\b(\d+)\s*-\s*(\d+)\b", body_converted)
-    if range_match:
-        a = int(range_match.group(1))
-        b = int(range_match.group(2))
-        lo_n = min(a, b)
-        hi_n = max(a, b)
-        return (True, hi_n - lo_n + 1)
-
-    # TAB format: "37 tabbed slum" or "Spot 32 tabbed to chen" = requesting 1 specific spot
-    # The number before "tabbed" is the SPOT NUMBER they want, which counts as 1 spot total
-    tabbed_match = re.search(r"(spot\s+)?(\d+)\s+tabbed\b", body_converted, re.IGNORECASE)
-    if tabbed_match:
-        return (True, 1)  # Always return 1 spot for TAB format
-
     # "X spots/slots" rule: "4 spots", "12 spot", "10 slots" - CHECK THIS EARLY!
     spots_match = re.search(r"\b(\d+)\s+(?:spots?|slots?)\b", body_converted, re.IGNORECASE)
     if spots_match:
         return (True, int(spots_match.group(1)))
+
+    # ============ FIX #1: Handle MULTIPLE ranges (e.g., "1-5, 17-21") ============
+    # Find ALL range patterns in the text
+    range_matches = re.findall(r"\b(\d+)\s*-\s*(\d+)\b", body_converted)
+    if range_matches:
+        total_range_spots = 0
+        for match in range_matches:
+            a = int(match[0])
+            b = int(match[1])
+            lo_n = min(a, b)
+            hi_n = max(a, b)
+            total_range_spots += (hi_n - lo_n + 1)
+        return (True, total_range_spots)
+
+    # ============ FIX #2: TAB format - only match when there's a SINGLE number before "tabbed" ============
+    # "37 tabbed slum" = 1 spot (single number)
+    # "5,9,12,56,65 tabbed doublechen" = should NOT match here (has commas, so multiple numbers)
+    # First check: does the text have commas BEFORE "tabbed"?
+    tabbed_position = body_converted.lower().find("tabbed")
+    if tabbed_position > 0:
+        text_before_tabbed = body_converted[:tabbed_position]
+        # If there are commas before "tabbed", it's a multi-number request, not TAB format
+        if "," not in text_before_tabbed:
+            # Now check for single number before "tabbed"
+            tabbed_match = re.search(r"(spot\s+)?(\d+)\s+tabbed\b", body_converted, re.IGNORECASE)
+            if tabbed_match:
+                return (True, 1)  # TAB format: requesting 1 specific spot
 
     # Random count - NOW INCLUDES "rando"
     random_match = re.search(
@@ -352,8 +432,11 @@ def parse_spots_regex(text: str) -> Tuple[bool, Optional[int]]:
         a_random_match = re.search(r"\b(?:a|an)\s+rand(?:om)?\b", body_converted, re.IGNORECASE)
         if a_random_match:
             random_count = 1
-        # Check for just "rando" or "random" alone
-        elif re.search(r"\brando\b", body_converted, re.IGNORECASE):
+        # Check for just "random" or "rando" alone (case-insensitive)
+        elif re.search(r"^\s*rand(?:om|o)\s*$", body_converted, re.IGNORECASE):
+            random_count = 1
+        # Check for "and random" or "and Random" at the end
+        elif re.search(r"\band\s+rand(?:om|o)\b", body_converted, re.IGNORECASE):
             random_count = 1
 
     # All numbers
@@ -529,6 +612,52 @@ def is_bot_confirmation(text: str) -> bool:
 
     return False
 
+def is_host_bot_reply(author: str, body: str) -> bool:
+    """Check if comment is from host/bot (spot assignments, announcements, etc.)"""
+    if not author or not body:
+        return False
+    
+    author_lower = author.lower().strip()
+    body_lower = body.lower().strip()
+    
+    # Filter out common host/bot usernames
+    host_bot_usernames = [
+        'theextrabutthole',
+        'takobot', 
+        'rafflebot',
+        'pokemonrafflebot',
+        'automoderator'
+    ]
+    
+    if author_lower in host_bot_usernames:
+        return True
+    
+    # Filter out bot reply patterns
+    bot_reply_patterns = [
+        'you got',
+        'congrats!',
+        'gl\r\n',
+        'glgl\r\n', 
+        'goodluck!\r\n',
+        'good luck!',
+        'added',
+        '[announcement]',
+        'please follow these instructions',
+        'payment received',
+        'paid - thank',
+        'spots confirmed',
+    ]
+    
+    for pattern in bot_reply_patterns:
+        if pattern in body_lower:
+            return True
+    
+    # Filter out standalone short responses (likely host acknowledgments)
+    if body_lower in ['gl', 'glgl', 'ty', 'thanks', 'thank you', 'congrats']:
+        return True
+    
+    return False
+
 def has_payment_confirmation(reply_texts: List[str]) -> bool:
     """Check if any reply contains payment confirmation"""
     if not reply_texts:
@@ -581,16 +710,26 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         if not author or author in ["[deleted]", "[removed]", "AutoModerator"]:
             continue
 
-        # Skip comments from OP
-        if author == op_author:
-            continue
+        # ✅ CHANGED: Allow OP/host comments (for escrow participation)
+        # The is_bot_confirmation() check below will filter out spot assignment replies
+        # if author == op_author:
+        #     continue
 
-        # Skip bot confirmation messages
+        # Skip bot confirmation messages (includes "You got" spot assignments from host)
         if is_bot_confirmation(body):
             continue
 
         # Skip comments that have payment confirmation replies
         if has_payment_confirmation(reply_texts):
+            continue
+
+        # Skip host/bot replies
+        if is_host_bot_reply(author, body):
+            continue
+
+        # Skip comments that contain ONLY links/images (no actual text content)
+        cleaned_for_check = clean_comment_text(body)
+        if not cleaned_for_check or len(cleaned_for_check.strip()) == 0:
             continue
 
         # Parse spots
@@ -599,11 +738,20 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         if found and spot_count is not None:
             actual_spots = spot_count
 
+            # ✅ SKIP COMMENTS WITH NO SPOTS (e.g., cancellation announcements, non-request comments)
+            # Only add participants who actually requested spots
+            if actual_spots is None or actual_spots == 0:
+                print(f"⚠️ Skipping comment from u/{author} - no spots requested: \"{body[:60]}...\"", file=sys.stderr)
+                continue  # Skip this comment, don't add to participants
+
+            # Clean comment text (remove URLs and images) before storing
+            cleaned_comment = clean_comment_text(body)
+
             # Add participant with timestamp and comment ID
             participants.append({
                 "redditUser": author,
                 "name": "",  # Will be filled by name mapping
-                "comment": body[:100],
+                "comment": cleaned_comment[:100],
                 "spots": actual_spots,
                 "requestedSpots": actual_spots,  # Store original request BEFORE limit enforcement
                 "owed": actual_spots * cost_per_spot,

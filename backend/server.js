@@ -9,6 +9,9 @@ const session = require('express-session');
 const app = express();
 const port = process.env.PORT || 3001;
 
+const compression = require('compression');
+app.use(compression());
+
 // PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
@@ -26,7 +29,7 @@ app.use(session({
     httpOnly: true,
     secure: false, // Set to true if using HTTPS
     sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days (matches FastAPI)
   }
 }));
 
@@ -479,9 +482,9 @@ app.get('/api/admin/all-raffles', async (req, res) => {
     // Sort by date (most recent first)
     allRaffles.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-    // Calculate stats
-    const totalCompleted = allRaffles.filter(r => r.status.toLowerCase() === 'completed').length;
-    const totalCancelled = allRaffles.filter(r => r.status.toLowerCase() === 'cancelled').length;
+    // Calculate stats with defensive null checks
+    const totalCompleted = allRaffles.filter(r => r.status && r.status.toLowerCase() === 'completed').length;
+    const totalCancelled = allRaffles.filter(r => r.status && r.status.toLowerCase() === 'cancelled').length;
 
     console.log('📊 Admin fetched', allRaffles.length, 'total raffles (' + activeResult.rows.length + ' active, ' + historyResult.rows.length + ' history)');
 
@@ -536,6 +539,169 @@ app.delete('/api/admin/delete-raffle', async (req, res) => {
     res.json({ ok: true, message: 'Raffle deleted successfully' });
   } catch (error) {
     console.error('Error deleting raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ADMIN: FINISH ACTIVE RAFFLE (MOVE TO COMPLETED) ============
+app.post('/api/admin/finish-raffle', async (req, res) => {
+  try {
+    const isAdmin = req.headers['x-user-is-admin'] === 'true';
+
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: 'Admin access required' });
+    }
+
+    const { id, type, winner } = req.body;
+
+    if (!id || !type) {
+      return res.status(400).json({ ok: false, error: 'ID and type are required' });
+    }
+
+    // Only allow finishing active raffles
+    if (type !== 'active') {
+      return res.status(400).json({ ok: false, error: 'Can only finish active raffles' });
+    }
+
+    console.log('✅ Admin finishing active raffle - ID:', id);
+    if (winner) {
+      console.log('   Winner:', winner.username, '(' + winner.spots + ' spots)');
+    }
+
+    // Get the active raffle data with username from users table
+    const raffleResult = await pool.query(
+      `SELECT ar.*, u.username 
+       FROM active_raffle ar
+       LEFT JOIN users u ON ar.user_id = u.id
+       WHERE ar.id = $1`, 
+      [id]
+    );
+
+    if (raffleResult.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Active raffle not found' });
+    }
+
+    const raffle = raffleResult.rows[0];
+
+    // Format winner data for storage
+    const winnerData = winner ? {
+      username: winner.username,
+      spots: winner.spots
+    } : null;
+
+    // Ensure participants is properly stringified (it might already be a JSON object from DB)
+    let participantsJson;
+    if (typeof raffle.participants === 'string') {
+      participantsJson = raffle.participants;
+    } else if (raffle.participants) {
+      participantsJson = JSON.stringify(raffle.participants);
+    } else {
+      participantsJson = '[]';
+    }
+
+    // Move to raffle_history as "completed"
+    await pool.query(
+      `INSERT INTO raffle_history
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        raffle.raffle_date || new Date(),
+        'completed',
+        raffle.reddit_link,
+        raffle.total_spots,
+        raffle.cost_per_spot,
+        participantsJson,
+        raffle.total_owed || 0,
+        raffle.total_paid || 0,
+        winnerData ? JSON.stringify(winnerData) : null,
+        raffle.username
+      ]
+    );
+
+    // Delete from active_raffle
+    await pool.query('DELETE FROM active_raffle WHERE id = $1', [id]);
+
+    console.log('✅ Successfully finished raffle ID:', id, '- moved to completed in history');
+    res.json({ ok: true, message: 'Raffle finished successfully and moved to completed' });
+  } catch (error) {
+    console.error('Error finishing raffle:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ ADMIN: CANCEL ACTIVE RAFFLE (MOVE TO CANCELLED) ============
+app.post('/api/admin/cancel-raffle', async (req, res) => {
+  try {
+    const isAdmin = req.headers['x-user-is-admin'] === 'true';
+
+    if (!isAdmin) {
+      return res.status(403).json({ ok: false, error: 'Admin access required' });
+    }
+
+    const { id, type } = req.body;
+
+    if (!id || !type) {
+      return res.status(400).json({ ok: false, error: 'ID and type are required' });
+    }
+
+    // Only allow cancelling active raffles
+    if (type !== 'active') {
+      return res.status(400).json({ ok: false, error: 'Can only cancel active raffles' });
+    }
+
+    console.log('⚠️ Admin cancelling active raffle - ID:', id);
+
+    // Get the active raffle data with username from users table
+    const raffleResult = await pool.query(
+      `SELECT ar.*, u.username 
+       FROM active_raffle ar
+       LEFT JOIN users u ON ar.user_id = u.id
+       WHERE ar.id = $1`, 
+      [id]
+    );
+
+    if (raffleResult.rows.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Active raffle not found' });
+    }
+
+    const raffle = raffleResult.rows[0];
+
+    // Ensure participants is properly stringified
+    let participantsJson;
+    if (typeof raffle.participants === 'string') {
+      participantsJson = raffle.participants;
+    } else if (raffle.participants) {
+      participantsJson = JSON.stringify(raffle.participants);
+    } else {
+      participantsJson = '[]';
+    }
+
+    // Move to raffle_history as "cancelled"
+    await pool.query(
+      `INSERT INTO raffle_history
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        raffle.raffle_date || new Date(),
+        'cancelled',
+        raffle.reddit_link,
+        raffle.total_spots,
+        raffle.cost_per_spot,
+        participantsJson,
+        raffle.total_owed || 0,
+        raffle.total_paid || 0,
+        null, // No winner for cancelled raffles
+        raffle.username
+      ]
+    );
+
+    // Delete from active_raffle
+    await pool.query('DELETE FROM active_raffle WHERE id = $1', [id]);
+
+    console.log('✅ Successfully cancelled raffle ID:', id, '- moved to cancelled in history');
+    res.json({ ok: true, message: 'Raffle cancelled successfully and moved to history' });
+  } catch (error) {
+    console.error('Error cancelling raffle:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
@@ -772,6 +938,101 @@ app.get('/api/settings/:key', async (req, res) => {
   }
 });
 
+// Get all name mappings (for Active Raffle display)
+app.get('/api/settings/get-all-name-mappings', async (req, res) => {
+  try {
+    // Get username from headers (set by FastAPI proxy)
+    const username = req.headers['x-user-name'];
+    const userId = req.headers['x-user-id'];
+    
+    console.log('🔍 GET /api/settings/get-all-name-mappings - Headers:');
+    console.log('  X-User-Name:', username);
+    console.log('  X-User-Id:', userId);
+    
+    if (!username || !userId) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    // Fetch all name mappings (using the current schema with first_initial and last_initial)
+    const result = await pool.query(
+      'SELECT reddit_username, first_initial, last_initial FROM shared_name_mappings'
+    );
+
+    // Convert to object format { "reddit_user": "F L" }
+    const mappings = {};
+    for (const row of result.rows) {
+      mappings[row.reddit_username] = `${row.first_initial} ${row.last_initial}`;
+    }
+
+    console.log(`✅ Returning ${Object.keys(mappings).length} name mappings for user: ${username}`);
+    res.json({ ok: true, mappings });
+  } catch (error) {
+    console.error('Error fetching name mappings:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Cleanup duplicate name mappings in database (case-insensitive)
+app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
+  try {
+    const username = req.headers['x-user-name'];
+    const userId = req.headers['x-user-id'];
+    
+    if (!username || !userId) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+
+    console.log('🧹 Cleaning up duplicate name mappings in database...');
+
+    // Get all mappings from database
+    const result = await pool.query(
+      'SELECT id, reddit_username, first_initial, last_initial FROM shared_name_mappings ORDER BY id ASC'
+    );
+
+    const seenLowercase = {};
+    const idsToDelete = [];
+
+    for (const row of result.rows) {
+      const lowerUsername = row.reddit_username.toLowerCase();
+
+      if (!seenLowercase[lowerUsername]) {
+        // First occurrence - keep it
+        seenLowercase[lowerUsername] = row;
+      } else {
+        // Duplicate found
+        const existingRow = seenLowercase[lowerUsername];
+        
+        // If current row is lowercase and existing is not, delete existing and keep current
+        if (row.reddit_username === lowerUsername && existingRow.reddit_username !== lowerUsername) {
+          idsToDelete.push(existingRow.id);
+          seenLowercase[lowerUsername] = row;
+        } else {
+          // Otherwise delete current (keep first one)
+          idsToDelete.push(row.id);
+        }
+      }
+    }
+
+    // Delete duplicates
+    if (idsToDelete.length > 0) {
+      await pool.query(
+        'DELETE FROM shared_name_mappings WHERE id = ANY($1)',
+        [idsToDelete]
+      );
+      console.log(`✅ Removed ${idsToDelete.length} duplicate database entries`);
+    }
+
+    res.json({ 
+      ok: true, 
+      duplicatesRemoved: idsToDelete.length,
+      message: `Removed ${idsToDelete.length} duplicate(s)`
+    });
+  } catch (error) {
+    console.error('Error cleaning up duplicate mappings:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ============ REDDIT SCANNING ENDPOINT ============
 
 app.post('/api/reddit/scan', async (req, res) => {
@@ -971,6 +1232,12 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ ok: false, error: 'Invalid credentials' });
     }
 
+    // ✅ Update last_login timestamp on successful login
+    await pool.query(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1',
+      [user.id]
+    );
+
     res.json({
       ok: true,
       data: {
@@ -1048,6 +1315,16 @@ app.get('/api/admin/analytics/:year', async (req, res) => {
 
     const raffles = raffleResult.rows;
 
+    // Get ALL raffles (for overall completion rate)
+    const allRafflesResult = await pool.query(
+      `SELECT status FROM raffle_history`
+    );
+    const allRaffles = allRafflesResult.rows;
+    const allCompleted = allRaffles.filter(r => r.status === 'completed').length;
+    const allCancelled = allRaffles.filter(r => r.status === 'cancelled').length;
+    const allTotal = allCompleted + allCancelled;
+    const overallCompletionRate = allTotal > 0 ? Math.round((allCompleted / allTotal) * 100) : 0;
+
     // Calculate monthly statistics
     const monthlyStats = Array(12).fill(null).map((_, index) => {
       const monthRaffles = raffles.filter(r => {
@@ -1101,7 +1378,8 @@ app.get('/api/admin/analytics/:year', async (req, res) => {
         totalCompleted,
         totalCancelled,
         totalRevenue: Math.round(totalRevenue),
-        uniqueUsers
+        uniqueUsers,
+        overallCompletionRate
       }
     });
 

@@ -262,7 +262,7 @@
       margin: 0 0 4px 0;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 30px;
     }
 
     .user-subtitle {
@@ -280,7 +280,7 @@
       margin-bottom: 14px;
       display: flex;
       align-items: center;
-      gap: 30px;
+      gap: 60px;
     }
 
     .search-input-wrapper {
@@ -297,7 +297,7 @@
     }
 
     .search-input {
-      width: 800px;
+      width: 100%;
       padding: 10px 12px 10px 40px;
       border: 1px solid #e5e7eb;
       border-radius: 8px;
@@ -352,6 +352,16 @@
 
     .btn-ghost:hover {
       background: #f9fafb;
+    }
+
+    .btn-secondary {
+      background: #f9fafb;
+      color: #6b7280;
+      border: 1px solid #e5e7eb;
+    }
+
+    .btn-secondary:hover {
+      background: #e5e7eb;
     }
 
     /* TABLE */
@@ -851,9 +861,14 @@
             id="userSearch"
           >
         </div>
-        <button class="btn btn-primary" id="createUserBtn">
-          <span>➕</span> Create User
-        </button>
+        <div style="display: flex; gap: 12px;">
+          <button class="btn btn-secondary" id="refreshUsersBtn" title="Refresh user list">
+            <span>🔄</span> Refresh
+          </button>
+          <button class="btn btn-primary" id="createUserBtn">
+            <span>➕</span> Create User
+          </button>
+        </div>
       </div>
 
       <!-- USER TABLE -->
@@ -1328,6 +1343,27 @@
 
     // Initial load
     loadUsers();
+
+    // ===== REFRESH BUTTON & AUTO-REFRESH =====
+    const refreshBtn = document.getElementById('refreshUsersBtn');
+    
+    // Manual refresh button
+    refreshBtn?.addEventListener('click', async () => {
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<span>⏳</span> Refreshing...';
+      
+      await loadUsers();
+      
+      refreshBtn.disabled = false;
+      refreshBtn.innerHTML = '<span>🔄</span> Refresh';
+      showToast('success', 'User list refreshed');
+    });
+
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+      console.log('🔄 Auto-refreshing user list...');
+      loadUsers();
+    }, 30000); // 30 seconds
   })();
 
   // ============ USER SECTION & LOGOUT ============

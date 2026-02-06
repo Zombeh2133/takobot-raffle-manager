@@ -25,11 +25,11 @@
        MASTER LAYOUT VARIABLES
        ============================== */
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
-      --content-left: 360px;
-      --content-width: 1120px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
      body{
@@ -43,13 +43,7 @@
       overflow: hidden;
     }
 
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: top left;  /* Scale from top-left corner */
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
-    }
+
 
     .top-sidebar{
       position:absolute; top:0; left:-30px;
@@ -821,6 +815,139 @@
       box-shadow: 0 12px 28px rgba(239,68,68,0.35);
     }
 
+    .modal-btn-primary {
+      background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(139,92,246,0.25);
+    }
+
+    .modal-btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(139,92,246,0.35);
+    }
+
+    /* SUCCESS MODAL */
+    .success-modal {
+      width: 600px;
+      position: relative;
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: transparent;
+      border: none;
+      font-size: 32px;
+      color: #94A3B8;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: all 150ms ease;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .modal-close-btn:hover {
+      background: #F1F5F9;
+      color: #475569;
+    }
+
+    .success-icon {
+      width: 72px;
+      height: 72px;
+      background: linear-gradient(135deg, #10B981, #059669);
+      color: white;
+      font-size: 42px;
+      font-weight: bold;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px auto;
+      box-shadow: 0 12px 32px rgba(16,185,129,0.3);
+    }
+
+    .success-title {
+      font-size: 26px;
+      margin-bottom: 12px;
+      color: #0F172A;
+    }
+
+    .success-message {
+      color: #64748B;
+      font-size: 15px;
+      margin-bottom: 32px;
+    }
+
+    .success-stats {
+      display: flex;
+      gap: 0;
+      background: linear-gradient(135deg, #F8FAFC, #F1F5F9);
+      border-radius: 16px;
+      padding: 24px 20px;
+      margin-bottom: 24px;
+      border: 2px solid #E2E8F0;
+    }
+
+    .success-stat-item {
+      flex: 1;
+      text-align: center;
+    }
+
+    .success-stat-divider {
+      width: 1px;
+      background: linear-gradient(to bottom, transparent, #CBD5E1, transparent);
+      margin: 0 16px;
+    }
+
+    .success-stat-value {
+      font-size: 36px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    .success-stat-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: #475569;
+      margin-bottom: 4px;
+    }
+
+    .success-stat-desc {
+      font-size: 12px;
+      color: #94A3B8;
+    }
+
+    .success-errors {
+      background: #FEF2F2;
+      border: 2px solid #FCA5A5;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 24px;
+    }
+
+    .error-header {
+      font-size: 14px;
+      font-weight: 700;
+      color: #DC2626;
+      margin-bottom: 10px;
+    }
+
+    .error-list {
+      font-size: 13px;
+      color: #991B1B;
+      line-height: 1.6;
+    }
+
     /* ==============================
        TOAST NOTIFICATIONS
        ============================== */
@@ -1126,13 +1253,13 @@
 
         <div class="label">Import File</div>
 
-        <label class="upload-box">
+        <div class="upload-box">
           <div class="click-area" id="nameFileClickArea">
             <img class="up-icon" src="/static/assets/Icons/upload.png" alt="">
             <div>Click to upload CSV, Excel, or TSV file</div>
           </div>
-          <input type="file" accept=".csv,.xlsx,.xls,.tsv,.txt" id="nameFileInput" />
-        </label>
+          <input type="file" accept=".csv,.xlsx,.xls,.tsv,.txt" id="nameFileInput" style="display: none;" />
+        </div>
 
         <div class="import-preview" id="importPreview">
           <p class="preview-title">Preview (first 5 rows):</p>
@@ -1145,7 +1272,7 @@
           <div class="info-box-text">
             <p class="info-box-title">Format</p>
             <p class="info-box-desc">
-              Upload a file with 2 Columns with: <code>reddit_user and real_name</code><br>
+              Upload a file with format: <code>reddit_user,real_name</code><br>
               Names are stored locally. Importing will merge with existing mappings.
             </p>
           </div>
@@ -1398,6 +1525,49 @@
     </div>
   </div>
 
+  <!-- SUCCESS MODAL (Name Mappings Upload) -->
+  <div class="modal-overlay" id="uploadSuccessModal">
+    <div class="modal-box success-modal">
+      <button class="modal-close-btn" id="uploadSuccessCloseBtn">×</button>
+      <div class="modal-icon success-icon">✓</div>
+      <h3 class="modal-title success-title">Successfully Uploaded!</h3>
+      <p class="modal-message success-message">
+        Your name mappings have been imported and synced across both storage layers.
+      </p>
+      
+      <div class="success-stats">
+        <div class="success-stat-item">
+          <div class="success-stat-value" id="successPersonalCount">0</div>
+          <div class="success-stat-label">Personal Mappings</div>
+          <div class="success-stat-desc">Full names saved locally</div>
+        </div>
+        <div class="success-stat-divider"></div>
+        <div class="success-stat-item">
+          <div class="success-stat-value" id="successSharedCount">0</div>
+          <div class="success-stat-label">Shared Initials</div>
+          <div class="success-stat-desc">Added to database</div>
+        </div>
+        <div class="success-stat-divider"></div>
+        <div class="success-stat-item">
+          <div class="success-stat-value" id="successSkippedCount">0</div>
+          <div class="success-stat-label">Skipped</div>
+          <div class="success-stat-desc">Already existed</div>
+        </div>
+      </div>
+
+      <div id="successErrorSection" style="display: none;">
+        <div class="success-errors">
+          <div class="error-header">⚠️ Some Issues Occurred</div>
+          <div class="error-list" id="successErrorList"></div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="modal-btn modal-btn-primary" id="uploadSuccessOkBtn">Got it!</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // ============ NAME MAPPING LOCALSTORAGE ============
     const NAME_MAPPING_KEY = 'raffleui_reddit_name_mapping';
@@ -1454,14 +1624,23 @@
     }
 
     function updateMappingStats() {
+      // Get count from localStorage (personal mappings)
       const mappings = loadAllMappings();
       const count = Object.keys(mappings).length;
       document.getElementById('mappingCount').textContent = count;
 
-      const lastImport = localStorage.getItem(LAST_IMPORT_KEY);
+      // Get last import date from localStorage
+      const lastImport = localStorage.getItem('nameMappings_lastImport');
       if (lastImport) {
         const date = new Date(lastImport);
-        document.getElementById('lastImportDate').textContent = date.toLocaleDateString();
+        const formattedDate = date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        document.getElementById('lastImportDate').textContent = formattedDate;
       } else {
         document.getElementById('lastImportDate').textContent = 'Never';
       }
@@ -1593,47 +1772,94 @@
       importNowBtn.addEventListener('click', () => {
         if (!parsedData) return;
         
-        const existing = loadAllMappings();
-        const merged = { ...existing, ...parsedData };
-        saveAllMappings(merged);
+        // STEP 1: Save FULL NAMES to localStorage (personal mappings)
+        const existingMappings = loadAllMappings();
+        const mergedMappings = { ...existingMappings, ...parsedData };
+        saveAllMappings(mergedMappings);
         
-        updateMappingStats();
+        // Save last import timestamp
+        localStorage.setItem('nameMappings_lastImport', new Date().toISOString());
         
-        alert(`✅ Successfully imported ${Object.keys(parsedData).length} name mappings!\n\nTotal mappings: ${Object.keys(merged).length}`);
-        
-        // Reset
-        fileInput.value = '';
-        preview.classList.remove('show');
-        parsedData = null;
-        importNowBtn.disabled = true;
+        // STEP 2: Send to server to extract INITIALS and save to shared DB
+        fetch('/api/settings/upload-name-mappings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ mappings: parsedData })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            // Show success modal instead of alert
+            document.getElementById('successPersonalCount').textContent = Object.keys(parsedData).length;
+            document.getElementById('successSharedCount').textContent = data.inserted;
+            document.getElementById('successSkippedCount').textContent = data.skipped;
+            
+            // Handle errors if any
+            if (data.errors && data.errors.length > 0) {
+              document.getElementById('successErrorSection').style.display = 'block';
+              document.getElementById('successErrorList').innerHTML = data.errors.map(err => `<div>• ${err}</div>`).join('');
+            } else {
+              document.getElementById('successErrorSection').style.display = 'none';
+            }
+            
+            document.getElementById('uploadSuccessModal').classList.add('show');
+            
+            updateMappingStats();
+            
+            // Reset
+            fileInput.value = '';
+            preview.classList.remove('show');
+            parsedData = null;
+            importNowBtn.disabled = true;
+          } else {
+            alert(`❌ Error: ${data.error}`);
+          }
+        })
+        .catch(err => {
+          alert(`❌ Failed to upload: ${err.message}`);
+        });
       });
 
       // Export button handler
       exportBtn.addEventListener('click', () => {
-        const csv = exportMappingsAsCSV();
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `reddit_names_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        alert('✅ Mappings exported successfully!');
+        fetch('/api/settings/export-name-mappings', {
+          method: 'GET',
+          credentials: 'include'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            const blob = new Blob([data.csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `reddit_names_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            alert(`✅ Exported ${data.count} name mappings!`);
+          } else {
+            alert(`❌ Error: ${data.error}`);
+          }
+        })
+        .catch(err => {
+          alert(`❌ Failed to export: ${err.message}`);
+        });
       });
 
       // Clear button handler
       clearBtn.addEventListener('click', () => {
+        // Get count from localStorage
         const mappings = loadAllMappings();
         const count = Object.keys(mappings).length;
         
-        if (count === 0) {
+        if (count > 0) {
+          document.getElementById('modalMappingCount').textContent = count;
+          document.getElementById('clearMappingsModal').classList.add('show');
+        } else {
           alert('No mappings to clear.');
-          return;
         }
-
-        document.getElementById('modalMappingCount').textContent = count;
-        document.getElementById('clearMappingsModal').classList.add('show');
       });
 
       // Initial stats update
@@ -1657,11 +1883,38 @@
       });
 
       confirmBtn?.addEventListener('click', () => {
-        const count = Object.keys(loadAllMappings()).length;
-        clearAllMappings();
-        updateMappingStats();
-        modal.classList.remove('show');
-        alert(`✅ Successfully deleted ${count} name mappings.`);
+        // Clear from both localStorage AND database
+        const mappings = loadAllMappings();
+        const localCount = Object.keys(mappings).length;
+        
+        // Clear localStorage
+        saveAllMappings({});
+        localStorage.removeItem('nameMappings_lastImport');
+        
+        // Clear from database
+        fetch('/api/settings/clear-name-mappings', {
+          method: 'DELETE',
+          credentials: 'include'
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.ok) {
+            updateMappingStats();
+            modal.classList.remove('show');
+            alert(`✅ Successfully deleted ${localCount} personal mappings and ${data.deleted} shared initials.`);
+          } else {
+            // Still update stats even if DB clear failed
+            updateMappingStats();
+            modal.classList.remove('show');
+            alert(`⚠️ Cleared ${localCount} personal mappings, but database error: ${data.error}`);
+          }
+        })
+        .catch(err => {
+          // Still update stats even if request failed
+          updateMappingStats();
+          modal.classList.remove('show');
+          alert(`⚠️ Cleared ${localCount} personal mappings, but database request failed: ${err.message}`);
+        });
       });
     })();
 
@@ -1699,6 +1952,26 @@
         } catch (err) {
           modal.classList.remove('show');
           showToast('Delete Failed', err?.message || 'Network error occurred.', 'error');
+        }
+      });
+    })();
+
+    // ============ SUCCESS MODAL (Upload) ============
+    (function () {
+      const modal = document.getElementById('uploadSuccessModal');
+      const closeBtn = document.getElementById('uploadSuccessCloseBtn');
+      const okBtn = document.getElementById('uploadSuccessOkBtn');
+
+      function closeModal() {
+        modal.classList.remove('show');
+      }
+
+      closeBtn?.addEventListener('click', closeModal);
+      okBtn?.addEventListener('click', closeModal);
+
+      modal?.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          closeModal();
         }
       });
     })();

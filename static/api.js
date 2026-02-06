@@ -10,7 +10,7 @@ async function fetchAndCacheUser() {
     const response = await fetch(`${API_BASE_URL}/api/auth/current-user`, {
       credentials: 'include'
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       if (result.ok && result.data) {
@@ -28,7 +28,7 @@ async function fetchAndCacheUser() {
 // Get user headers for API calls (synchronous, uses cached user)
 function getUserHeaders() {
   const headers = { 'Content-Type': 'application/json' };
-  
+
   if (cachedUser && cachedUser.id && cachedUser.username) {
     headers['X-User-Id'] = String(cachedUser.id);
     headers['X-User-Name'] = cachedUser.username;
@@ -36,7 +36,7 @@ function getUserHeaders() {
   } else {
     console.warn('⚠️ No cached user for API headers - call fetchAndCacheUser() first!');
   }
-  
+
   return headers;
 }
 
@@ -51,7 +51,7 @@ async function getUserHeadersAsync() {
 const API = {
   // Version check
   version: '3.1-api-fetch-user',
-  
+
   // Initialize user cache (call this on page load)
   initUser: fetchAndCacheUser,
 
@@ -233,19 +233,37 @@ const API = {
     return { success: false, error: 'Invalid response' };
   },
 
-  checkAdminStatus: async () => {
+  checkAdminStatus: async (retryCount = 0) => {
     const response = await fetch(`${API_BASE_URL}/api/auth/current-user`, {
       credentials: 'include'
     });
-    return response.json();
+    const result = await response.json();
+    
+    // If auth fails on first attempt (likely cookie race condition), retry once after a delay
+    if (!result.ok && retryCount === 0) {
+      console.log('⏳ Auth check failed on first attempt, retrying in 500ms...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return API.checkAdminStatus(1);
+    }
+    
+    return result;
   },
 
   // Alias for compatibility with raffle history page
-  checkAuth: async () => {
+  checkAuth: async (retryCount = 0) => {
     const response = await fetch(`${API_BASE_URL}/api/auth/current-user`, {
       credentials: 'include'
     });
-    return response.json();
+    const result = await response.json();
+    
+    // If auth fails on first attempt (likely cookie race condition), retry once after a delay
+    if (!result.ok && retryCount === 0) {
+      console.log('⏳ Auth check failed on first attempt, retrying in 500ms...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      return API.checkAuth(1);
+    }
+    
+    return result;
   },
 
   // Admin analytics methods
@@ -262,4 +280,4 @@ const API = {
     });
     return response.json();
   }
-};
+}

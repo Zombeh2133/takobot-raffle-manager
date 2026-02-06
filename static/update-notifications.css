@@ -1,190 +1,351 @@
 /* ==========================================
-   BEAUTIFUL UPDATE NOTIFICATION SYSTEM
+   BEAUTIFUL UPDATE MODAL - PURPLE THEME
    ========================================== */
 
-// Show toast notification
-function showUpdateToast(message, duration = 3000) {
-  // Remove existing toast
-  const existingToast = document.querySelector('.update-toast');
-  if (existingToast) {
-    existingToast.remove();
-  }
-
-  // Create toast
-  const toast = document.createElement('div');
-  toast.className = 'update-toast';
-  toast.innerHTML = `
-    <span class="update-toast-icon">🔄</span>
-    <span>${message}</span>
-  `;
-  document.body.appendChild(toast);
-
-  // Animate in
-  setTimeout(() => toast.classList.add('show'), 10);
-
-  // Auto-hide
-  if (duration > 0) {
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 400);
-    }, duration);
-  }
-
-  return toast;
+/* Toast notification (appears at top-right) */
+.update-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  color: white;
+  padding: 16px 24px;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgba(139, 92, 246, 0.4);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 9999999; /* Must be very high due to stacking context from .white-square transform */
+  opacity: 0;
+  transform: translateY(-20px);
+  transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
-// Show beautiful update modal
-function showUpdateModal(version, onConfirm, onCancel) {
-  // Remove existing modal
-  const existingModal = document.querySelector('.update-modal-overlay');
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  // Create modal
-  const modal = document.createElement('div');
-  modal.className = 'update-modal-overlay';
-  modal.innerHTML = `
-    <div class="update-modal" onclick="event.stopPropagation()">
-      <div class="update-modal-header">
-        <div class="update-modal-icon">🚀</div>
-        <h2 class="update-modal-title">Update Available!</h2>
-        <div class="update-modal-version">Version ${version}</div>
-      </div>
-      <div class="update-modal-body">
-        <p class="update-modal-message">
-          A new version of TakoBot is ready to download. <strong>Stay up to date</strong> with the latest features and improvements!
-        </p>
-        <div class="update-modal-actions">
-          <button class="update-modal-btn update-modal-btn-secondary" onclick="updateModalCancel()">
-            Later
-          </button>
-          <button class="update-modal-btn update-modal-btn-primary" onclick="updateModalConfirm()">
-            Download Now
-          </button>
-        </div>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // Store callbacks
-  window.updateModalConfirmCallback = onConfirm;
-  window.updateModalCancelCallback = onCancel;
-
-  // Show modal
-  setTimeout(() => modal.classList.add('show'), 10);
-
-  // Prevent body scroll
-  document.body.style.overflow = 'hidden';
+.update-toast.show {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-// Confirm download
-function updateModalConfirm() {
-  const modal = document.querySelector('.update-modal-overlay');
-  if (!modal) return;
+.update-toast-icon {
+  font-size: 20px;
+  animation: spin 2s linear infinite;
+}
 
-  // Show downloading state
-  const modalBody = modal.querySelector('.update-modal-body');
-  modalBody.innerHTML = `
-    <div class="update-downloading">
-      <div class="update-downloading-title">Downloading Update...</div>
-      <div class="update-progress-bar">
-        <div class="update-progress-fill" id="updateProgressFill"></div>
-      </div>
-      <div class="update-progress-text" id="updateProgressText">Preparing download...</div>
-    </div>
-  `;
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-  // Call confirm callback
-  if (window.updateModalConfirmCallback) {
-    window.updateModalConfirmCallback();
+/* Modal Overlay */
+.update-modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(12px);
+  z-index: 9999998; /* Must be very high due to stacking context from .white-square transform */
+  animation: fadeIn 0.3s ease;
+  align-items: center;
+  justify-content: center;
+}
+
+.update-modal-overlay.show {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Modal Container */
+.update-modal {
+  background: white;
+  border-radius: 28px;
+  width: 520px;
+  max-width: 90vw;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  animation: slideUpBounce 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  overflow: hidden;
+}
+
+@keyframes slideUpBounce {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
-// Cancel update
-function updateModalCancel() {
-  const modal = document.querySelector('.update-modal-overlay');
-  if (!modal) return;
-
-  // Hide modal
-  modal.classList.remove('show');
-  document.body.style.overflow = '';
-
-  setTimeout(() => {
-    modal.remove();
-  }, 300);
-
-  // Call cancel callback
-  if (window.updateModalCancelCallback) {
-    window.updateModalCancelCallback();
-  }
+/* Header with gradient */
+.update-modal-header {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  padding: 40px 36px 36px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
 }
 
-// Update download progress
-function updateDownloadProgress(percent) {
-  const fill = document.getElementById('updateProgressFill');
-  const text = document.getElementById('updateProgressText');
-
-  if (fill) {
-    fill.style.width = percent + '%';
-  }
-
-  if (text) {
-    if (percent < 100) {
-      text.textContent = `${Math.round(percent)}% complete`;
-    } else {
-      text.textContent = 'Download complete!';
-    }
-  }
+/* Animated circles background */
+.update-modal-header::before {
+  content: '';
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  top: -80px;
+  right: -60px;
+  animation: float 6s ease-in-out infinite;
 }
 
-// Show install ready modal with custom UI (no native dialog)
-function showInstallReadyModal() {
-  const modal = document.querySelector('.update-modal-overlay');
-  if (!modal) return;
-
-  const modalBody = modal.querySelector('.update-modal-body');
-  modalBody.innerHTML = `
-    <div class="update-install-ready">
-      <div class="update-install-icon">✅</div>
-      <div class="update-install-title">Update Downloaded Successfully!</div>
-      <p class="update-install-message">
-        Restart TakoBot now to install the update and enjoy the latest features.
-      </p>
-      <div class="update-modal-actions">
-        <button class="update-modal-btn update-modal-btn-secondary" onclick="updateModalCancel()">
-          Restart Later
-        </button>
-        <button class="update-modal-btn update-modal-btn-primary" onclick="restartAndInstall()">
-          Restart Now
-        </button>
-      </div>
-    </div>
-  `;
+.update-modal-header::after {
+  content: '';
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  bottom: -50px;
+  left: -40px;
+  animation: float 8s ease-in-out infinite reverse;
 }
 
-// Restart and install
-function restartAndInstall() {
-  if (window.electronAPI && window.electronAPI.quitAndInstall) {
-    window.electronAPI.quitAndInstall();
-  }
+@keyframes float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-20px) scale(1.1); }
 }
 
-// Close modal on Escape key
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    const modal = document.querySelector('.update-modal-overlay');
-    if (modal && modal.classList.contains('show')) {
-      updateModalCancel();
-    }
-  }
-});
+/* Icon container */
+.update-modal-icon {
+  width: 96px;
+  height: 96px;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  font-size: 48px;
+  animation: bounce 2s ease-in-out infinite;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
 
-// Close modal on overlay click
-document.addEventListener('click', (e) => {
-  if (e.target.classList.contains('update-modal-overlay')) {
-    updateModalCancel();
-  }
-});
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+/* Title */
+.update-modal-title {
+  font-size: 32px;
+  font-weight: 800;
+  color: white;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.8px;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Version badge */
+.update-modal-version {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Body */
+.update-modal-body {
+  padding: 36px;
+}
+
+/* Message */
+.update-modal-message {
+  font-size: 16px;
+  font-weight: 500;
+  color: #374151;
+  line-height: 1.7;
+  margin: 0 0 28px 0;
+  text-align: center;
+}
+
+.update-modal-message strong {
+  color: #8B5CF6;
+  font-weight: 700;
+}
+
+/* Feature list */
+.update-features {
+  background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+  border-radius: 18px;
+  padding: 20px 24px;
+  margin-bottom: 28px;
+}
+
+.update-features-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #6D28D9;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin: 0 0 14px 0;
+}
+
+.update-features ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.update-features li {
+  font-size: 14px;
+  font-weight: 600;
+  color: #4C1D95;
+  margin-bottom: 10px;
+  padding-left: 28px;
+  position: relative;
+  line-height: 1.5;
+}
+
+.update-features li:last-child {
+  margin-bottom: 0;
+}
+
+.update-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #8B5CF6;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+/* Action buttons */
+.update-modal-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.update-modal-btn {
+  flex: 1;
+  padding: 16px 28px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  letter-spacing: 0.2px;
+}
+
+.update-modal-btn-primary {
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  color: white;
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.35);
+}
+
+.update-modal-btn-primary:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(139, 92, 246, 0.45);
+}
+
+.update-modal-btn-primary:active {
+  transform: translateY(-1px);
+}
+
+.update-modal-btn-secondary {
+  background: #F3F4F6;
+  color: #6B7280;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.update-modal-btn-secondary:hover {
+  background: #E5E7EB;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.update-modal-btn-secondary:active {
+  transform: translateY(0);
+}
+
+/* Downloading state */
+.update-downloading {
+  text-align: center;
+  padding: 20px;
+}
+
+.update-downloading-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111;
+  margin: 0 0 16px 0;
+}
+
+.update-progress-bar {
+  width: 100%;
+  height: 12px;
+  background: #E5E7EB;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+}
+
+.update-progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%);
+  border-radius: 20px;
+  width: 0;
+  transition: width 0.3s ease;
+  position: relative;
+}
+
+.update-progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, 
+    transparent, 
+    rgba(255, 255, 255, 0.3), 
+    transparent
+  );
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.update-progress-text {
+  font-size: 14px;
+  font-weight: 600;
+  color: #6B7280;
+  margin-top: 12px;
+}

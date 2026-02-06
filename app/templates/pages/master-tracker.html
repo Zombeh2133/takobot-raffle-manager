@@ -16,8 +16,11 @@
 
   <style>
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
+      --sidebar-width: 252px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
     body{
@@ -318,6 +321,350 @@
       transform: none;
     }
 
+    /* WINNER SELECTION MODAL */
+    .winner-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .winner-modal-content {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 600px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .winner-modal-header {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 8px;
+    }
+
+    .winner-modal-subtitle {
+      font-size: 14px;
+      color: #64748b;
+      margin-bottom: 24px;
+    }
+
+    .winner-search {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      margin-bottom: 16px;
+      transition: border-color 0.2s ease;
+    }
+
+    .winner-search:focus {
+      outline: none;
+      border-color: #8b5cf6;
+    }
+
+    .participant-list {
+      max-height: 300px;
+      overflow-y: auto;
+      border: 2px solid #f1f5f9;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .participant-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .participant-item:last-child {
+      border-bottom: none;
+    }
+
+    .participant-item:hover {
+      background: #f9fafb;
+    }
+
+    .participant-item.selected {
+      background: #ede9fe;
+      border-left: 4px solid #8b5cf6;
+    }
+
+    .participant-name {
+      font-weight: 600;
+      color: #111827;
+    }
+
+    .participant-spots {
+      font-size: 12px;
+      color: #64748b;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .winner-modal-actions {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .winner-modal-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .winner-modal-btn.cancel {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .winner-modal-btn.cancel:hover {
+      background: #e5e7eb;
+    }
+
+    .winner-modal-btn.cancel-raffle {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: white;
+    }
+
+    .winner-modal-btn.cancel-raffle:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
+
+    .winner-modal-btn.confirm {
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+    }
+
+    .winner-modal-btn.confirm:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    }
+
+    .winner-modal-btn.confirm:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .no-participants-msg {
+      padding: 32px;
+      text-align: center;
+      color: #64748b;
+      font-size: 14px;
+    }
+
+    /* CANCEL CONFIRMATION MODAL */
+    .cancel-confirm-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      z-index: 2000;
+      justify-content: center;
+      align-items: center;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .cancel-confirm-content {
+      background: white;
+      border-radius: 24px;
+      padding: 0;
+      width: 480px;
+      max-width: 90vw;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.3s ease;
+      overflow: hidden;
+    }
+
+    .cancel-confirm-header {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      padding: 32px;
+      text-align: center;
+      position: relative;
+    }
+
+    .cancel-confirm-icon {
+      width: 72px;
+      height: 72px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 16px;
+      font-size: 36px;
+      animation: shake 0.5s ease;
+    }
+
+    .cancel-confirm-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: white;
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+
+    .cancel-confirm-subtitle {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+
+    .cancel-confirm-body {
+      padding: 32px;
+    }
+
+    .cancel-confirm-message {
+      font-size: 16px;
+      font-weight: 500;
+      color: #374151;
+      line-height: 1.6;
+      margin: 0 0 8px 0;
+      text-align: center;
+    }
+
+    .cancel-confirm-raffle-id {
+      font-size: 14px;
+      font-weight: 700;
+      color: #EF4444;
+      text-align: center;
+      padding: 12px;
+      background: #FEE2E2;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .cancel-confirm-warning {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: #FEF3C7;
+      border-left: 4px solid #F59E0B;
+      border-radius: 8px;
+      margin-bottom: 24px;
+    }
+
+    .cancel-confirm-warning-icon {
+      font-size: 24px;
+      flex-shrink: 0;
+    }
+
+    .cancel-confirm-warning-text {
+      font-size: 13px;
+      color: #92400E;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .cancel-confirm-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .cancel-confirm-btn {
+      flex: 1;
+      padding: 14px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .cancel-confirm-btn-cancel {
+      background: #f1f5f9;
+      color: #64748b;
+    }
+
+    .cancel-confirm-btn-cancel:hover {
+      background: #e5e7eb;
+      transform: translateY(-2px);
+    }
+
+    .cancel-confirm-btn-confirm {
+      background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+      color: white;
+    }
+
+    .cancel-confirm-btn-confirm:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(239, 68, 68, 0.4);
+    }
+
+    .cancel-confirm-btn:active {
+      transform: translateY(0);
+    }
+
+    .cancel-confirm-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* FINISH RAFFLE BUTTON */
+    .finish-raffle-btn {
+      background: #D1FAE5;
+      border: 1px solid #6EE7B7;
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: #065F46;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: 'Inter', sans-serif;
+      margin-right: 6px;
+    }
+
+    .finish-raffle-btn:hover {
+      background: #6EE7B7;
+      color: #064E3B;
+      transform: translateY(-1px);
+    }
+
+    .finish-raffle-btn:active {
+      transform: translateY(0);
+    }
+
+    .finish-raffle-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
     /* REDDIT LINK STYLING */
     .reddit-link {
       color: #6E5FFC;
@@ -603,7 +950,7 @@
     </div>
 
     <script>
-      // Sidebar Admin Control - Shows popup for non-admin users
+      // Sidebar Admin Control - Shows popup for non-admin users (non-blocking)
       (async function initAdminControl() {
         try {
           const response = await fetch('/api/auth/current-user');
@@ -617,12 +964,10 @@
           const isAdmin = data.data?.isAdmin === true;
           
           if (!isAdmin) {
-            // Show access denied modal immediately for non-admin users
+            // Show access denied modal for non-admin users
             showAccessDenied();
             console.log('❌ Non-admin user - access denied');
           } else {
-            // Show page content for admin users
-            document.body.style.visibility = 'visible';
             console.log('✅ Admin user - full access granted');
           }
         } catch (error) {
@@ -720,6 +1065,16 @@
             <td>${raffle.filledSpots}/${raffle.totalSpots}</td>
             <td style="font-weight: 600; color: #10B981;">$${raffle.totalRevenue}</td>
             <td>
+              ${raffle.status === 'Active' ? `
+                <button 
+                  class="finish-raffle-btn" 
+                  onclick="finishRaffle(${raffle.id}, '${raffle.type}')"
+                  data-raffle-id="${raffle.id}"
+                  data-raffle-type="${raffle.type}"
+                >
+                  ✅ Finish
+                </button>
+              ` : ''}
               <button 
                 class="delete-raffle-btn" 
                 onclick="deleteRaffle(${raffle.id}, '${raffle.type}')"
@@ -794,13 +1149,368 @@
     }
   }
 
+  async function finishRaffle(id, type) {
+    // Only allow finishing active raffles
+    if (type !== 'active') {
+      alert('Can only finish active raffles');
+      return;
+    }
+
+    try {
+      // Fetch raffle data to get participants
+      const response = await fetch('/api/admin/all-raffles', {
+        credentials: 'include'
+      });
+
+      const result = await response.json();
+      if (!result.ok) {
+        throw new Error('Failed to load raffle data');
+      }
+
+      const raffle = result.raffles.find(r => r.id === id && r.type === type);
+      if (!raffle) {
+        throw new Error('Raffle not found');
+      }
+
+      // Open winner selection modal
+      openWinnerModal(raffle);
+    } catch (error) {
+      console.error('Failed to open finish raffle:', error);
+      alert(`Failed to open finish raffle: ${error.message}`);
+    }
+  }
+
+  let selectedWinner = null;
+  let currentRaffleId = null;
+  let currentRaffleType = null;
+
+  function openWinnerModal(raffle) {
+    currentRaffleId = raffle.id;
+    currentRaffleType = raffle.type;
+    selectedWinner = null;
+
+    const modal = document.getElementById('winnerModal');
+    const participantList = document.getElementById('participantList');
+    const searchInput = document.getElementById('winnerSearch');
+    const confirmBtn = document.getElementById('confirmFinishBtn');
+
+    // Reset search
+    searchInput.value = '';
+    
+    // Disable confirm button initially
+    confirmBtn.disabled = true;
+
+    // Populate participants - combine spots by username
+    const participants = raffle.participants || [];
+    
+    if (participants.length === 0) {
+      participantList.innerHTML = '<div class="no-participants-msg">No participants in this raffle</div>';
+    } else {
+      // Group participants by username and sum their spots
+      const combinedParticipants = {};
+      
+      participants.forEach(p => {
+        const name = (p.redditUser || p.username || 'Unknown').trim();
+        const spots = p.spots || p.spotsRequested || 0;
+        
+        if (combinedParticipants[name]) {
+          combinedParticipants[name].spots += spots;
+        } else {
+          combinedParticipants[name] = {
+            username: name,
+            spots: spots
+          };
+        }
+      });
+      
+      // Convert to array
+      const participantArray = Object.values(combinedParticipants);
+      
+      // Store for search functionality
+      if (window.storeCurrentParticipants) {
+        window.storeCurrentParticipants(participantArray);
+      }
+      
+      renderParticipants(participantArray);
+    }
+
+    // Show modal
+    modal.style.display = 'flex';
+  }
+
+  function renderParticipants(participants, filter = '') {
+    const participantList = document.getElementById('participantList');
+    
+    const filtered = filter 
+      ? participants.filter(p => {
+          const name = (p.username || '').toLowerCase();
+          return name.includes(filter.toLowerCase());
+        })
+      : participants;
+
+    if (filtered.length === 0) {
+      participantList.innerHTML = '<div class="no-participants-msg">No matching participants</div>';
+      return;
+    }
+
+    // Sort by spots (descending) then by username
+    filtered.sort((a, b) => {
+      if (b.spots !== a.spots) {
+        return b.spots - a.spots;
+      }
+      return a.username.localeCompare(b.username);
+    });
+
+    participantList.innerHTML = filtered.map((p, index) => {
+      const name = p.username || 'Unknown';
+      const spots = p.spots || 0;
+      return `
+        <div class="participant-item" onclick="selectWinner('${name.replace(/'/g, "\\'")}', ${spots}, this)">
+          <div class="participant-name">${name}</div>
+          <div class="participant-spots">${spots} spot${spots !== 1 ? 's' : ''}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function selectWinner(username, spots, element) {
+    // Remove previous selection
+    document.querySelectorAll('.participant-item').forEach(item => {
+      item.classList.remove('selected');
+    });
+
+    // Select this item
+    element.classList.add('selected');
+    
+    selectedWinner = {
+      username: username,
+      spots: spots
+    };
+
+    // Enable confirm button
+    document.getElementById('confirmFinishBtn').disabled = false;
+  }
+
+  function closeWinnerModal() {
+    document.getElementById('winnerModal').style.display = 'none';
+    selectedWinner = null;
+    currentRaffleId = null;
+    currentRaffleType = null;
+  }
+
+  async function confirmFinishRaffle() {
+    if (!selectedWinner || !currentRaffleId || !currentRaffleType) {
+      alert('Please select a winner');
+      return;
+    }
+
+    const confirmBtn = document.getElementById('confirmFinishBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Finishing...';
+
+    try {
+      const response = await fetch('/api/admin/finish-raffle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          id: currentRaffleId, 
+          type: currentRaffleType,
+          winner: selectedWinner
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.ok) {
+        throw new Error(result.error || 'Failed to finish raffle');
+      }
+
+      console.log(`✅ Successfully finished raffle ID: ${currentRaffleId} with winner: ${selectedWinner.username}`);
+      
+      // Close modal
+      closeWinnerModal();
+      
+      // Reload the table
+      await loadAllRaffles();
+    } catch (error) {
+      console.error('Failed to finish raffle:', error);
+      alert(`Failed to finish raffle: ${error.message}`);
+      
+      // Re-enable button
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = 'Finish Raffle';
+    }
+  }
+
+  async function cancelRaffleFromModal() {
+    if (!currentRaffleId || !currentRaffleType) {
+      alert('Please select a raffle to cancel');
+      return;
+    }
+
+    // Only allow cancelling active raffles
+    if (currentRaffleType !== 'active') {
+      alert('Can only cancel active raffles');
+      return;
+    }
+
+    // Show the beautiful cancel confirmation modal
+    openCancelConfirmModal(currentRaffleId);
+    
+    // Close the winner modal
+    closeWinnerModal();
+  }
+
+  // Search functionality
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('winnerSearch');
+    if (searchInput) {
+      let currentParticipantArray = [];
+      
+      searchInput.addEventListener('input', (e) => {
+        // Filter the current participant array
+        renderParticipants(currentParticipantArray, e.target.value);
+      });
+      
+      // Store participant array when modal opens
+      window.storeCurrentParticipants = function(participants) {
+        currentParticipantArray = participants;
+      };
+    }
+  });
+
   // Auto-load all raffles when page loads
   document.addEventListener('DOMContentLoaded', () => {
-    // Wait a bit for auth to complete
-    setTimeout(() => {
-      loadAllRaffles();
-    }, 1000);
+    // Load immediately - no delay needed
+    loadAllRaffles();
   });
+</script>
+
+<!-- WINNER SELECTION MODAL -->
+<div class="winner-modal" id="winnerModal">
+  <div class="winner-modal-content">
+    <div class="winner-modal-header">Select a Winner</div>
+    <div class="winner-modal-subtitle">Choose a participant to be the winner of this raffle</div>
+    
+    <input type="text" id="winnerSearch" class="winner-search" placeholder="Search participants..." />
+    
+    <div id="participantList" class="participant-list">
+      <!-- Populated by JavaScript -->
+    </div>
+    
+    <div class="winner-modal-actions">
+      <button class="winner-modal-btn cancel" onclick="closeWinnerModal()">Cancel</button>
+      <button class="winner-modal-btn cancel-raffle" onclick="cancelRaffleFromModal()">× Cancel Raffle</button>
+      <button class="winner-modal-btn confirm" id="confirmFinishBtn" onclick="confirmFinishRaffle()">Finish Raffle</button>
+    </div>
+  </div>
+</div>
+
+<!-- CANCEL CONFIRMATION MODAL -->
+<div class="cancel-confirm-modal" id="cancelConfirmModal">
+  <div class="cancel-confirm-content">
+    <div class="cancel-confirm-header">
+      <div class="cancel-confirm-icon">⚠️</div>
+      <h2 class="cancel-confirm-title">Cancel Raffle?</h2>
+      <p class="cancel-confirm-subtitle">This action cannot be undone</p>
+    </div>
+    <div class="cancel-confirm-body">
+      <p class="cancel-confirm-message">
+        Are you sure you want to cancel this raffle?
+      </p>
+      <div class="cancel-confirm-raffle-id" id="cancelRaffleIdDisplay">
+        Raffle ID: #<span id="cancelRaffleIdText">0</span>
+      </div>
+      <div class="cancel-confirm-warning">
+        <div class="cancel-confirm-warning-icon">💡</div>
+        <div class="cancel-confirm-warning-text">
+          This will save the raffle to history with a "cancelled" status. All participant data will be preserved but the raffle will be marked as aborted.
+        </div>
+      </div>
+      <div class="cancel-confirm-actions">
+        <button class="cancel-confirm-btn cancel-confirm-btn-cancel" onclick="closeCancelConfirmModal()">
+          Keep Raffle
+        </button>
+        <button class="cancel-confirm-btn cancel-confirm-btn-confirm" id="cancelConfirmBtn" onclick="executeCancelRaffle()">
+          Yes, Cancel It
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== CANCEL CONFIRMATION MODAL =====
+  function openCancelConfirmModal(raffleId) {
+    const modal = document.getElementById('cancelConfirmModal');
+    const raffleIdText = document.getElementById('cancelRaffleIdText');
+    
+    if (modal && raffleIdText) {
+      raffleIdText.textContent = raffleId;
+      modal.style.display = 'flex';
+    }
+  }
+
+  function closeCancelConfirmModal() {
+    const modal = document.getElementById('cancelConfirmModal');
+    if (modal) {
+      modal.style.display = 'none';
+    }
+  }
+
+  async function executeCancelRaffle() {
+    const raffleIdText = document.getElementById('cancelRaffleIdText');
+    if (!raffleIdText) return;
+    
+    const raffleId = parseInt(raffleIdText.textContent, 10);
+    if (isNaN(raffleId)) return;
+    
+    const confirmBtn = document.getElementById('cancelConfirmBtn');
+    if (confirmBtn) {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Cancelling...';
+    }
+    
+    try {
+      const response = await fetch('/api/admin/cancel-raffle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          id: raffleId, 
+          type: 'active'
+        })
+      });
+
+      const result = await response.json();
+
+      if (!result.ok) {
+        throw new Error(result.error || 'Failed to cancel raffle');
+      }
+
+      console.log(`✅ Successfully cancelled raffle ID: ${raffleId}`);
+      
+      // Close modal
+      closeCancelConfirmModal();
+      
+      // Reload the table
+      await loadAllRaffles();
+    } catch (error) {
+      console.error('Failed to cancel raffle:', error);
+      alert(`Failed to cancel raffle: ${error.message}`);
+      
+      // Re-enable button
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Yes, Cancel It';
+      }
+    }
+  }
 </script>
 
 <!-- ACCESS DENIED MODAL -->

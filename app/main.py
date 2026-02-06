@@ -27,20 +27,72 @@ from email.mime.multipart import MIMEMultipart
 # Load environment variables from .env file
 try:
     from dotenv import load_dotenv
-    env_path = Path(__file__).resolve().parent / '.env'
-    load_dotenv(dotenv_path=env_path)
-    print(f"✅ Loaded .env from: {env_path}")
+    # Try multiple .env file locations
+    possible_env_paths = [
+        Path('/home/ubuntu/takobot-electron/app/.env'),
+        Path('/home/ubuntu/raffle-ui/.env'),
+        Path('/home/ubuntu/raffle-ui/app/.env'),
+        Path(__file__).parent.parent / '.env',  # Relative to main.py
+        Path(__file__).parent / '.env',  # Same directory as main.py
+    ]
+    
+    env_loaded = False
+    for env_path in possible_env_paths:
+        if env_path.exists():
+            load_dotenv(dotenv_path=env_path)
+            print(f"✅ Loaded .env from: {env_path}")
+            env_loaded = True
+            break
+    
+    if not env_loaded:
+        print(f"⚠️  No .env file found in any of these locations:")
+        for p in possible_env_paths:
+            print(f"   - {p}")
+        print(f"⚠️  Will use system environment variables only")
 except ImportError:
     print("⚠️  python-dotenv not installed. Using system environment variables only.")
 except Exception as e:
     print(f"⚠️  Could not load .env file: {e}")
 
 app = FastAPI()
+
+# Add middleware to log ALL requests (for debugging session loss)
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    # Only log non-static file requests
+    if not request.url.path.startswith("/static"):
+        # Log the RAW session cookie to see if it's being sent
+        session_cookie = request.cookies.get("session")
+        print(f"📨 {request.method} {request.url.path}")
+        print(f"   🍪 Raw session cookie present: {bool(session_cookie)}")
+        if session_cookie:
+            print(f"   🍪 Cookie value (first 20 chars): {session_cookie[:20]}...")
+    
+    response = await call_next(request)
+    
+    # Log session AFTER middleware processes it
+    if not request.url.path.startswith("/static"):
+        session_data = dict(request.session) if hasattr(request, 'session') else {}
+        print(f"   ✅ Session after middleware: {session_data}")
+    
+    return response
+
 # =========================
 # Sessions (cookie-based)
 # =========================
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "CHANGE_ME_SESSION_SECRET")
-app.add_middleware(SessionMiddleware, secret_key=SESSION_SECRET, same_site="lax", https_only=False)
+print(f"🔐 SESSION_SECRET loaded: {'✅ FROM ENV' if os.environ.get('SESSION_SECRET') else '⚠️  USING DEFAULT (this will cause logout on restart!)'}")
+print(f"🔐 Secret key hash: {hashlib.md5(SESSION_SECRET.encode()).hexdigest()[:8]}... (for verification)")
+# max_age in seconds: 30 days = 30 * 24 * 60 * 60 = 2592000
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key=SESSION_SECRET, 
+    session_cookie="session",  # Explicit cookie name
+    max_age=2592000,  # 30 days persistent session
+    path="/",
+    same_site="lax", 
+    https_only=False
+)
 
 # =========================
 # Paths
@@ -170,6 +222,17 @@ async def on_startup():
             );
         """)
         
+        # Create shared_name_mappings table (shared across all users)
+        cur.execute("""
+            CREATE TABLE IF NOT EXISTS shared_name_mappings (
+                id SERIAL PRIMARY KEY,
+                reddit_username TEXT UNIQUE NOT NULL,
+                first_initial TEXT NOT NULL,
+                last_initial TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        """)
+        
         conn.commit()
         conn.close()
     except Exception as e:
@@ -177,8 +240,12 @@ async def on_startup():
 
 def get_current_user(request: Request):
     """Get current user from session (PostgreSQL)"""
+    # DEBUG: Log session contents
+    print(f"🔍 Session contents: {dict(request.session)}")
     uid = request.session.get("user_id")
+    print(f"🔍 User ID from session: {uid}")
     if not uid:
+        print("❌ No user_id in session")
         return None
     try:
         conn = get_pg_connection()
@@ -186,8 +253,13 @@ def get_current_user(request: Request):
         cur.execute("SELECT id, username, is_admin FROM users WHERE id = %s", (uid,))
         row = cur.fetchone()
         conn.close()
+        if row:
+            print(f"✅ Found user: {row['username']}")
+        else:
+            print(f"❌ No user found with ID: {uid}")
         return dict(row) if row else None
-    except Exception:
+    except Exception as e:
+        print(f"❌ Error getting user: {e}")
         return None
 
 def get_or_create_active_raffle_id(user_id: int) -> int:
@@ -708,6 +780,89 @@ async def admin_delete_any_raffle(request: Request):
         print(f"Error deleting raffle: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
+# ✅ NEW: Admin Finish Active Raffle (Move to completed in history)
+@app.post("/api/admin/finish-raffle")
+async def admin_finish_raffle(request: Request):
+    """Finish an active raffle and move it to raffle_history as completed"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Admin access required"}, status_code=403)
+    
+    try:
+        body = await request.json()
+        raffle_id = body.get("id")
+        raffle_type = body.get("type")
+        
+        if not raffle_id or not raffle_type:
+            return JSONResponse({"ok": False, "error": "ID and type are required"}, status_code=400)
+        
+        # Only allow finishing active raffles
+        if raffle_type != "active":
+            return JSONResponse({"ok": False, "error": "Can only finish active raffles"}, status_code=400)
+        
+        import httpx
+        import json as json_lib
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:3001/api/admin/finish-raffle",
+                headers={
+                    "X-User-Id": str(user["id"]),
+                    "X-User-Name": user["username"],
+                    "X-User-Is-Admin": "true" if user.get("is_admin") else "false",
+                    "Content-Type": "application/json"
+                },
+                json={"id": raffle_id, "type": raffle_type},
+                timeout=30.0
+            )
+            return JSONResponse(content=response.json(), status_code=response.status_code)
+    except Exception as e:
+        print(f"Error finishing raffle: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/admin/cancel-raffle")
+async def admin_cancel_raffle(request: Request):
+    """Cancel an active raffle and move it to raffle_history as cancelled"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Admin access required"}, status_code=403)
+    
+    try:
+        body = await request.json()
+        raffle_id = body.get("id")
+        raffle_type = body.get("type")
+        
+        if not raffle_id or not raffle_type:
+            return JSONResponse({"ok": False, "error": "ID and type are required"}, status_code=400)
+        
+        # Only allow cancelling active raffles
+        if raffle_type != "active":
+            return JSONResponse({"ok": False, "error": "Can only cancel active raffles"}, status_code=400)
+        
+        import httpx
+        import json as json_lib
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:3001/api/admin/cancel-raffle",
+                headers={
+                    "X-User-Id": str(user["id"]),
+                    "X-User-Name": user["username"],
+                    "X-User-Is-Admin": "true" if user.get("is_admin") else "false",
+                    "Content-Type": "application/json"
+                },
+                json={"id": raffle_id, "type": raffle_type},
+                timeout=30.0
+            )
+            return JSONResponse(content=response.json(), status_code=response.status_code)
+    except Exception as e:
+        print(f"Error cancelling raffle: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 @app.get("/api/whoami")
 async def whoami(request: Request):
     user = get_current_user(request)
@@ -734,6 +889,7 @@ async def current_user(request: Request):
 @app.get("/api/auth/logout")
 async def api_auth_logout(request: Request):
     """Auth API endpoint for logout - clears session and returns JSON"""
+    print(f"🚪 LOGOUT called - Clearing session for user_id: {request.session.get('user_id')}")
     request.session.clear()
     return {"ok": True, "message": "Logged out successfully"}
 
@@ -981,6 +1137,266 @@ async def clear_paypal_transactions(request: Request):
             "trace": traceback.format_exc()
         }, status_code=500)
 
+# =========================
+# API: Reddit Name Mappings
+# =========================
+@app.post("/api/settings/upload-name-mappings")
+async def upload_name_mappings(request: Request):
+    """
+    Upload Reddit name mappings (reddit_username -> full_name)
+    Extracts initials and stores in shared_name_mappings table
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        # Get request body: { "mappings": { "reddit_user": "Full Name", ... } }
+        body = await request.json()
+        mappings = body.get("mappings", {})
+        
+        if not mappings:
+            return JSONResponse({"ok": False, "error": "No mappings provided"}, status_code=400)
+
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        
+        inserted_count = 0
+        skipped_count = 0
+        errors = []
+        
+        for reddit_username, full_name in mappings.items():
+            try:
+                # Extract initials
+                initials = extract_initials(full_name)
+                if not initials:
+                    errors.append(f"{reddit_username}: Could not extract initials from '{full_name}'")
+                    continue
+                
+                first_initial, last_initial = initials
+                
+                # Insert into shared table (ignore conflicts - first person wins)
+                cur.execute("""
+                    INSERT INTO shared_name_mappings (reddit_username, first_initial, last_initial)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (reddit_username) DO NOTHING
+                    RETURNING id
+                """, (reddit_username, first_initial, last_initial))
+                
+                result = cur.fetchone()
+                if result:
+                    inserted_count += 1
+                else:
+                    skipped_count += 1  # Already exists
+                    
+            except Exception as e:
+                errors.append(f"{reddit_username}: {str(e)}")
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "ok": True,
+            "inserted": inserted_count,
+            "skipped": skipped_count,
+            "errors": errors
+        })
+
+    except Exception as e:
+        import traceback
+        return JSONResponse({
+            "ok": False,
+            "error": f"Failed to upload mappings: {str(e)}",
+            "trace": traceback.format_exc()
+        }, status_code=500)
+
+@app.get("/api/settings/name-mappings-stats")
+async def get_name_mappings_stats(request: Request):
+    """
+    Get statistics about name mappings in the database
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        
+        # Get total count from shared table
+        cur.execute("SELECT COUNT(*) FROM shared_name_mappings")
+        count = cur.fetchone()[0]
+        
+        conn.close()
+        
+        return JSONResponse({
+            "ok": True,
+            "count": count
+        })
+
+    except Exception as e:
+        return JSONResponse({
+            "ok": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/settings/export-name-mappings")
+async def export_name_mappings(request: Request):
+    """
+    Export all name mappings as CSV (reconstructed from initials)
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        
+        cur.execute("SELECT reddit_username, first_initial, last_initial FROM shared_name_mappings ORDER BY reddit_username")
+        rows = cur.fetchall()
+        conn.close()
+        
+        # Build CSV
+        csv_lines = ["reddit_user,initials"]
+        for row in rows:
+            reddit_username = row[0]
+            initials = f"{row[1]} {row[2]}"
+            csv_lines.append(f"{reddit_username},{initials}")
+        
+        csv_content = "\n".join(csv_lines)
+        
+        return JSONResponse({
+            "ok": True,
+            "csv": csv_content,
+            "count": len(rows)
+        })
+
+    except Exception as e:
+        return JSONResponse({
+            "ok": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.delete("/api/settings/clear-name-mappings")
+async def clear_name_mappings(request: Request):
+    """
+    Clear all name mappings from the database
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        conn = get_pg_connection()
+        cur = conn.cursor()
+        
+        # Get count before deleting
+        cur.execute("SELECT COUNT(*) FROM shared_name_mappings")
+        count = cur.fetchone()[0]
+        
+        # Delete all
+        cur.execute("DELETE FROM shared_name_mappings")
+        
+        conn.commit()
+        conn.close()
+        
+        return JSONResponse({
+            "ok": True,
+            "deleted": count
+        })
+
+    except Exception as e:
+        return JSONResponse({
+            "ok": False,
+            "error": str(e)
+        }, status_code=500)
+
+@app.get("/api/settings/get-all-name-mappings")
+async def get_all_name_mappings(request: Request):
+    """
+    Get all name mappings as initials (for Active Raffle display)
+    Returns: { "reddit_user": "A L", ... }
+    """
+    try:
+        user = get_current_user(request)
+        if not user:
+            print("❌ No user found in session")
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        print(f"🔍 Fetching name mappings for user: {user.get('username')}")
+        
+        conn = None
+        try:
+            conn = get_pg_connection()
+            cur = conn.cursor()
+            
+            # Query using the correct schema (first_initial, last_initial)
+            cur.execute("SELECT reddit_username, first_initial, last_initial FROM shared_name_mappings")
+            rows = cur.fetchall()
+            
+            # Build mapping dict: reddit_username -> "F L"
+            # Note: Rows are RealDictRow objects, so access by column name, not index
+            mappings = {}
+            for row in rows:
+                reddit_username = row.get('reddit_username')
+                if reddit_username:  # Only add if username exists
+                    first_initial = row.get('first_initial') or ""
+                    last_initial = row.get('last_initial') or ""
+                    mappings[reddit_username] = f"{first_initial} {last_initial}".strip()
+            
+            print(f"✅ Returning {len(mappings)} name mappings")
+            
+            return JSONResponse({
+                "ok": True,
+                "mappings": mappings
+            })
+            
+        finally:
+            if conn:
+                conn.close()
+
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ Error fetching name mappings: {str(e)}")
+        print(f"❌ Stack trace: {error_details}")
+        return JSONResponse({
+            "ok": False,
+            "error": str(e)
+        }, status_code=500)
+
+def extract_initials(full_name: str):
+    """
+    Extract first and last initials from a full name
+    Returns: (first_initial, last_initial) or None if invalid
+    
+    Examples:
+        "Arty Lam" -> ("A", "L")
+        "John Paul Smith" -> ("J", "S")
+        "Madonna" -> ("M", "M")  # Single name: use first char twice
+    """
+    if not full_name or not full_name.strip():
+        return None
+    
+    # Clean and split
+    parts = full_name.strip().split()
+    parts = [p for p in parts if p]  # Remove empty strings
+    
+    if not parts:
+        return None
+    
+    if len(parts) == 1:
+        # Single name: use first character for both initials
+        first_char = parts[0][0].upper()
+        return (first_char, first_char)
+    
+    # Multiple parts: first initial from first word, last initial from last word
+    first_initial = parts[0][0].upper()
+    last_initial = parts[-1][0].upper()
+    
+    return (first_initial, last_initial)
+
 from pydantic import BaseModel
 from fastapi import HTTPException
 
@@ -1004,9 +1420,9 @@ async def login_post(request: Request, username: str = Form(...), password: str 
         cur = conn.cursor()
         cur.execute("SELECT id, username, password_hash, is_admin FROM users WHERE username = %s", (username,))
         row = cur.fetchone()
-        conn.close()
 
         if not row:
+            conn.close()
             return templates.TemplateResponse(
                 "pages/login.html",
                 {"request": request, "error": "Invalid username or password"},
@@ -1017,14 +1433,36 @@ async def login_post(request: Request, username: str = Form(...), password: str 
         stored = row["password_hash"]
         if stored:
             if not verify_password(password, stored):
+                conn.close()
                 return templates.TemplateResponse(
                     "pages/login.html",
                     {"request": request, "error": "Invalid username or password"},
                     status_code=401
                 )
 
+        # ✅ Update last_login timestamp on successful login
+        cur.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s", (row["id"],))
+        conn.commit()
+        
+        # Verify the update worked
+        cur.execute("SELECT last_login FROM users WHERE id = %s", (row["id"],))
+        updated_login = cur.fetchone()
+        print(f"✅ [HTML Login] Updated last_login for user {row['username']} (id: {row['id']}) to: {updated_login['last_login']}")
+        
+        conn.close()
+
+        # ✅ Set session FIRST
         request.session["user_id"] = int(row["id"])
-        return RedirectResponse(url="/dashboard", status_code=303)
+        
+        # ✅ Return JSON response for fetch(), or redirect for form submission
+        # Check if it's a JSON request (from fetch) or form submission
+        content_type = request.headers.get("accept", "")
+        if "application/json" in content_type or request.headers.get("x-requested-with") == "XMLHttpRequest":
+            # Return JSON for JavaScript fetch
+            return JSONResponse({"ok": True, "user_id": int(row["id"])})
+        else:
+            # Return redirect for traditional form submission
+            return RedirectResponse(url="/dashboard", status_code=303)
     except Exception as e:
         return templates.TemplateResponse(
             "pages/login.html",
@@ -1062,9 +1500,9 @@ async def api_login(request: Request, username: str = Body(...), password: str =
         cur = conn.cursor()
         cur.execute("SELECT id, username, password_hash, is_admin FROM users WHERE username = %s", (username,))
         row = cur.fetchone()
-        conn.close()
 
         if not row:
+            conn.close()
             return JSONResponse(
                 {"ok": False, "error": "Invalid username or password"},
                 status_code=401
@@ -1074,13 +1512,27 @@ async def api_login(request: Request, username: str = Body(...), password: str =
         stored = row["password_hash"]
         if stored:
             if not verify_password(password, stored):
+                conn.close()
                 return JSONResponse(
                     {"ok": False, "error": "Invalid username or password"},
                     status_code=401
                 )
 
+        # ✅ Update last_login timestamp on successful login
+        cur.execute("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = %s", (row["id"],))
+        conn.commit()
+        
+        # Verify the update worked
+        cur.execute("SELECT last_login FROM users WHERE id = %s", (row["id"],))
+        updated_login = cur.fetchone()
+        print(f"✅ [API Login] Updated last_login for user {row['username']} (id: {row['id']}) to: {updated_login['last_login']}")
+        
+        conn.close()
+
         # Set session cookie
         request.session["user_id"] = int(row["id"])
+        print(f"✅ Login successful - Set session user_id: {row['id']} for user: {row['username']}")
+        print(f"🔍 Session after login: {dict(request.session)}")
 
         # Return success with user data
         return JSONResponse({
@@ -1162,6 +1614,7 @@ async def register_post(request: Request, username: str = Form(...), password: s
 
 @app.get("/logout")
 async def logout(request: Request):
+    print(f"🚪 /logout called - Clearing session for user_id: {request.session.get('user_id')}")
     request.session.clear()
     return RedirectResponse(url="/login", status_code=303)
 
@@ -1169,6 +1622,7 @@ async def logout(request: Request):
 @app.get("/api/logout")
 async def api_logout(request: Request):
     """API endpoint for logout - clears session and returns JSON"""
+    print(f"🚪 /api/logout called - Clearing session for user_id: {request.session.get('user_id')}")
     request.session.clear()
     return {"ok": True, "message": "Logged out successfully"}
 
@@ -1527,11 +1981,20 @@ async def scan_reddit_endpoint(request: Request):
         if existingCommentIds and "optimized" in str(parser_path):
             cmd_args.append(existingCommentIds)
 
+        # ✅ Pass environment variables to subprocess (including OPENAI_API_KEY and USE_AI_PARSING)
+        env = os.environ.copy()
+        
+        # 🐛 Debug: Log AI configuration status
+        use_ai = env.get('USE_AI_PARSING', 'false')
+        has_key = bool(env.get('OPENAI_API_KEY', ''))
+        print(f"🤖 Reddit Parser AI Config: USE_AI_PARSING={use_ai}, HAS_API_KEY={has_key}")
+        
         result = subprocess.run(
             cmd_args,
             capture_output=True,
             text=True,
-            timeout=120  # Increased to 120 seconds for large raffle threads
+            timeout=120,  # Increased to 120 seconds for large raffle threads
+            env=env  # ✅ Pass environment variables to subprocess
         )
 
         # Check for errors
@@ -1574,6 +2037,102 @@ async def scan_reddit_endpoint(request: Request):
             status_code=500
         )
 
+@app.post("/api/reddit/scan")  # ✅ POST request with JSON body (matches background-polling.js)
+async def scan_reddit_post_endpoint(request: Request):
+    """Scan Reddit post and extract participants - POST version for background polling"""
+    try:
+        # ✅ Read from request body (background polling sends POST with JSON)
+        body = await request.json()
+        url = body.get('redditLink') or body.get('url')  # Support both field names
+        costPerSpot = body.get('costPerSpot')
+        totalSpots = body.get('totalSpots')
+        existingCommentIds = body.get('existingCommentIds')
+
+        if not url or not costPerSpot:
+            return JSONResponse(
+                {"ok": False, "error": "Missing url or costPerSpot parameter"},
+                status_code=400
+            )
+
+        # Use optimized parser if available, fallback to regular parser
+        parser_path = APP_DIR.parent / "reddit_parser_optimized.py"
+        if not parser_path.exists():
+            parser_path = APP_DIR / "reddit_parser.py"
+
+        if not parser_path.exists():
+            return JSONResponse(
+                {"ok": False, "error": f"Reddit parser not found at {parser_path}"},
+                status_code=500
+            )
+
+        # Run the Python parser script
+        cmd_args = ["python3", str(parser_path), url, str(costPerSpot)]
+        if totalSpots:
+            cmd_args.append(str(totalSpots))
+
+        # Pass existing comment IDs to optimized parser (to skip AI calls)
+        if existingCommentIds and "optimized" in str(parser_path):
+            # Convert array to JSON string for subprocess
+            cmd_args.append(json.dumps(existingCommentIds) if isinstance(existingCommentIds, list) else existingCommentIds)
+
+        # ✅ Pass environment variables to subprocess (including OPENAI_API_KEY and USE_AI_PARSING)
+        env = os.environ.copy()
+        
+        # 🐛 Debug: Log AI configuration status
+        use_ai = env.get('USE_AI_PARSING', 'false')
+        has_key = bool(env.get('OPENAI_API_KEY', ''))
+        print(f"🤖 [POST] Reddit Parser AI Config: USE_AI_PARSING={use_ai}, HAS_API_KEY={has_key}")
+        print(f"🔧 [POST] Running parser: {parser_path}")
+        print(f"📋 [POST] Parser will use {'OpenAI GPT-4o' if use_ai == 'true' and has_key else 'regex-only fallback'}")
+        
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            timeout=120,  # Increased to 120 seconds for large raffle threads
+            env=env  # ✅ Pass environment variables to subprocess
+        )
+
+        # Check for errors
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or "Unknown error"
+            return JSONResponse(
+                {"ok": False, "error": f"Parser error: {error_msg}"},
+                status_code=500
+            )
+
+        # Parse the JSON response
+        try:
+            response_data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                {"ok": False, "error": f"Invalid JSON from parser: {str(e)}\\nOutput: {result.stdout[:500]}"},
+                status_code=500
+            )
+
+        # Map 'username' to 'redditUser' for frontend compatibility
+        if response_data.get("ok") and "participants" in response_data:
+            for participant in response_data["participants"]:
+                if "username" in participant:
+                    participant["redditUser"] = participant.pop("username")
+                # Ensure redditUser exists even if username was missing
+                if "redditUser" not in participant:
+                    participant["redditUser"] = "unknown"
+
+        return JSONResponse(response_data)
+
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            {"ok": False, "error": "Reddit scan timed out"},
+            status_code=500
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            {"ok": False, "error": f"Failed to scan Reddit: {str(e)}\\n{traceback.format_exc()}"},
+            status_code=500
+        )
+
 # =========================
 # API Proxy to Node.js Backend
 # =========================
@@ -1589,7 +2148,7 @@ async def proxy_to_nodejs(path: str, request: Request):
     Forward all /api/* requests to Node.js backend on port 3000
     """
     # Skip paths that should be handled by FastAPI router
-    FASTAPI_ROUTER_PREFIXES = ["users", "activity", "transactions", "settings", "stats"]
+    FASTAPI_ROUTER_PREFIXES = ["users", "transactions", "settings", "stats"]
     for prefix in FASTAPI_ROUTER_PREFIXES:
         if path.startswith(prefix):
             raise HTTPException(status_code=404, detail="Route not found in proxy")

@@ -288,6 +288,88 @@
 }
 
 /* ============================== 
+   WINNER SECTION DARK MODE FIX
+   ============================== */
+
+/* Winner section background and text */
+[data-theme="dark"] .winner-section {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .winner-section-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .winner-entry-header {
+  color: #b0b0b0 !important;
+}
+
+/* Winner count buttons */
+[data-theme="dark"] .winner-count-btn {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] .winner-count-btn:hover {
+  border-color: #8b5cf6 !important;
+  color: #8b5cf6 !important;
+}
+
+[data-theme="dark"] .winner-count-btn.active {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+  border-color: #8b5cf6 !important;
+}
+
+/* Winner entry cards */
+[data-theme="dark"] .winner-entry {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-light) !important;
+}
+
+/* Form elements in winner section */
+[data-theme="dark"] .form-label {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .form-input,
+[data-theme="dark"] .winner-spot-input,
+[data-theme="dark"] .form-select {
+  background-color: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] .form-input::placeholder {
+  color: #9ca3af !important;
+}
+
+[data-theme="dark"] .form-hint {
+  color: #b0b0b0 !important;
+}
+
+/* Username dropdown */
+[data-theme="dark"] .username-dropdown-list {
+  background-color: var(--bg-input) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] .username-dropdown-item {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .username-dropdown-item:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+[data-theme="dark"] .username-dropdown-item.selected {
+  background-color: rgba(139, 92, 246, 0.2) !important;
+  color: #8b5cf6 !important;
+}
+
+/* ============================== 
    MODALS
    ============================== */
 [data-theme="dark"] .modal-content,
@@ -529,4 +611,57 @@
 [data-theme="dark"] input[type="checkbox"] + label,
 [data-theme="dark"] input[type="radio"] + label {
   color: #ffffff !important;
+}
+
+/* Month Selector */
+[data-theme="dark"] .month-btn {
+  background: var(--bg-secondary);
+  border-color: var(--border-light);
+  color: var(--text-primary);
+}
+
+[data-theme="dark"] .month-btn:hover {
+  background: var(--bg-hover);
+  border-color: #8b5cf6;
+}
+
+[data-theme="dark"] .month-display {
+  color: var(--text-primary);
+}
+
+/* ============================== 
+   SUCCESS MODAL DARK MODE
+   ============================== */
+[data-theme="dark"] .success-modal {
+  background-color: var(--bg-modal) !important;
+}
+
+[data-theme="dark"] .success-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .success-message {
+  color: #b0b0b0 !important;
+}
+
+[data-theme="dark"] .success-stats {
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-input));
+  border-color: var(--border-light);
+}
+
+[data-theme="dark"] .success-stat-label {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .success-stat-desc {
+  color: #94A3B8 !important;
+}
+
+[data-theme="dark"] .modal-close-btn {
+  color: #94A3B8;
+}
+
+[data-theme="dark"] .modal-close-btn:hover {
+  background: var(--bg-hover);
+  color: #ffffff;
 }

@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-  
+
   <!-- Dark Mode System -->
   <link rel="stylesheet" href="/static/dark-mode.css" />
   <script src="/static/dark-mode.js"></script>
@@ -18,11 +18,11 @@
   <style>
     /* ============================== MASTER LAYOUT VARIABLES ============================== */
     :root{
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
-      --content-left: 360px;
-      --content-width: 1120px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
     body{
@@ -34,14 +34,6 @@
       margin:0;
       font-family:'Inter',sans-serif;
       overflow: hidden;
-    }
-
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: top left;  /* Scale from top-left corner */
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
     }
 
     .top-sidebar{
@@ -238,8 +230,8 @@
 
 
     /* TOP RIGHT ICONS */
-    #themeToggle { position: absolute; top: 48px; right: 130px; width: 44px; height: 24px; cursor: pointer; }
-    #settingsBtn { position: absolute; top: 48px; right: 70px; width: 24px; height: 24px; cursor: pointer; }
+    #themeToggle { position: absolute; top: 20px; right: 130px; width: 44px; height: 24px; cursor: pointer; }
+    #settingsBtn { position: absolute; top: 20px; right: 70px; width: 24px; height: 24px; cursor: pointer; }
 
     /* FAST RAFFLE TIMER */
     .fast-raffle-timer {
@@ -284,7 +276,7 @@
     /* STATS */
     .stats-row{
       position:absolute;
-      top:110px;
+      top:60px;
       left:var(--content-left);
       width:var(--content-width);
       display:grid;
@@ -328,13 +320,13 @@
     /* PARTICIPANTS CARD */
     .participants-card{
       position:absolute;
-      top:235px;
+      top:180px;
       left:276px;
-      width:1400px;
-      height:calc(var(--app-height) - 235px - 40px);
+      width:calc(100vw - 276px - 20px);
+      height:calc(100vh - 180px - 20px);
       background:#ffffff;
-      border-radius:18px;
-      box-shadow:0 18px 30px rgba(0,0,0,0.10);
+      border-radius:0;
+      box-shadow:none;
       overflow:hidden;
       z-index:52;
       display:flex;
@@ -342,20 +334,20 @@
     }
 
     .participants-header{
-      padding:22px 24px;
+      padding:20px 28px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:18px;
-      border-bottom:1px solid #eef0f4;
+      border-bottom:3px solid #8b5cf6;
       background:#ffffff;
     }
 
     .participants-title{
       margin:0;
-      font-size:18px;
+      font-size:20px;
       font-weight:700;
-      color:#111827;
+      color:#1f2937;
     }
 
     .participants-sub{
@@ -367,14 +359,24 @@
 
     .table-wrap{
       flex:1;
-      overflow:auto;
+      overflow-y: auto;
+      overflow-x: hidden;
       background:#ffffff;
+    }
+
+    .table-wrap::-webkit-scrollbar-track:horizontal {
+      display: none;
+    }
+
+    .table-wrap::-webkit-scrollbar:horizontal {
+      display: none;
+      height: 0;
     }
 
     table.p-table{
       width:100%;
       border-collapse:collapse;
-      font-size:14px;
+      font-size:13px;
       table-layout:fixed;
     }
 
@@ -389,29 +391,135 @@
 
     .p-table thead th{
       text-align:left;
-      padding:14px 24px;
-      font-size:11px;
-      letter-spacing:0.8px;
+      padding:10px 28px;
+      font-size:10px;
+      letter-spacing:1.2px;
       text-transform:uppercase;
-      color:#334155;
-      background:#ffffff;
+      color:#6b7280;
+      font-weight:700;
+      background:#fafafa;
       position:sticky;
       top:0;
       z-index:1;
-      border-bottom:1px solid #eef0f4;
+      border-bottom:2px solid #e5e7eb;
       overflow:hidden;
       text-overflow:ellipsis;
       white-space:nowrap;
     }
 
+    /* Sortable header styles */
+    .p-table thead th.sortable {
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .p-table thead th.sortable:hover {
+      background: #f3f4f6;
+    }
+
+    .p-table thead th.sortable .th-inner {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .p-table thead th.sortable .sort-indicator {
+      display: inline-flex;
+      flex-direction: column;
+      margin-left: auto;
+      opacity: 0.3;
+      transition: opacity 0.2s;
+    }
+
+    .p-table thead th.sortable:hover .sort-indicator {
+      opacity: 0.6;
+    }
+
+    .p-table thead th.sortable.sorted-asc .sort-indicator,
+    .p-table thead th.sortable.sorted-desc .sort-indicator {
+      opacity: 1;
+    }
+
+    .p-table thead th .sort-arrow {
+      font-size: 8px;
+      line-height: 6px;
+      color: #6b7280;
+    }
+
+    .p-table thead th.sorted-asc .sort-arrow-up {
+      color: #8b5cf6;
+    }
+
+    .p-table thead th.sorted-desc .sort-arrow-down {
+      color: #8b5cf6;
+    }
+
+    body.dark-mode .p-table thead th.sortable:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    body.dark-mode .p-table thead th .sort-arrow {
+      color: #9ca3af;
+    }
+
+    body.dark-mode .p-table thead th.sorted-asc .sort-arrow-up,
+    body.dark-mode .p-table thead th.sorted-desc .sort-arrow-down {
+      color: #a78bfa;
+    }
+
+    /* Center align numeric columns */
+    .p-table thead th[data-col="4"],
+    .p-table thead th[data-col="5"],
+    .p-table thead th[data-col="6"],
+    .p-table thead th[data-col="7"] {
+      text-align: center;
+    }
+
     .p-table tbody td{
-      padding:18px 24px;
-      border-bottom:1px solid #eef0f4;
+      padding:12px 28px;
+      border-bottom:1px solid #f3f4f6;
       vertical-align:middle;
-      color:#0f172a;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
+      color:#1f2937;
+    }
+
+    /* ============================== UNPAID ROW STYLING ============================== */
+    .p-table tbody tr.unpaid-row {
+      background: #E9D5FF;
+      border-left: none;
+      transition: all 0.15s;
+    }
+
+    .p-table tbody tr.unpaid-row:hover {
+      background: #D8B4FE;
+    }
+
+    /* ============================== PAID ROW STYLING ============================== */
+    .p-table tbody tr.paid-row {
+      background: #BBF7D0;
+      border-left: none;
+      transition: all 0.15s;
+    }
+
+    .p-table tbody tr.paid-row:hover {
+      background: #86EFAC;
+    }
+
+    /* Dark mode row colors */
+    body.dark-mode .p-table tbody tr.unpaid-row {
+      background: rgba(168, 85, 247, 0.25);
+    }
+
+    body.dark-mode .p-table tbody tr.unpaid-row:hover {
+      background: rgba(168, 85, 247, 0.35);
+    }
+
+    body.dark-mode .p-table tbody tr.paid-row {
+      background: rgba(34, 197, 94, 0.25);
+    }
+
+    body.dark-mode .p-table tbody tr.paid-row:hover {
+      background: rgba(34, 197, 94, 0.35);
     }
 
     .user-cell{
@@ -501,10 +609,15 @@
       opacity: 0.8;
     }
 
-    /* Tabbed Dropdown Styling */
-    .tabbed-dropdown {
+    /* ✅ Tabbed Search Input Styling */
+    .tabbed-search-container {
+      position: relative;
       width: 100%;
       max-width: 170px;
+    }
+
+    .tabbed-search-input {
+      width: 100%;
       padding: 6px 10px;
       border: 1.5px solid #e2e8f0;
       border-radius: 8px;
@@ -512,25 +625,64 @@
       color: #334155;
       font-size: 13px;
       font-family: 'Inter', sans-serif;
-      cursor: pointer;
       transition: all 0.2s ease;
       outline: none;
     }
 
-    .tabbed-dropdown:hover {
+    .tabbed-search-input:hover {
       border-color: #8b5cf6;
       background: #faf5ff;
     }
 
-    .tabbed-dropdown:focus {
+    .tabbed-search-input:focus {
       border-color: #8b5cf6;
       box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
     }
 
-    .tabbed-dropdown option {
-      padding: 8px;
+    .tabbed-search-input::placeholder {
+      color: #94a3b8;
+    }
+
+    /* Dropdown list - FIXED positioning to avoid clipping */
+    .tabbed-dropdown-list {
+      position: fixed;
+      max-height: 200px;
+      overflow-y: auto;
       background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      z-index: 9999;
+      display: none;
+    }
+
+    .tabbed-dropdown-list.show {
+      display: block;
+    }
+
+    .tabbed-dropdown-item {
+      padding: 8px 12px;
+      font-size: 13px;
       color: #334155;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .tabbed-dropdown-item:hover {
+      background: #faf5ff;
+      color: #8b5cf6;
+    }
+
+    .tabbed-dropdown-item.selected {
+      background: #ede9fe;
+      color: #8b5cf6;
+      font-weight: 600;
+    }
+
+    .tabbed-dropdown-item-name {
+      color: #94a3b8;
+      font-size: 11px;
+      margin-left: 4px;
     }
 
     .tabbed-dropdown option:hover {
@@ -552,15 +704,31 @@
       background:rgba(255,255,255,0.55);
     }
 
+    /* Compact status dots */
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .dot-paid {
+      background: #22c55e;
+    }
+
+    .dot-pending {
+      background: #f59e0b;
+    }
+
     .participants-foot{
-      padding:14px 24px;
+      padding:14px 28px;
       display:flex;
       justify-content:space-between;
       align-items:center;
-      border-top:1px solid #eef0f4;
-      color:#475569;
-      font-size:13px;
-      background:#ffffff;
+      border-top:2px solid #e5e7eb;
+      background:#fafafa;
+      color:#6b7280;
+      font-size:12px;
     }
 
     /* Resize handles */
@@ -1650,8 +1818,6 @@
   <button id="setupBtn" class="btn btn-blue">Setup</button>
   <button id="summaryBtn" class="btn btn-purple">Summary</button>
   <button id="markPaidBtn" class="btn btn-green">Mark All Paid</button>
-  <button id="scanEmailBtn" class="btn btn-purple">Scan Email</button>
-  <button id="clearIdsBtn" class="btn btn-orange">Clear IDs</button>
   <button id="finishRaffleBtn" class="btn btn-red">Finish Raffle</button>
 </div>
 
@@ -1665,6 +1831,7 @@
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
             <option value="tabs">Tabs Only</option>
+            <option value="drama">Waitlist</option>
           </select>
         </div>
       </div>
@@ -1684,11 +1851,43 @@
 
           <thead>
             <tr>
-              <th data-col="0"><div class="th-inner">Reddit User<span class="col-resizer"></span></div></th>
-              <th data-col="1"><div class="th-inner">Name<span class="col-resizer"></span></div></th>
+              <th data-col="0" class="sortable" data-sort="reddit">
+                <div class="th-inner">
+                  Reddit User
+                  <span class="sort-indicator">
+                    <span class="sort-arrow sort-arrow-up">▲</span>
+                    <span class="sort-arrow sort-arrow-down">▼</span>
+                  </span>
+                  <span class="col-resizer"></span>
+                </div>
+              </th>
+              <th data-col="1">
+                <div class="th-inner">
+                  Name
+                  <span class="col-resizer"></span>
+                </div>
+              </th>
               <th data-col="2"><div class="th-inner">Tabbed<span class="col-resizer"></span></div></th>
-              <th data-col="3"><div class="th-inner">Comment<span class="col-resizer"></span></div></th>
-              <th data-col="4"><div class="th-inner">Spots<span class="col-resizer"></span></div></th>
+              <th data-col="3" class="sortable" data-sort="comment">
+                <div class="th-inner">
+                  Comment
+                  <span class="sort-indicator">
+                    <span class="sort-arrow sort-arrow-up">▲</span>
+                    <span class="sort-arrow sort-arrow-down">▼</span>
+                  </span>
+                  <span class="col-resizer"></span>
+                </div>
+              </th>
+              <th data-col="4" class="sortable" data-sort="spots">
+                <div class="th-inner">
+                  Spots
+                  <span class="sort-indicator">
+                    <span class="sort-arrow sort-arrow-up">▲</span>
+                    <span class="sort-arrow sort-arrow-down">▼</span>
+                  </span>
+                  <span class="col-resizer"></span>
+                </div>
+              </th>
               <th data-col="5"><div class="th-inner">Owed<span class="col-resizer"></span></div></th>
               <th data-col="6"><div class="th-inner">Paid<span class="col-resizer"></span></div></th>
               <th data-col="7"><div class="th-inner">Status<span class="col-resizer"></span></div></th>
@@ -1708,7 +1907,7 @@
         <div id="footerShowing">Showing 0 of 0 participants</div>
         <div id="autoScanIndicator" class="auto-scan-indicator" style="display: none;">
           <div class="auto-scan-pulse"></div>
-          <span>Auto scanning Every 10 Seconds</span>
+          <span>Auto scanning Every 60 Seconds</span>
         </div>
         <div id="footerStats">Paid: <strong>0</strong> &nbsp;&nbsp; Pending: <strong>0</strong></div>
       </div>
@@ -1826,7 +2025,7 @@
         link.addEventListener('click', async function(e) {
           e.preventDefault();
           e.stopPropagation();
-          
+
           // Check if user is admin
           if (window.adminCheckComplete === true) {
             // Admin confirmed - allow navigation
@@ -1946,7 +2145,7 @@
         <div class="winner-count-selector">
           <label class="form-label" style="margin-bottom: 10px;">Number of Winners</label>
           <div class="winner-count-buttons">
-            <button type="button" class="winner-count-btn active" data-count="1">🏆 1</button>
+            <button type="button" class="winner-count-btn active" data-count="1">     1</button>
             <button type="button" class="winner-count-btn" data-count="2">🏆x2</button>
             <button type="button" class="winner-count-btn" data-count="3">🏆x3</button>
             <button type="button" class="winner-count-btn" data-count="4">🏆×4</button>
@@ -2116,12 +2315,28 @@
       participants: [],
       createdAt: null,  // Timestamp when raffle setup was saved (ISO 8601 format)
       fastRaffleEnabled: false,
-      fastRaffleStartTime: null
+      fastRaffleStartTime: null,
+      sortColumn: null,  // Current sort column ('reddit', 'name', 'spots')
+      sortDirection: 'asc'  // Sort direction ('asc' or 'desc')
     };
-    
+
     // Alias for convenience - all references can use 'appState' but it's globally accessible via window.appState
     const appState = window.appState;
-    
+
+    // ============ PERFORMANCE UTILITIES ============
+    // Debounce function to limit how often a function can fire
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
     // Helper to get user-specific localStorage key (only used for polling flags, not raffle data)
     function getUserLocalStorageKey(baseKey) {
       // Get user from localStorage (where auth is stored)
@@ -2140,7 +2355,7 @@
     // ============ PERSISTENCE FUNCTIONS ============
     // DATABASE-ONLY: All raffle data is stored in the database
     // User authentication info is stored in localStorage (managed by login system)
-    
+
     async function saveState() {
       try {
         // ✅ FIX: Save in the SAME format as Reddit parser for consistency
@@ -2152,9 +2367,10 @@
           owed: p.owed || 0,                 // ← Match Reddit parser format
           paid: p.paid || false,             // ← Match Reddit parser format
           requestLink: p.requestLink || '',
-          commentId: p.commentId || ''       // ← For duplicate detection
+          commentId: p.commentId || '',      // ← For duplicate detection
+          tabbed: p.tabbed || null           // ✅ Save tabbed field
         }));
-        
+
         // User info comes from localStorage automatically via API.js getUserHeaders()
         const result = await API.saveRaffle({
           redditLink: appState.redditLink,
@@ -2164,9 +2380,9 @@
           fastRaffleEnabled: appState.fastRaffleEnabled,
           fastRaffleStartTime: appState.fastRaffleStartTime
         });
-        
+
         console.log('📝 Save raffle response:', result);
-        
+
         // Store the raffle ID from the response (in memory only)
         if (result.ok && result.raffle_id) {
           appState.activeRaffleId = result.raffle_id;
@@ -2183,14 +2399,14 @@
       try {
         const result = await API.loadRaffle();
         console.log('📂 Load raffle response:', result);
-        
+
         if (result.ok && result.data) {
           const data = result.data;
           appState.activeRaffleId = data.id || null;
           appState.redditLink = data.redditLink || '';
           appState.totalSpots = data.totalSpots;
           appState.costPerSpot = data.costPerSpot;
-          
+
           // ✅ No transformation needed - data is already in the correct format from Reddit parser
           appState.participants = (data.participants || []).map(p => ({
             redditUser: p.redditUser || '',
@@ -2200,9 +2416,10 @@
             owed: p.owed || 0,
             paid: p.paid || false,
             requestLink: p.requestLink || '',
-            commentId: p.commentId || ''
-          }));
-          
+            commentId: p.commentId || '',
+            tabbed: p.tabbed || null  // ✅ Restore tabbed field
+          })).reverse();  // ✅ Reverse so newest comments appear first (matches auto-scan behavior)
+
           appState.fastRaffleEnabled = data.fastRaffleEnabled || false;
           // Convert ISO string to timestamp number
           if (data.fastRaffleStartTime) {
@@ -2210,7 +2427,7 @@
           } else {
             appState.fastRaffleStartTime = null;
           }
-          
+
           console.log('✅ Raffle loaded from database. ID:', appState.activeRaffleId);
           console.log('📊 Loaded', appState.participants.length, 'participants');
 
@@ -2224,7 +2441,7 @@
           if (appState.costPerSpot != null && appState.costPerSpot !== '') {
             document.getElementById("spotCostInput").value = appState.costPerSpot;
           }
-          
+
           // Update fast raffle checkbox
           const fastRaffleCheckbox = document.getElementById("fastRaffleCheckbox");
           if (fastRaffleCheckbox) {
@@ -2237,8 +2454,10 @@
             rebuildTable();
             updateStats();
             updateFooter();
+            // ✅ Apply default filter on page load (hides Waitlist participants)
+            filterAndSearch();
           }
-          
+
           // Start timer if enabled
           console.log('🔍 Timer check - enabled:', appState.fastRaffleEnabled, 'startTime:', appState.fastRaffleStartTime);
           if (appState.fastRaffleEnabled && appState.fastRaffleStartTime) {
@@ -2268,7 +2487,21 @@
       }
     }
 
-  function rebuildTable() {
+    // ✅ Sync current tabbed input values back to appState before rebuild
+    function syncTabbedInputsToAppState() {
+      const tabbedInputs = document.querySelectorAll('.tabbed-search-input');
+      tabbedInputs.forEach(input => {
+        const index = parseInt(input.dataset.index);
+        const selectedReddit = input.dataset.selected || '';
+        if (appState.participants[index]) {
+          appState.participants[index].tabbed = selectedReddit || null;
+        }
+      });
+    }
+
+  async function rebuildTable() {
+      // ✅ Read current tabbed input values BEFORE clearing the table
+      syncTabbedInputsToAppState();
       const tbody = document.getElementById("participantsTbody");
       const emptyRow = document.getElementById("emptyRow");
 
@@ -2283,20 +2516,144 @@
         emptyRow.remove();
       }
 
+      // ⚡ PERFORMANCE: Full table rebuild. For 100+ participants, this takes ~50-100ms.
+      // Future optimization: Implement row recycling (reuse existing DOM nodes, only update changed cells)
       tbody.innerHTML = '';
 
       // Use DocumentFragment for better performance with large tables
       const fragment = document.createDocumentFragment();
 
-      // Python parser already sorts newest first (by timestamp), so use as-is
-      const displayParticipants = appState.participants;
+      // Sort participants based on current sort state
+      let displayParticipants = [...appState.participants];
 
-      // Batch localStorage lookups - read once instead of per participant
-      const nameMappings = JSON.parse(localStorage.getItem('raffleui_reddit_name_mapping') || '{}');
+      if (appState.sortColumn) {
+        displayParticipants.sort((a, b) => {
+          let aVal, bVal;
+
+          switch (appState.sortColumn) {
+            case 'reddit':
+              aVal = (a.redditUser || '').toLowerCase();
+              bVal = (b.redditUser || '').toLowerCase();
+              break;
+            case 'comment':
+              // Sort by index (chronological order) - lower index = older comment
+              aVal = appState.participants.indexOf(a);
+              bVal = appState.participants.indexOf(b);
+              break;
+            case 'spots':
+              aVal = a.spots || 0;
+              bVal = b.spots || 0;
+              break;
+            case 'paid':
+              aVal = a.paid ? 1 : 0;
+              bVal = b.paid ? 1 : 0;
+              break;
+            case 'tabbed':
+              aVal = (a.tabbed || '').toLowerCase();
+              bVal = (b.tabbed || '').toLowerCase();
+              break;
+            default:
+              return 0;
+          }
+
+          if (appState.sortColumn === 'spots' || appState.sortColumn === 'paid') {
+            // Numeric sort
+            return appState.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+          } else if (appState.sortColumn === 'comment') {
+            // Chronological sort (reversed: asc = newest first, desc = oldest first)
+            return appState.sortDirection === 'asc' ? bVal - aVal : aVal - bVal;
+          } else {
+            // String sort
+            if (aVal < bVal) return appState.sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return appState.sortDirection === 'asc' ? 1 : -1;
+            return 0;
+          }
+        });
+      }
+
+      // Load name mappings: localStorage (personal) FIRST, then database (shared initials) as fallback
+      let nameMappings = {};
+
+      // STEP 1: Load personal full names from localStorage
+      const localMappings = JSON.parse(localStorage.getItem('raffleui_reddit_name_mapping') || '{}');
+
+      // STEP 2: Fetch shared initials from database
+      let sharedMappings = {};
+      try {
+        const response = await fetch('/api/settings/get-all-name-mappings', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.ok) {
+          sharedMappings = data.mappings;
+        }
+      } catch (err) {
+        console.error('Failed to load shared name mappings:', err);
+      }
+
+      // STEP 3: Merge with priority: localStorage > database
+      nameMappings = { ...sharedMappings, ...localMappings };
+
+      // STEP 3.5: Remove case-insensitive duplicates while preserving localStorage priority
+      const deduplicatedMappings = {};
+      const seenLowercase = {};
+
+      // First pass: Add all entries and track sources
+      const allEntries = [];
+
+      // Add database entries first (lower priority)
+      for (const [redditUser, realName] of Object.entries(sharedMappings)) {
+        allEntries.push({ redditUser, realName, source: 'database' });
+      }
+
+      // Add localStorage entries (higher priority)
+      for (const [redditUser, realName] of Object.entries(localMappings)) {
+        allEntries.push({ redditUser, realName, source: 'localStorage' });
+      }
+
+      // Second pass: Deduplicate with localStorage priority
+      for (const entry of allEntries) {
+        const lowerUser = entry.redditUser.toLowerCase();
+
+        if (!seenLowercase[lowerUser]) {
+          // First time seeing this username (case-insensitive)
+          deduplicatedMappings[entry.redditUser] = entry.realName;
+          seenLowercase[lowerUser] = entry;
+        } else {
+          // Duplicate found - check priority
+          const existing = seenLowercase[lowerUser];
+
+          // localStorage always wins over database
+          if (entry.source === 'localStorage' && existing.source === 'database') {
+            // Replace database entry with localStorage entry
+            delete deduplicatedMappings[existing.redditUser];
+            deduplicatedMappings[entry.redditUser] = entry.realName;
+            seenLowercase[lowerUser] = entry;
+          } else if (entry.source === 'localStorage' && existing.source === 'localStorage') {
+            // Both are localStorage - prefer lowercase key
+            if (entry.redditUser === lowerUser && existing.redditUser !== lowerUser) {
+              delete deduplicatedMappings[existing.redditUser];
+              deduplicatedMappings[entry.redditUser] = entry.realName;
+              seenLowercase[lowerUser] = entry;
+            }
+          }
+          // If entry is database and existing is localStorage, keep existing (skip entry)
+        }
+      }
+
+      nameMappings = deduplicatedMappings;
+
+      // STEP 4: Store in global cache for use by summary sidebar AND tabbed search
+      cachedNameMappings = nameMappings;
+
+      // ✅ Store globally for tabbed search (includes shared + spreadsheet)
+      window.allTabbedUsers = Object.keys(nameMappings).sort().map(reddit => ({
+        reddit,
+        name: nameMappings[reddit] || ''
+      }));
+
       const tabbedMappings = JSON.parse(localStorage.getItem('raffleui_tabbed_mapping') || '{}');
-      
-      // Get all unique Reddit usernames for dropdown
-      const allRedditUsers = Object.keys(nameMappings).sort();
 
       displayParticipants.forEach((participant, index) => {
         // Index is already correct since we're not reversing
@@ -2306,30 +2663,40 @@
         row.dataset.name = participant.name;
         row.dataset.comment = participant.comment;
         row.dataset.paid = participant.paid;
+        row.dataset.spots = participant.spots;
         row.dataset.index = index;  // Use correct index for editing
+
+        // ✅ Add row styling classes based on payment status
+        if (participant.paid) {
+          row.classList.add('paid-row');
+        } else if (participant.spots > 0) {
+          // Only show unpaid status if they have 1+ spots assigned
+          row.classList.add('unpaid-row');
+        }
+        // If spots = 0, participant is on waitlist (no background color)
 
         const initial = participant.redditUser.charAt(2).toUpperCase();
         const statusClass = participant.paid ? 'status-paid' : 'status-pending';
         const statusIcon = participant.paid ? '✓' : '⏱';
         const statusText = participant.paid ? 'Paid' : 'Pending';
 
-        // Check if this is a tab entry
-        const isTab = participant.comment && (participant.comment.toLowerCase().includes('tab') || participant.comment.toLowerCase().includes('tabbed'));
+        // Check if this is a tab entry (includes tab/tabbed/wff in comment)
+        const isTab = participant.comment && (
+          participant.comment.toLowerCase().includes('tab') ||
+          participant.comment.toLowerCase().includes('tabbed') ||
+          participant.comment.toLowerCase().includes('wff')
+        );
         const tabBadge = isTab ? '<span class="tab-badge">TAB</span>' : '';
 
         // Use pre-loaded name mappings instead of function call per participant
-        const storedName = nameMappings[participant.redditUser];
+        // Use case-insensitive lookup to handle different casing in database vs participants
+        const storedName = nameMappings[participant.redditUser] || nameMappings[participant.redditUser.toLowerCase()];
         const displayName = storedName || participant.name || '';
 
-        // Build dropdown options (use participant.tabbed for THIS row only)
+        // ✅ NEW: Prepare search input with current tabbed value
         const currentTabbed = participant.tabbed || '';
-        let dropdownOptions = '<option value="">— None —</option>';
-        allRedditUsers.forEach(redditUser => {
-          const selected = redditUser === currentTabbed ? 'selected' : '';
-          const name = nameMappings[redditUser] || '';
-          const displayText = name ? `${redditUser} (${name})` : redditUser;
-          dropdownOptions += `<option value="${redditUser}" ${selected}>${displayText}</option>`;
-        });
+        const tabbedName = currentTabbed ? (nameMappings[currentTabbed] || nameMappings[currentTabbed.toLowerCase()]) : null;
+        const currentTabbedDisplay = currentTabbed ? (tabbedName ? `${currentTabbed} (${tabbedName})` : currentTabbed) : '';
 
         row.innerHTML = `
           <td>
@@ -2341,17 +2708,27 @@
           </td>
           <td><span class="name-field" data-index="${index}" style="cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;" title="Click to edit name">${displayName || '<span style="color: #94a3b8;">—</span>'}</span></td>
           <td>
-            <select class="tabbed-dropdown" data-index="${index}" data-reddit="${participant.redditUser}">
-              ${dropdownOptions}
-            </select>
+            <div class="tabbed-search-container">
+              <input
+                type="text"
+                class="tabbed-search-input"
+                data-index="${index}"
+                data-reddit="${participant.redditUser}"
+                data-selected="${currentTabbed}"
+                value="${currentTabbedDisplay}"
+                placeholder="— None —"
+                autocomplete="off"
+              />
+              <div class="tabbed-dropdown-list" data-index="${index}"></div>
+            </div>
           </td>
-          <td><span class="comment-muted">${participant.comment || ''}</span></td>
-          <td><span class="spots-pill" data-index="${index}" style="cursor: pointer;" title="Double-click to edit">${participant.spots}</span></td>
-          <td>$${parseFloat(participant.owed).toFixed(2)}</td>
+          <td><span class=\"comment-muted\">${participant.comment || ''}</span></td>
+          <td style="text-align: center;"><span class="spots-pill" data-index="${index}" style="cursor: pointer;" title="Double-click to edit">${participant.spots}</span></td>
+          <td style="text-align: center; font-weight: 700;">$${parseFloat(participant.owed).toFixed(2)}</td>
           <td style="text-align: center;">
             <input type="checkbox" class="paid-checkbox" data-index="${index}" ${participant.paid ? 'checked' : ''} />
           </td>
-          <td><span class="status-chip ${statusClass}"><span class="dot">${statusIcon}</span>${statusText}</span></td>
+          <td style="text-align: center;"><span class="status-dot ${participant.paid ? 'dot-paid' : 'dot-pending'}"></span></td>
         `;
 
         fragment.appendChild(row);
@@ -2376,6 +2753,39 @@
       if (typeof window.attachTabRowClickHandlers === 'function') {
         attachTabRowClickHandlers();
       }
+
+      // ✅ Restore tabbed column visibility after table rebuild
+      const tabbedVisible = loadTabbedColumnVisibility();
+      applyTabbedColumnVisibility(tabbedVisible);
+    }
+
+    // ✅ Helper function to check if spots exceed limit
+    function checkSpotsLimit(newSpotsToAdd, excludeIndex = null) {
+      if (appState.totalSpots === null || appState.totalSpots === undefined) {
+        return { valid: true }; // No limit set
+      }
+
+      // Calculate current total spots (excluding the participant being edited)
+      let currentTotal = 0;
+      appState.participants.forEach((p, idx) => {
+        if (excludeIndex === null || idx !== excludeIndex) {
+          currentTotal += parseInt(p.spots) || 0;
+        }
+      });
+
+      const proposedTotal = currentTotal + newSpotsToAdd;
+
+      if (proposedTotal > appState.totalSpots) {
+        return {
+          valid: false,
+          currentTotal,
+          proposedTotal,
+          limit: appState.totalSpots,
+          exceededBy: proposedTotal - appState.totalSpots
+        };
+      }
+
+      return { valid: true };
     }
 
     function attachSpotEditListeners() {
@@ -2419,15 +2829,67 @@
               return;
             }
 
+            // ✅ Check if new spots would exceed the limit
+            const spotCheck = checkSpotsLimit(newSpots, index);
+            if (!spotCheck.valid) {
+              showErrorToast('Spot Limit Exceeded', [
+                `This raffle has a limit of ${spotCheck.limit} spots.`,
+                `Current total: ${spotCheck.currentTotal} spots`,
+                `Proposed total: ${spotCheck.proposedTotal} spots (exceeds by ${spotCheck.exceededBy})`
+              ]);
+              pill.textContent = originalContent;
+              return;
+            }
+
             // Update participant data
             appState.participants[index].spots = newSpots;
             appState.participants[index].owed = newSpots * appState.costPerSpot;
 
+            // Sync tabbed inputs before saving
+            syncTabbedInputsToAppState();
+
             // Save to database
             await saveState();
 
-            // Rebuild table
-            rebuildTable();
+            // ✅ Update ONLY the pill and owed cell without rebuilding
+            pill.textContent = newSpots;
+            const row = pill.closest('tr');
+            const owedCell = row.children[5]; // 6th column (0-indexed)
+            if (owedCell) {
+              owedCell.textContent = `$${parseFloat(appState.participants[index].owed).toFixed(2)}`;
+            }
+
+            // ✅ Update row dataset for spots
+            row.dataset.spots = newSpots;
+
+            // ✅ Update row styling based on spots (0 spots = waitlist, no color)
+            if (appState.participants[index].paid) {
+              row.classList.remove('unpaid-row');
+              row.classList.add('paid-row');
+            } else if (newSpots > 0) {
+              row.classList.remove('paid-row');
+              row.classList.add('unpaid-row');
+            } else {
+              // 0 spots = waitlist (remove both classes for no color)
+              row.classList.remove('paid-row', 'unpaid-row');
+            }
+
+            // ✅ Handle real-time filter updates for Waitlist <-> All Payments
+            const paymentFilter = document.getElementById('paymentFilter').value;
+            if (paymentFilter === 'drama' && newSpots > 0) {
+              // Moving out of Waitlist (0 → 1+), hide row
+              row.classList.add('hidden');
+            } else if (paymentFilter !== 'drama' && newSpots === 0 && currentSpots > 0) {
+              // Moving into Waitlist (1+ → 0), hide row
+              row.classList.add('hidden');
+            } else if (paymentFilter === 'drama' && newSpots === 0) {
+              // Staying in Waitlist, ensure visible
+              row.classList.remove('hidden');
+            } else if (paymentFilter !== 'drama' && newSpots > 0) {
+              // Re-apply filter logic for non-Waitlist filters
+              filterAndSearch();
+            }
+
             updateStats();
             updateFooter();
 
@@ -2439,7 +2901,8 @@
             if (e.key === 'Enter') {
               saveEdit();
             } else if (e.key === 'Escape') {
-              rebuildTable();
+              // Just restore the original text without rebuilding
+              pill.textContent = originalContent;
             }
           });
 
@@ -2451,20 +2914,71 @@
     // ============ NAME MAPPING LOCALSTORAGE ============
     const NAME_MAPPING_KEY = 'raffleui_reddit_name_mapping';
 
+    // Global cache for merged name mappings (localStorage + DB)
+    let cachedNameMappings = {};
+
     function saveNameMapping(redditUser, realName) {
       try {
         const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
-        mappings[redditUser] = realName;
+
+        // Always save with lowercase key to prevent case-sensitive duplicates
+        const normalizedKey = redditUser.toLowerCase();
+
+        // Remove any case variants that might exist
+        for (const key in mappings) {
+          if (key.toLowerCase() === normalizedKey && key !== normalizedKey) {
+            delete mappings[key];
+          }
+        }
+
+        mappings[normalizedKey] = realName;
         localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+
+        // Update cache with normalized key
+        cachedNameMappings[normalizedKey] = realName;
       } catch (e) {
         console.error('Failed to save name mapping:', e);
       }
     }
 
-    function getNameFromMapping(redditUser) {
+    function removeNameMapping(redditUser) {
       try {
         const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
-        return mappings[redditUser] || '';
+
+        // Remove both the exact key and any normalized versions
+        const normalizedKey = redditUser.toLowerCase();
+
+        // Remove any case variants
+        for (const key in mappings) {
+          if (key.toLowerCase() === normalizedKey) {
+            delete mappings[key];
+          }
+        }
+
+        localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(mappings));
+
+        // Update cache to remove the entry
+        delete cachedNameMappings[redditUser];
+        delete cachedNameMappings[normalizedKey];
+      } catch (e) {
+        console.error('Failed to remove name mapping:', e);
+      }
+    }
+
+    function getNameFromMapping(redditUser) {
+      // Check cache first (has both localStorage and DB data merged)
+      // Use case-insensitive lookup
+      if (cachedNameMappings[redditUser]) {
+        return cachedNameMappings[redditUser];
+      }
+      if (cachedNameMappings[redditUser.toLowerCase()]) {
+        return cachedNameMappings[redditUser.toLowerCase()];
+      }
+
+      // Fallback to localStorage only
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        return mappings[redditUser] || mappings[redditUser.toLowerCase()] || '';
       } catch (e) {
         return '';
       }
@@ -2477,6 +2991,74 @@
         return {};
       }
     }
+
+    // ============ CLEANUP DUPLICATE NAME MAPPINGS ============
+    function cleanupDuplicateNameMappings() {
+      try {
+        const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
+        const cleaned = {};
+        const seenLowercase = {};
+        let duplicatesRemoved = 0;
+
+        for (const [redditUser, realName] of Object.entries(mappings)) {
+          const lowerUser = redditUser.toLowerCase();
+
+          if (!seenLowercase[lowerUser]) {
+            // First time seeing this username (case-insensitive)
+            cleaned[redditUser] = realName;
+            seenLowercase[lowerUser] = redditUser;
+          } else {
+            // Duplicate found - prefer lowercase version
+            const existingKey = seenLowercase[lowerUser];
+            duplicatesRemoved++;
+
+            if (redditUser === lowerUser && existingKey !== lowerUser) {
+              // Current is lowercase, existing is not - replace
+              cleaned[redditUser] = realName;
+              delete cleaned[existingKey];
+              seenLowercase[lowerUser] = redditUser;
+            }
+            // Otherwise skip this duplicate (keep the first one we found)
+          }
+        }
+
+        // Save cleaned mappings back to localStorage
+        if (duplicatesRemoved > 0) {
+          localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(cleaned));
+          console.log(`✅ Removed ${duplicatesRemoved} duplicate name mapping(s)`);
+        }
+
+        return duplicatesRemoved;
+      } catch (e) {
+        console.error('Failed to cleanup duplicate name mappings:', e);
+        return 0;
+      }
+    }
+
+    // Run cleanup on page load
+    cleanupDuplicateNameMappings();
+
+    // Also cleanup database duplicates
+    // DISABLED - API endpoint not available
+    /*
+    async function cleanupDatabaseDuplicates() {
+      try {
+        const response = await fetch('/api/settings/cleanup-duplicate-mappings', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.ok && data.duplicatesRemoved > 0) {
+          console.log(`✅ Database cleanup: ${data.message}`);
+        }
+      } catch (e) {
+        console.error('Failed to cleanup database duplicates:', e);
+      }
+    }
+
+    // Run database cleanup once on page load
+    cleanupDatabaseDuplicates();
+    */
 
     function saveAllMappings(mappings) {
       try {
@@ -2526,32 +3108,112 @@
       }
     }
 
+    // ✅ NEW: Search-based tabbed input with all shared mappings + spreadsheet names
     function attachTabbedDropdownListeners() {
-      const dropdowns = document.querySelectorAll('.tabbed-dropdown');
-      
-      dropdowns.forEach(dropdown => {
-        dropdown.addEventListener('change', async function() {
-          const index = parseInt(this.dataset.index);
-          const redditUser = this.dataset.reddit;
-          const tabbedToUser = this.value;
-          
-          // Save to THIS SPECIFIC participant row (not all rows with same user)
+      const inputs = document.querySelectorAll('.tabbed-search-input');
+
+      inputs.forEach(input => {
+        const index = parseInt(input.dataset.index);
+        const redditUser = input.dataset.reddit;
+        const dropdownList = document.querySelector(`.tabbed-dropdown-list[data-index="${index}"]`);
+
+        // Show dropdown on focus
+        input.addEventListener('focus', function() {
+          showDropdown(this, dropdownList);
+        });
+
+        // Filter on input
+        input.addEventListener('input', function() {
+          const searchTerm = this.value.toLowerCase();
+          filterAndShowDropdown(this, dropdownList, searchTerm);
+        });
+
+        // Handle selection from dropdown
+        dropdownList.addEventListener('click', async function(e) {
+          const item = e.target.closest('.tabbed-dropdown-item');
+          if (!item) return;
+
+          const selectedUser = item.dataset.reddit || '';
+          const selectedName = item.dataset.name || '';
+
+          // Update input display
+          input.value = selectedUser ? (selectedName ? `${selectedUser} (${selectedName})` : selectedUser) : '';
+          input.dataset.selected = selectedUser;
+
+          // Save to participant
           if (appState.participants[index]) {
-            appState.participants[index].tabbed = tabbedToUser || null;
+            appState.participants[index].tabbed = selectedUser || null;
             await saveState();
           }
-          
+
           // Show feedback
-          if (tabbedToUser) {
-            showToast('Tab Assignment Updated', [`${redditUser} tabbed to ${tabbedToUser}`]);
+          if (selectedUser) {
+            showToast('Tab Assignment Updated', [`${redditUser} tabbed to ${selectedUser}`]);
           } else {
             showToast('Tab Removed', [`${redditUser} tab assignment cleared`]);
           }
-          
-          // Refresh table to update display
-          renderParticipantsTable();
+
+          // Hide dropdown
+          dropdownList.classList.remove('show');
+
+          // Refresh summary to show updated counts
+          if (typeof populateSummary === 'function') {
+            populateSummary();
+          }
         });
       });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('.tabbed-search-container')) {
+          document.querySelectorAll('.tabbed-dropdown-list').forEach(list => {
+            list.classList.remove('show');
+          });
+        }
+      });
+    }
+
+    function showDropdown(input, dropdownList) {
+      const selected = input.dataset.selected || '';
+      filterAndShowDropdown(input, dropdownList, '', selected);
+    }
+
+    function filterAndShowDropdown(input, dropdownList, searchTerm = '', selectedUser = '') {
+      if (!window.allTabbedUsers) return;
+
+      searchTerm = searchTerm.toLowerCase();
+      selectedUser = selectedUser || input.dataset.selected || '';
+
+      // Filter users
+      const filtered = searchTerm
+        ? window.allTabbedUsers.filter(u =>
+            u.reddit.toLowerCase().includes(searchTerm) ||
+            u.name.toLowerCase().includes(searchTerm)
+          )
+        : window.allTabbedUsers;
+
+      // Build dropdown HTML
+      let html = '<div class="tabbed-dropdown-item" data-reddit="" data-name="">— None —</div>';
+
+      filtered.slice(0, 50).forEach(user => {
+        const isSelected = user.reddit === selectedUser ? 'selected' : '';
+        const displayName = user.name ? `<span class="tabbed-dropdown-item-name">(${user.name})</span>` : '';
+        html += `<div class="tabbed-dropdown-item ${isSelected}" data-reddit="${user.reddit}" data-name="${user.name}">${user.reddit}${displayName}</div>`;
+      });
+
+      if (filtered.length > 50) {
+        html += '<div class="tabbed-dropdown-item" style="color: #94a3b8; cursor: default; pointer-events: none;">...and more</div>';
+      }
+
+      dropdownList.innerHTML = html;
+
+      // ✅ Position dropdown using fixed positioning
+      const rect = input.getBoundingClientRect();
+      dropdownList.style.top = `${rect.bottom + 4}px`;
+      dropdownList.style.left = `${rect.left}px`;
+      dropdownList.style.width = `${rect.width}px`;
+
+      dropdownList.classList.add('show');
     }
 
     // ============ NAME EDIT FUNCTIONALITY ============
@@ -2585,15 +3247,36 @@
           const saveEdit = async () => {
             const newName = input.value.trim();
 
-            // Save to localStorage
+            // Save to localStorage (or remove if empty)
             if (newName) {
               saveNameMapping(participant.redditUser, newName);
+            } else {
+              // Remove from localStorage when name is cleared
+              removeNameMapping(participant.redditUser);
             }
 
             // Update participant object
             appState.participants[index].name = newName;
+
+            // Sync tabbed inputs before saving
+            syncTabbedInputsToAppState();
+
             await saveState();
-            rebuildTable();
+
+            // ✅ Restore the name field span (replacing the input)
+            const newSpan = document.createElement('span');
+            newSpan.className = 'name-field';
+            newSpan.dataset.index = index;
+            newSpan.style.cssText = 'cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;';
+            newSpan.title = 'Click to edit name';
+            newSpan.innerHTML = newName || '<span style="color: #94a3b8;">—</span>';
+
+            // Replace input with span
+            parentTd.innerHTML = '';
+            parentTd.appendChild(newSpan);
+
+            // Re-attach listener by calling attachNameEditListeners again
+            attachNameEditListeners();
 
             // Show toast
             showToast('Name Updated', [`${participant.redditUser} → ${newName || '(cleared)'}`]);
@@ -2603,7 +3286,19 @@
             if (e.key === 'Enter') {
               saveEdit();
             } else if (e.key === 'Escape') {
-              rebuildTable();
+              // Restore the original field without saving
+              const cancelSpan = document.createElement('span');
+              cancelSpan.className = 'name-field';
+              cancelSpan.dataset.index = index;
+              cancelSpan.style.cssText = 'cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;';
+              cancelSpan.title = 'Click to edit name';
+              cancelSpan.innerHTML = currentName || '<span style="color: #94a3b8;">—</span>';
+
+              parentTd.innerHTML = '';
+              parentTd.appendChild(cancelSpan);
+
+              // Re-attach listener
+              attachNameEditListeners();
             }
           });
 
@@ -2624,15 +3319,42 @@
           // Update participant paid status
           appState.participants[index].paid = newPaidStatus;
 
+          // ✅ Sync tabbed inputs before saving
+          syncTabbedInputsToAppState();
+
           // Save to database
           await saveState();
 
-          // Rebuild table to update status chip
-          rebuildTable();
-          
-          // Reapply current filter/search (so filtered participants disappear if they no longer match)
-          filterAndSearch();
-          
+          // ✅ Update ONLY the status chip without rebuilding the entire table
+          const row = this.closest('tr');
+          const statusDot = row.querySelector('.status-dot');
+          if (statusDot) {
+            statusDot.className = newPaidStatus ? 'status-dot dot-paid' : 'status-dot dot-pending';
+          }
+
+          // ✅ Toggle row styling based on payment status (Purple & Green Theme)
+          if (newPaidStatus) {
+            row.classList.remove('unpaid-row');
+            row.classList.add('paid-row');
+          } else {
+            row.classList.remove('paid-row');
+            row.classList.add('unpaid-row');
+          }
+
+          // ✅ Update row dataset for sorting
+          row.dataset.paid = newPaidStatus;
+
+          // ✅ If pending filter is active and marking as paid, hide the row in real-time
+          const paymentFilter = document.getElementById('paymentFilter').value;
+          if (paymentFilter === 'pending' && newPaidStatus) {
+            row.classList.add('hidden');
+          }
+          // If paid filter is active and marking as unpaid, hide the row
+          if (paymentFilter === 'paid' && !newPaidStatus) {
+            row.classList.add('hidden');
+          }
+
+          // Update stats
           updateStats();
 
           // Log activity
@@ -2658,7 +3380,7 @@
 
       // Clear any existing toast and timeout
       toast.classList.remove("show");
-      
+
       // Use requestAnimationFrame to ensure the removal takes effect before re-showing
       requestAnimationFrame(() => {
         toastTitle.textContent = title;
@@ -2668,7 +3390,7 @@
 
         setTimeout(() => {
           toast.classList.remove("show");
-        }, 8000);
+        }, 3000); // Show for 3 seconds
       });
     }
 
@@ -2684,7 +3406,7 @@
 
       setTimeout(() => {
         errorToast.classList.remove("show");
-      }, 5000);
+      }, 3000); // Show for 3 seconds
     }
 
 function updateStats() {
@@ -2697,27 +3419,28 @@ function updateStats() {
       totalSpotsEl.textContent = appState.totalSpots !== null ? appState.totalSpots : '-';
       costPerSpotEl.textContent = appState.costPerSpot !== null ? `$${parseFloat(appState.costPerSpot).toFixed(2)}` : '-';
 
-      const spotsClaimed = appState.participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+      // ✅ Exclude Waitlist participants (0 spots) from all stats
+      const raffleParticipants = appState.participants.filter(p => (p.spots || 0) > 0);
+
+      const spotsClaimed = raffleParticipants.reduce((sum, p) => sum + (p.spots || 0), 0);
       const spotsRemaining = appState.totalSpots !== null ? Math.max(0, appState.totalSpots - spotsClaimed) : '-';  // ADD Math.max(0, ...)
       spotsRemainingEl.textContent = spotsRemaining;
 
       // Stop auto-polling when raffle is full (0 spots remaining)
       if (spotsRemaining === 0 && pollingInterval) {
         stopAutoPolling();
+        stopPollCountdown(); // ✅ Also stop the poll countdown timer
         console.log('🎯 Raffle is full! Auto-polling stopped.');
       }
 
-      // Restart auto-polling if spots open up and polling is not running
-      if (spotsRemaining > 0 && !pollingInterval && appState.redditLink && appState.costPerSpot) {
-        startAutoPolling();
-        console.log('🔄 Spots available! Auto-polling restarted.');
-      }
+      // NOTE: Removed auto-restart logic to prevent duplicate polling intervals
+      // Auto-polling is started once on page load and manages itself
 
-      const totalOwed = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
-      const totalPaid = appState.participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+      const totalOwed = raffleParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
+      const totalPaid = raffleParticipants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
 
       totalOwedEl.textContent = `$${totalOwed.toFixed(2)}`;
-      
+
       // Show the difference (Total Paid - Total Owed)
       const difference = totalPaid - totalOwed;
       totalPaidEl.textContent = `$${difference.toFixed(2)}`;
@@ -2726,10 +3449,15 @@ function updateStats() {
     function updateFooter() {
       const tbody = document.getElementById("participantsTbody");
       const visibleRows = Array.from(tbody.querySelectorAll("tr:not(.hidden):not(#emptyRow)"));
-      const totalCount = appState.participants.length;
+      
+      // ✅ Exclude Waitlist participants (0 spots) from counts
+      const raffleParticipants = appState.participants.filter(p => (p.spots || 0) > 0);
+      const waitlistParticipants = appState.participants.filter(p => (p.spots || 0) === 0);
+      
+      const totalCount = raffleParticipants.length;
       const visibleCount = visibleRows.length;
 
-      const paidCount = appState.participants.filter(p => p.paid).length;
+      const paidCount = raffleParticipants.filter(p => p.paid).length;
       const pendingCount = totalCount - paidCount;
 
       document.getElementById("footerShowing").textContent = `Showing ${visibleCount} of ${totalCount} participants`;
@@ -2738,6 +3466,7 @@ function updateStats() {
     }
 
     function filterAndSearch() {
+      // ⚡ PERFORMANCE: Debounced via debouncedSearch (300ms delay after typing stops)
       const searchQuery = document.getElementById("participantSearch").value.toLowerCase();
       const paymentFilter = document.getElementById("paymentFilter").value;
       const tbody = document.getElementById("participantsTbody");
@@ -2748,26 +3477,121 @@ function updateStats() {
         const name = row.dataset.name?.toLowerCase() || '';
         const comment = row.dataset.comment?.toLowerCase() || '';
         const paid = row.dataset.paid === 'true';
+        const spots = parseInt(row.dataset.spots) || 0;
 
-        // Check if comment contains tab/tabbed
-        const isTab = comment.includes('tab');
+        // Check if comment contains tab/tabbed/wff
+        const isTab = comment.includes('tab') || comment.includes('wff');
 
         const matchesSearch = redditUser.includes(searchQuery) ||
                             name.includes(searchQuery) ||
                             comment.includes(searchQuery);
-        const matchesFilter = paymentFilter === 'all' ||
-                             (paymentFilter === 'paid' && paid) ||
-                             (paymentFilter === 'pending' && !paid) ||
-                             (paymentFilter === 'tabs' && isTab);
-
-        if (matchesSearch && matchesFilter) {
-          row.classList.remove('hidden');
+        
+        // Waitlist filter: ONLY 0-spot participants (waiting for spots to open)
+        // All other filters: EXCLUDE 0-spot participants (only active raffle entries)
+        let matchesFilter;
+        if (paymentFilter === 'drama') {
+          matchesFilter = spots === 0;  // Waitlist
+        } else if (paymentFilter === 'all') {
+          matchesFilter = spots > 0;
+        } else if (paymentFilter === 'paid') {
+          matchesFilter = paid && spots > 0;
+        } else if (paymentFilter === 'pending') {
+          matchesFilter = !paid && spots > 0;
+        } else if (paymentFilter === 'tabs') {
+          matchesFilter = isTab && spots > 0;
         } else {
-          row.classList.add('hidden');
+          matchesFilter = false;
         }
+
+        // Use toggle for slightly better performance
+        row.classList.toggle('hidden', !(matchesSearch && matchesFilter));
       });
 
       updateFooter();
+    }
+
+    // ============ TABLE SORTING ============
+    function sortTable(column) {
+      // Toggle sort direction if clicking same column
+      if (appState.sortColumn === column) {
+        appState.sortDirection = appState.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        appState.sortColumn = column;
+        appState.sortDirection = 'asc';
+      }
+
+      // Update header UI
+      document.querySelectorAll('.p-table thead th.sortable').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+      });
+
+      const activeHeader = document.querySelector(`.p-table thead th[data-sort="${column}"]`);
+      if (activeHeader) {
+        activeHeader.classList.add(`sorted-${appState.sortDirection}`);
+      }
+
+      // Efficient DOM reordering instead of rebuilding table
+      reorderTableRows();
+    }
+
+    function reorderTableRows() {
+      const tbody = document.getElementById('participantsTbody');
+      const rows = Array.from(tbody.querySelectorAll('tr:not(#emptyRow)'));
+
+      // Sort rows based on data attributes stored on the row
+      rows.sort((rowA, rowB) => {
+        let aVal, bVal;
+
+        switch (appState.sortColumn) {
+          case 'reddit':
+            aVal = (rowA.dataset.reddit || '').toLowerCase();
+            bVal = (rowB.dataset.reddit || '').toLowerCase();
+            break;
+          case 'comment':
+            // Sort by index (chronological order) - lower index = older comment
+            aVal = parseInt(rowA.dataset.index || '0');
+            bVal = parseInt(rowB.dataset.index || '0');
+            break;
+          case 'spots':
+            // Get spots from the Spots cell
+            aVal = parseInt(rowA.querySelector('td:nth-child(5)')?.textContent || '0');
+            bVal = parseInt(rowB.querySelector('td:nth-child(5)')?.textContent || '0');
+            break;
+          case 'paid':
+            aVal = rowA.dataset.paid === 'true' ? 1 : 0;
+            bVal = rowB.dataset.paid === 'true' ? 1 : 0;
+            break;
+          case 'tabbed':
+            // Get tabbed from the Tabbed cell
+            aVal = (rowA.querySelector('td:nth-child(3)')?.textContent || '').toLowerCase();
+            bVal = (rowB.querySelector('td:nth-child(3)')?.textContent || '').toLowerCase();
+            break;
+          default:
+            return 0;
+        }
+
+        if (appState.sortColumn === 'spots' || appState.sortColumn === 'paid') {
+          // Numeric sort
+          return appState.sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        } else if (appState.sortColumn === 'comment') {
+          // Chronological sort (reversed: asc = newest first, desc = oldest first)
+          return appState.sortDirection === 'asc' ? bVal - aVal : aVal - bVal;
+        } else {
+          // String sort
+          if (aVal < bVal) return appState.sortDirection === 'asc' ? -1 : 1;
+          if (aVal > bVal) return appState.sortDirection === 'asc' ? 1 : -1;
+          return 0;
+        }
+      });
+
+      // Reorder DOM elements efficiently
+      rows.forEach(row => tbody.appendChild(row));
+
+      // Make sure empty row stays at the end
+      const emptyRow = document.getElementById('emptyRow');
+      if (emptyRow) {
+        tbody.appendChild(emptyRow);
+      }
     }
 
     async function saveToHistory(status, winner = null) {
@@ -2828,7 +3652,7 @@ function updateStats() {
 
       await clearState();
       console.log('✅ resetRaffle() complete - raffle cleared from database');
-      
+
       // Stop and hide timer
       stopFastRaffleTimer();
 
@@ -3083,7 +3907,7 @@ function updateStats() {
         appState.totalSpots = data.totalSpots;
         appState.costPerSpot = data.spotCost;
         appState.fastRaffleEnabled = data.fastRaffleEnabled;
-        
+
         // Set creation timestamp if this is the first time setup is saved
         if (!appState.createdAt) {
           appState.createdAt = new Date().toISOString();
@@ -3099,10 +3923,10 @@ function updateStats() {
         }
 
         await saveState();
-        
+
         // Debug: Verify raffle ID was saved
         console.log('🔍 After saveState(), activeRaffleId =', appState.activeRaffleId);
-        
+
         updateStats();
 
         // Log activity
@@ -3118,7 +3942,7 @@ function updateStats() {
           details.push('📝 Reddit post linked');
         }
         details.push(`🎯 ${data.totalSpots} spots @ $${data.spotCost} each`);
-        details.push(`🤖 Auto-scanning every 30 sec`);
+        details.push(`🤖 Auto-scanning every 60 sec`);
 
         showToast('Setup Saved Successfully!', details);
         closeModal();
@@ -3147,47 +3971,92 @@ function updateStats() {
       });
 
       function populateSummary() {
-        // Combine duplicates by reddit username (with TAB swap logic)
-        // IMPORTANT: TAB spots go to the TABBED user, not the requester
-        const combinedParticipants = {};
+        // ✅ NEW LOGIC: Separate tabbed and non-tabbed ENTRIES per person
+        const payerGroupsNonTabbed = {};
+        const tabbedEntries = []; // ✅ NEW: Store individual payer-recipient pairs
+
         appState.participants.forEach(p => {
-          // Check if this is a TAB entry
-          const isTab = p.comment && (p.comment.toLowerCase().includes('tab') || p.comment.toLowerCase().includes('tabbed'));
-          const tabbedUser = p.tabbed || '';  // Use participant.tabbed instead of shared mapping
-          
-          // For TAB: spots go to TABBED user, requester pays
-          let displayUser = p.redditUser;
-          let paidBy = null;
-          let key = p.redditUser;
-          
-          if (isTab && tabbedUser) {
-            displayUser = tabbedUser;  // Tabbed user gets the spots
-            paidBy = p.redditUser;  // Original requester is paying
-            key = `${tabbedUser}__TAB__${p.redditUser}`;  // Unique key per row
+          // Check if this entry has a tabbed assignment
+          const tabbedUser = p.tabbed || '';
+          const isTabbed = !!tabbedUser;
+
+          const payer = p.redditUser;
+
+          if (isTabbed) {
+            // ✅ NEW: Create individual entry for each payer-recipient pair
+            tabbedEntries.push({
+              payer: payer,
+              payerName: p.name,
+              recipient: tabbedUser,
+              spots: parseInt(p.spots) || 0,
+              owed: parseFloat(p.owed) || 0,
+              paid: p.paid
+            });
+          } else {
+            // ✅ This entry is NON-TABBED - add to non-tabbed groups
+            if (!payerGroupsNonTabbed[payer]) {
+              payerGroupsNonTabbed[payer] = {
+                redditUser: payer,
+                name: p.name,
+                spots: 0,
+                owed: 0,
+                paid: p.paid,
+                recipients: []
+              };
+            }
+
+            payerGroupsNonTabbed[payer].spots += parseInt(p.spots) || 0;
+            payerGroupsNonTabbed[payer].owed += parseFloat(p.owed) || 0;
           }
-          
-          if (!combinedParticipants[key]) {
-            combinedParticipants[key] = {
-              redditUser: displayUser,
-              name: p.name,
-              spots: 0,
-              owed: 0,
-              paid: p.paid,
-              paidBy: paidBy  // Store who is paying
-            };
-          }
-          combinedParticipants[key].spots += parseInt(p.spots) || 0;
-          combinedParticipants[key].owed += parseFloat(p.owed) || 0;
         });
 
-        const combinedArray = Object.values(combinedParticipants);
-        // Filter out participants with 0 spots
-        const paidParticipants = combinedArray.filter(p => p.paid && p.spots > 0);
-        const unpaidParticipants = combinedArray.filter(p => !p.paid && p.spots > 0);
+        // Combine arrays
+        const nonTabbedArray = Object.values(payerGroupsNonTabbed);
 
-        const totalOwed = unpaidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
-        const totalPaid = paidParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
-        const totalParticipants = combinedArray.length;
+        // Separate by paid status
+        const unpaidNonTabbed = nonTabbedArray.filter(p => !p.paid && p.spots > 0);
+        const unpaidTabbedRaw = tabbedEntries.filter(e => !e.paid && e.spots > 0);
+        const paidNonTabbed = nonTabbedArray.filter(p => p.paid && p.spots > 0);
+        const paidTabbedRaw = tabbedEntries.filter(e => e.paid && e.spots > 0);
+
+        // ✅ GROUP tabbed entries by payer (combine multiple recipients)
+        const groupTabbedByPayer = (entries) => {
+          const grouped = {};
+          entries.forEach(entry => {
+            const key = entry.payer;
+            if (!grouped[key]) {
+              grouped[key] = {
+                payer: entry.payer,
+                payerName: entry.payerName,
+                recipients: new Set(), // ✅ Use Set to auto-deduplicate
+                spots: 0,
+                owed: 0,
+                paid: entry.paid
+              };
+            }
+            grouped[key].recipients.add(entry.recipient); // ✅ Add to Set
+            grouped[key].spots += entry.spots;
+            grouped[key].owed += entry.owed;
+          });
+          // ✅ Convert Set to Array for each group
+          return Object.values(grouped).map(group => ({
+            ...group,
+            recipients: Array.from(group.recipients)
+          }));
+        };
+
+        const unpaidTabbed = groupTabbedByPayer(unpaidTabbedRaw);
+        const paidTabbed = groupTabbedByPayer(paidTabbedRaw);
+
+        // Sort all arrays alphabetically
+        unpaidNonTabbed.sort((a, b) => a.redditUser.localeCompare(b.redditUser));
+        unpaidTabbed.sort((a, b) => a.payer.localeCompare(b.payer));
+        paidNonTabbed.sort((a, b) => a.redditUser.localeCompare(b.redditUser));
+        paidTabbed.sort((a, b) => a.payer.localeCompare(b.payer));
+
+        const totalOwed = [...unpaidNonTabbed, ...unpaidTabbed].reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalPaid = [...paidNonTabbed, ...paidTabbed].reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalParticipants = nonTabbedArray.length + tabbedEntries.length;
 
         document.getElementById("summaryTotalOwed").textContent = `$${totalOwed.toLocaleString()}`;
         document.getElementById("summaryTotalParticipants").textContent = totalParticipants;
@@ -3215,20 +4084,22 @@ function updateStats() {
         `;
         summaryList.appendChild(statsHeader);
 
-        // Unpaid participants section
-        if (unpaidParticipants.length > 0) {
+        // ✅ Unpaid NON-TABBED participants section
+        if (unpaidNonTabbed.length > 0) {
           const unpaidHeader = document.createElement('div');
           unpaidHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #dc2626; padding: 12px 0 8px 0; border-top: 2px solid #fee2e2;';
-          unpaidHeader.innerHTML = `⏱ Pending Payment (${unpaidParticipants.length})`;
+          unpaidHeader.innerHTML = `⏱ Pending Payment (${unpaidNonTabbed.length})`;
           summaryList.appendChild(unpaidHeader);
 
-          unpaidParticipants.forEach(participant => {
+          unpaidNonTabbed.forEach(participant => {
             const initial = participant.redditUser.charAt(2).toUpperCase();
             const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
             const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
-            
-            // Add "(via ...)" note if someone else is paying
-            const viaNote = participant.paidBy ? ` <span style="font-size: 11px; color: #94a3b8;">(via ${participant.paidBy})</span>` : '';
+
+            // ✅ NEW: Show who this payment is from (tab recipients)
+            const forNote = participant.recipients.length > 0
+              ? ` <span style="font-size: 11px; color: #94a3b8;">(from ${participant.recipients.join(', ')})</span>`
+              : '';
 
             const participantEl = document.createElement('div');
             participantEl.className = 'summary-participant';
@@ -3237,7 +4108,7 @@ function updateStats() {
               <div class="summary-user-info">
                 <div class="summary-avatar">${initial}</div>
                 <div>
-                  <div class="summary-username">${participant.redditUser}${viaNote}</div>
+                  <div class="summary-username">${participant.redditUser}${forNote}</div>
                   ${nameDisplay}
                 </div>
               </div>
@@ -3256,20 +4127,61 @@ function updateStats() {
           });
         }
 
-        // Paid participants section
-        if (paidParticipants.length > 0) {
+        // ✅ Unpaid TABBED participants section
+        if (unpaidTabbed.length > 0) {
+          const unpaidTabbedHeader = document.createElement('div');
+          unpaidTabbedHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #dc2626; padding: 20px 0 8px 0; border-top: 2px solid #fee2e2; margin-top: 16px;';
+          unpaidTabbedHeader.innerHTML = `⏱ Pending Payment - Tabbed Spots (${unpaidTabbed.length})`;
+          summaryList.appendChild(unpaidTabbedHeader);
+
+          unpaidTabbed.forEach(entry => {
+            // Get payer's real name from mapping
+            const payerRealName = getNameFromMapping(entry.payer) || entry.payerName || 'Unknown';
+
+            // ✅ Combine recipients with commas
+            const recipientsList = entry.recipients.join(', ');
+            const spotsText = entry.spots === 1 ? 'spot' : 'spots';
+
+            const participantEl = document.createElement('div');
+            participantEl.className = 'summary-participant';
+            participantEl.style.background = '#fef3c7';
+            participantEl.innerHTML = `
+              <div class="summary-user-info" style="flex: 1;">
+                <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                  ${recipientsList} paying ${entry.spots} ${spotsText} for ${entry.payer} (${payerRealName})
+                </div>
+              </div>
+              <div class="summary-stats">
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Spots</div>
+                  <div class="summary-stat-value">${entry.spots}</div>
+                </div>
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Owed</div>
+                  <div class="summary-stat-value summary-owed-value" style="color: #dc2626; font-weight: 700;">$${entry.owed.toFixed(2)}</div>
+                </div>
+              </div>
+            `;
+            summaryList.appendChild(participantEl);
+          });
+        }
+
+        // ✅ Paid NON-TABBED participants section
+        if (paidNonTabbed.length > 0) {
           const paidHeader = document.createElement('div');
           paidHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #16a34a; padding: 20px 0 8px 0; border-top: 2px solid #dcfce7; margin-top: 16px;';
-          paidHeader.innerHTML = `✓ Paid (${paidParticipants.length})`;
+          paidHeader.innerHTML = `✓ Paid (${paidNonTabbed.length})`;
           summaryList.appendChild(paidHeader);
 
-          paidParticipants.forEach(participant => {
+          paidNonTabbed.forEach(participant => {
             const initial = participant.redditUser.charAt(2).toUpperCase();
             const displayName = getNameFromMapping(participant.redditUser) || participant.name || '';
             const nameDisplay = displayName ? `<div style="font-size: 11px; color: #64748b; margin-top: 2px;">${displayName}</div>` : '';
-            
-            // Add "(via ...)" note if someone else is paying
-            const viaNote = participant.paidBy ? ` <span style="font-size: 11px; color: #94a3b8;">(via ${participant.paidBy})</span>` : '';
+
+            // ✅ NEW: Show who this payment is from (tab recipients)
+            const forNote = participant.recipients.length > 0
+              ? ` <span style="font-size: 11px; color: #94a3b8;">(from ${participant.recipients.join(', ')})</span>`
+              : '';
 
             const participantEl = document.createElement('div');
             participantEl.className = 'summary-participant';
@@ -3278,7 +4190,7 @@ function updateStats() {
               <div class="summary-user-info">
                 <div class="summary-avatar">${initial}</div>
                 <div>
-                  <div class="summary-username">${participant.redditUser}${viaNote}</div>
+                  <div class="summary-username">${participant.redditUser}${forNote}</div>
                   ${nameDisplay}
                 </div>
               </div>
@@ -3290,6 +4202,45 @@ function updateStats() {
                 <div class="summary-stat-item">
                   <div class="summary-stat-label">Paid</div>
                   <div class="summary-stat-value" style="color: #16a34a; font-weight: 700;">$${parseFloat(participant.owed).toFixed(2)}</div>
+                </div>
+              </div>
+            `;
+            summaryList.appendChild(participantEl);
+          });
+        }
+
+        // ✅ Paid TABBED participants section
+        if (paidTabbed.length > 0) {
+          const paidTabbedHeader = document.createElement('div');
+          paidTabbedHeader.style.cssText = 'font-size: 14px; font-weight: 700; color: #16a34a; padding: 20px 0 8px 0; border-top: 2px solid #dcfce7; margin-top: 16px;';
+          paidTabbedHeader.innerHTML = `✓ Paid - Tabbed Spots (${paidTabbed.length})`;
+          summaryList.appendChild(paidTabbedHeader);
+
+          paidTabbed.forEach(entry => {
+            // Get payer's real name from mapping
+            const payerRealName = getNameFromMapping(entry.payer) || entry.payerName || 'Unknown';
+
+            // ✅ Combine recipients with commas
+            const recipientsList = entry.recipients.join(', ');
+            const spotsText = entry.spots === 1 ? 'spot' : 'spots';
+
+            const participantEl = document.createElement('div');
+            participantEl.className = 'summary-participant';
+            participantEl.style.background = '#dcfce7';
+            participantEl.innerHTML = `
+              <div class="summary-user-info" style="flex: 1;">
+                <div style="font-size: 13px; font-weight: 600; color: #1e293b;">
+                  ${recipientsList} paying ${entry.spots} ${spotsText} for ${entry.payer} (${payerRealName})
+                </div>
+              </div>
+              <div class="summary-stats">
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Spots</div>
+                  <div class="summary-stat-value">${entry.spots}</div>
+                </div>
+                <div class="summary-stat-item">
+                  <div class="summary-stat-label">Paid</div>
+                  <div class="summary-stat-value" style="color: #16a34a; font-weight: 700;">$${entry.owed.toFixed(2)}</div>
                 </div>
               </div>
             `;
@@ -3451,6 +4402,7 @@ function updateStats() {
 
         // Rebuild table to show new names
         rebuildTable();
+        filterAndSearch(); // ✅ Re-apply current filter
 
         showToast('Names Imported!', [
           `✓ ${Object.keys(parsedData).length} mappings imported`,
@@ -3480,6 +4432,7 @@ function updateStats() {
         if (confirm('Are you sure you want to clear all name mappings? This cannot be undone.')) {
           clearAllMappings();
           rebuildTable();
+          filterAndSearch(); // ✅ Re-apply current filter
           showToast('Mappings Cleared!', ['🗑️ All name mappings removed']);
         }
       });
@@ -3592,11 +4545,12 @@ function updateStats() {
           return;
         }
 
-        // Calculate current stats
-        const spotsClaimed = appState.participants.reduce((sum, p) => sum + (p.spots || 0), 0);
+        // Calculate current stats - ✅ Exclude Waitlist participants (0 spots)
+        const raffleParticipants = appState.participants.filter(p => (p.spots || 0) > 0);
+        const spotsClaimed = raffleParticipants.reduce((sum, p) => sum + (p.spots || 0), 0);
         const spotsRemaining = appState.totalSpots !== null ? Math.max(0, appState.totalSpots - spotsClaimed) : 0;
-        const totalOwed = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
-        const totalPaid = appState.participants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalOwed = raffleParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
+        const totalPaid = raffleParticipants.filter(p => p.paid).reduce((sum, p) => sum + (p.owed || 0), 0);
         const unpaidAmount = totalOwed - totalPaid;
 
         // Check if raffle can be finished
@@ -3735,7 +4689,7 @@ function updateStats() {
       function populateUsernameDropdown() {
         // Get unique Reddit usernames
         const usernames = [...new Set(appState.participants.map(p => p.redditUser))].sort();
-        
+
         // Store for filtering
         window.allUsernames = usernames;
       }
@@ -3763,7 +4717,7 @@ function updateStats() {
               input.value = username;
               dropdownList.classList.remove('show');
               validateWinnerInput();
-              
+
               // Focus on spot input
               const spotInput = document.querySelector(`.winner-spot-input[data-index="${index}"]`);
               if (spotInput) spotInput.focus();
@@ -3845,10 +4799,10 @@ function updateStats() {
         const winnerData = winnerCount === 1 ? winners[0] : winners;
 
         await saveToHistory('completed', winnerData);
-        
+
         // Stop fast raffle timer
         stopFastRaffleTimer();
-        
+
         // Show toast
         if (winnerCount === 1) {
           showToast(
@@ -3868,6 +4822,8 @@ function updateStats() {
     })();
 
     // ============ SCAN EMAIL BUTTON ============
+    // REMOVED FROM UI - Functionality preserved for future use
+    /*
     document.getElementById("scanEmailBtn").addEventListener("click", async () => {
       // Debug: Log the current app state
       console.log('🔍 Scan Email clicked. Current state:', {
@@ -3877,7 +4833,7 @@ function updateStats() {
         costPerSpot: appState.costPerSpot,
         participantCount: appState.participants.length
       });
-      
+
       // Check if raffle exists
       if (!appState.activeRaffleId) {
         console.error('❌ Cannot scan email: No active raffle ID found');
@@ -3887,14 +4843,14 @@ function updateStats() {
         ]);
         return;
       }
-      
+
       console.log('✅ Active raffle ID found:', appState.activeRaffleId);
 
       // Check if Gmail OAuth credentials are configured
       try {
         const checkResponse = await fetch('/api/paypal/check-credentials');
         const checkResult = await checkResponse.json();
-        
+
         if (!checkResult.ok || !checkResult.hasCredentials) {
           showRestrictionModal(
             `Please upload your Gmail OAuth credentials in <b>Settings</b> before scanning emails.<br><br>Go to Settings → Bot Configuration → Upload Gmail OAuth JSON file.`,
@@ -3914,14 +4870,14 @@ function updateStats() {
         const requestBody = {
           raffle_id: appState.activeRaffleId
         };
-        
+
         // Send timestamp if available, otherwise fall back to days_back
         if (appState.createdAt) {
           requestBody.since_timestamp = appState.createdAt;
         } else {
           requestBody.days_back = 7;
         }
-        
+
         const response = await fetch('/api/paypal/scan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -3949,7 +4905,7 @@ function updateStats() {
         // Add specific match details if available
         if (result.results && result.results.length > 0) {
           const matched = result.results.filter(r => r.status === 'matched');
-          
+
           if (matched.length > 0) {
             details.push('');
             details.push('✅ Matched Payments:');
@@ -3972,8 +4928,11 @@ function updateStats() {
       }
       });
     });
+    */
 
     // ============ CLEAR IDS BUTTON ============
+    // REMOVED FROM UI - Functionality preserved for future use
+    /*
     document.getElementById("clearIdsBtn").addEventListener("click", async () => {
       if (!appState.activeRaffleId) {
         showRestrictionModal(`No active raffle found.`);
@@ -4017,6 +4976,7 @@ function updateStats() {
         showRestrictionModal(`Failed to clear records.<br><br>${error.message}`);
       }
     });
+    */
 
     // ============ MARK ALL PAID BUTTON ============
     document.getElementById("markPaidBtn").addEventListener("click", async () => {
@@ -4026,12 +4986,47 @@ function updateStats() {
         return;
       }
 
-      const pendingCount = appState.participants.filter(p => !p.paid).length;
-      const totalAmount = appState.participants.reduce((sum, p) => sum + (p.owed || 0), 0);
+      // ✅ Exclude Waitlist participants (0 spots) from stats and marking
+      const raffleParticipants = appState.participants.filter(p => (p.spots || 0) > 0);
+      const pendingCount = raffleParticipants.filter(p => !p.paid).length;
+      const totalAmount = raffleParticipants.reduce((sum, p) => sum + (p.owed || 0), 0);
 
-      appState.participants.forEach(p => p.paid = true);
+      // ✅ Only mark raffle participants (spots > 0) as paid, not Waitlist participants
+      appState.participants.forEach(p => {
+        if ((p.spots || 0) > 0) {
+          p.paid = true;
+        }
+      });
       await saveState();
-      rebuildTable();
+
+      // Update payment status directly without rebuilding entire table
+      const tbody = document.getElementById("participantsTbody");
+      const rows = tbody.querySelectorAll('tr:not(#emptyRow)');
+      rows.forEach((row) => {
+        const index = parseInt(row.dataset.index);
+        if (appState.participants[index] && (appState.participants[index].spots || 0) > 0) {
+          // ✅ Only update rows with spots > 0 (skip Waitlist participants)
+          // Update checkbox
+          const checkbox = row.querySelector('.paid-checkbox');
+          if (checkbox) {
+            checkbox.checked = true;
+          }
+
+          // Update status dot
+          const statusDot = row.querySelector('.status-dot');
+          if (statusDot) {
+            statusDot.className = 'status-dot dot-paid';
+          }
+
+          // Update row styling
+          row.classList.remove('unpaid-row');
+          row.classList.add('paid-row');
+
+          // Update row data attribute
+          row.dataset.paid = 'true';
+        }
+      });
+
       updateStats();
       updateFooter();
 
@@ -4052,8 +5047,83 @@ function updateStats() {
     });
 
     // ============ SEARCH & FILTER ============
-    document.getElementById("participantSearch").addEventListener("input", filterAndSearch);
+    // Debounced search - waits 300ms after user stops typing before filtering
+    const debouncedSearch = debounce(filterAndSearch, 300);
+    document.getElementById("participantSearch").addEventListener("input", debouncedSearch);
     document.getElementById("paymentFilter").addEventListener("change", filterAndSearch);
+
+    // ============ TABLE SORTING ============
+    // Make Paid and Tabbed columns sortable dynamically
+    const tabbedHeader = document.querySelector('.p-table thead th[data-col="2"]');
+    const paidHeader = document.querySelector('.p-table thead th[data-col="6"]');
+
+    if (tabbedHeader && !tabbedHeader.classList.contains('sortable')) {
+      tabbedHeader.classList.add('sortable');
+      tabbedHeader.dataset.sort = 'tabbed';
+      const thInner = tabbedHeader.querySelector('.th-inner');
+      if (thInner) {
+        // Find the resizer element
+        const resizer = thInner.querySelector('.col-resizer');
+        // Insert sort indicator before the resizer
+        const sortIndicator = document.createElement('span');
+        sortIndicator.className = 'sort-indicator';
+        sortIndicator.innerHTML = `
+          <span class="sort-arrow sort-arrow-up">▲</span>
+          <span class="sort-arrow sort-arrow-down">▼</span>
+        `;
+        if (resizer) {
+          thInner.insertBefore(sortIndicator, resizer);
+        } else {
+          thInner.appendChild(sortIndicator);
+        }
+      }
+    }
+
+    if (paidHeader && !paidHeader.classList.contains('sortable')) {
+      paidHeader.classList.add('sortable');
+      paidHeader.dataset.sort = 'paid';
+      const thInner = paidHeader.querySelector('.th-inner');
+      if (thInner) {
+        const resizer = thInner.querySelector('.col-resizer');
+        const sortIndicator = document.createElement('span');
+        sortIndicator.className = 'sort-indicator';
+        sortIndicator.innerHTML = `
+          <span class="sort-arrow sort-arrow-up">▲</span>
+          <span class="sort-arrow sort-arrow-down">▼</span>
+        `;
+        if (resizer) {
+          thInner.insertBefore(sortIndicator, resizer);
+        } else {
+          thInner.appendChild(sortIndicator);
+        }
+      }
+    }
+
+    document.querySelectorAll('.p-table thead th.sortable').forEach(th => {
+      th.addEventListener('click', (e) => {
+        // Don't sort if clicking on the column resizer
+        if (e.target.classList.contains('col-resizer')) {
+          return;
+        }
+        const sortColumn = th.dataset.sort;
+        if (sortColumn) {
+          sortTable(sortColumn);
+        }
+      });
+    });
+
+    // ============ KEYBOARD SHORTCUT: CTRL + F ============
+    document.addEventListener("keydown", (e) => {
+      // Check if CTRL + F (or CMD + F on Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault(); // Prevent browser's default find
+        const searchInput = document.getElementById("participantSearch");
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.select(); // Select all text in the search box
+        }
+      }
+    });
 
     // ============ TOAST CLOSE ============
     document.getElementById("toastClose").addEventListener("click", () => {
@@ -4064,13 +5134,50 @@ function updateStats() {
       document.getElementById("errorToast").classList.remove("show");
     });
 
+    // ============ TABBED COLUMN PERSISTENCE ============
+    function saveTabbedColumnVisibility(isVisible) {
+      localStorage.setItem('raffleui_tabbed_column_visible', isVisible ? '1' : '0');
+    }
+
+    function loadTabbedColumnVisibility() {
+      const saved = localStorage.getItem('raffleui_tabbed_column_visible');
+      return saved === null ? true : saved === '1'; // Default to visible
+    }
+
+    function applyTabbedColumnVisibility(isVisible) {
+      const table = document.getElementById('participantsTable');
+      if (!table) return;
+
+      // Update colgroup
+      const colTabbed = table.querySelector('.col-tabbed');
+      if (colTabbed) {
+        colTabbed.style.display = isVisible ? '' : 'none';
+      }
+
+      // Update header
+      const thTabbed = table.querySelector('th[data-col="2"]');
+      if (thTabbed) {
+        thTabbed.style.display = isVisible ? '' : 'none';
+      }
+
+      // Update all body cells in the Tabbed column
+      const tabbedCells = table.querySelectorAll('tbody tr td:nth-child(3)');
+      tabbedCells.forEach(cell => {
+        cell.style.display = isVisible ? '' : 'none';
+      });
+    }
+
     // ============ INITIALIZE ============
     (async function init() {
       // Initialize user cache FIRST
       await API.initUser();
-      
+
       // Load state (now with user cached)
       await loadState();
+
+      // ✅ Restore tabbed column visibility
+      const tabbedVisible = loadTabbedColumnVisibility();
+      applyTabbedColumnVisibility(tabbedVisible);
 
       // Defer heavy operations slightly to let the page render
       requestAnimationFrame(() => {
@@ -4090,15 +5197,6 @@ function updateStats() {
     async function performAutoScan() {
       // Only scan if Reddit link and cost per spot are configured
       if (!appState.redditLink || !appState.costPerSpot) {
-        return;
-      }
-
-      // Check if there are any spots remaining
-      const spotsClaimed = appState.participants.reduce((sum, p) => sum + (p.spots || 0), 0);
-      const spotsRemaining = appState.totalSpots !== null ? Math.max(0, appState.totalSpots - spotsClaimed) : null;
-      
-      if (spotsRemaining === 0) {
-        console.log('🎯 Raffle is full! Skipping auto-scan.');
         return;
       }
 
@@ -4147,15 +5245,17 @@ function updateStats() {
           return;
         }
 
-        // Add only NEW participants
+        // Add only NEW participants (unshift to add at beginning so newest appear at top)
         trulyNewParticipants.forEach(newP => {
-          appState.participants.push(newP);
+          appState.participants.unshift(newP);
         });
 
         await saveState();
         rebuildTable();
         updateStats();
         updateFooter();
+        // ✅ Apply default filter after auto-scan (hides Waitlist participants)
+        filterAndSearch();
 
         // Log activity
         await API.logActivity({
@@ -4180,15 +5280,16 @@ function updateStats() {
     }
 
     function startAutoPolling() {
-      // Clear any existing interval
+      // GUARD: If polling is already running, don't start another one
       if (pollingInterval) {
-        clearInterval(pollingInterval);
+        console.log('⚠️ Auto-polling already running, skipping duplicate start');
+        return;
       }
 
       // Only start polling if setup is configured
       if (!appState.redditLink || !appState.costPerSpot) {
         document.getElementById('autoScanIndicator').style.display = 'none';
-        localStorage.setItem('autoPollingActive', 'false');
+        localStorage.setItem(getUserLocalStorageKey('autoPollingActive'), 'false');
         return;
       }
 
@@ -4199,16 +5300,16 @@ function updateStats() {
       localStorage.setItem(getUserLocalStorageKey('autoPollingActive'), 'true');
       localStorage.setItem(getUserLocalStorageKey('autoPollingRaffleId'), appState.activeRaffleId);
 
-      // Start polling every 10 seconds (10000ms)
+      // Start polling every 60 seconds (60000ms)
       pollingInterval = setInterval(() => {
         performAutoScan();
         resetPollCountdown();
-      }, 10000);
+      }, 60000);
 
       // Start countdown timer
       startPollCountdown();
 
-      console.log('✓ Auto-polling started - scanning every 10 seconds (active across all pages)');
+      console.log('✓ Auto-polling started - scanning every 60 seconds (active across all pages)');
     }
 
     function stopAutoPolling() {
@@ -4217,15 +5318,15 @@ function updateStats() {
         pollingInterval = null;
       }
       document.getElementById('autoScanIndicator').style.display = 'none';
-      
+
       // Stop countdown timer
       if (typeof stopPollCountdown === 'function') {
         stopPollCountdown();
       }
-      
+
       // Mark polling as inactive in localStorage
-      localStorage.setItem('autoPollingActive', 'false');
-      
+      localStorage.setItem(getUserLocalStorageKey('autoPollingActive'), 'false');
+
       console.log('✓ Auto-polling stopped');
     }
 
@@ -4246,9 +5347,9 @@ function updateStats() {
     (function() {
       // Wait for page to fully load and appState to be populated
       setTimeout(() => {
-        const isPollingActive = localStorage.getItem('autoPollingActive') === 'true';
-        const savedRaffleId = localStorage.getItem('autoPollingRaffleId');
-        
+        const isPollingActive = localStorage.getItem(getUserLocalStorageKey('autoPollingActive')) === 'true';
+        const savedRaffleId = localStorage.getItem(getUserLocalStorageKey('autoPollingRaffleId'));
+
         // If polling was active and we have the same raffle loaded
         if (isPollingActive && savedRaffleId && appState.activeRaffleId == savedRaffleId) {
           console.log('🔄 Resuming auto-polling from previous session...');
@@ -4260,10 +5361,10 @@ function updateStats() {
     // ===== LISTEN FOR BACKGROUND SCAN EVENTS =====
     window.addEventListener('backgroundScanComplete', async (event) => {
       console.log('🔔 Background scan completed on another page. Reloading data...');
-      
+
       // Reload participant data
       await loadState();
-      
+
       // Show subtle notification
       const details = [
         `👥 ${event.detail.newCount} new participant(s) found`,
@@ -4325,48 +5426,48 @@ let fastRaffleTimerInterval = null;
 function startFastRaffleTimer() {
   const timerElement = document.getElementById('fastRaffleTimer');
   const displayElement = document.getElementById('timerDisplay');
-  
+
   if (!timerElement || !displayElement) return;
-  
+
   // Show the timer
   timerElement.classList.add('active');
-  
+
   // Clear any existing interval
   if (fastRaffleTimerInterval) {
     clearInterval(fastRaffleTimerInterval);
   }
-  
+
   function updateTimer() {
     if (!appState.fastRaffleStartTime) {
       stopFastRaffleTimer();
       return;
     }
-    
+
     // Calculate elapsed time
     const elapsed = Date.now() - appState.fastRaffleStartTime;
     const totalDuration = 75 * 60 * 1000; // 1 hour 15 minutes in milliseconds
     const remaining = Math.max(0, totalDuration - elapsed);
-    
+
     if (remaining === 0) {
       displayElement.textContent = '00:00:00';
       timerElement.classList.add('warning');
       stopFastRaffleTimer();
       return;
     }
-    
+
     // Convert to hours, minutes, seconds
     const hours = Math.floor(remaining / (60 * 60 * 1000));
     const minutes = Math.floor((remaining % (60 * 60 * 1000)) / (60 * 1000));
     const seconds = Math.floor((remaining % (60 * 1000)) / 1000);
-    
+
     // Format as HH:MM:SS
-    const formatted = 
+    const formatted =
       String(hours).padStart(2, '0') + ':' +
       String(minutes).padStart(2, '0') + ':' +
       String(seconds).padStart(2, '0');
-    
+
     displayElement.textContent = formatted;
-    
+
     // Turn red when under 1 hour
     if (remaining < 60 * 60 * 1000) {
       timerElement.classList.add('warning');
@@ -4374,29 +5475,29 @@ function startFastRaffleTimer() {
       timerElement.classList.remove('warning');
     }
   }
-  
+
   // Update immediately
   updateTimer();
-  
+
   // Update every second
   fastRaffleTimerInterval = setInterval(updateTimer, 1000);
-  
+
   console.log('⏱️ Fast raffle timer started');
 }
 
 function stopFastRaffleTimer() {
   const timerElement = document.getElementById('fastRaffleTimer');
-  
+
   if (fastRaffleTimerInterval) {
     clearInterval(fastRaffleTimerInterval);
     fastRaffleTimerInterval = null;
   }
-  
+
   if (timerElement) {
     timerElement.classList.remove('active');
     timerElement.classList.remove('warning');
   }
-  
+
   console.log('⏱️ Fast raffle timer stopped');
 }
 
@@ -4426,16 +5527,16 @@ function stopFastRaffleTimer() {
   <!-- Poll Countdown Timer -->
   <script>
     let pollCountdownInterval = null;
-    let pollTimeRemaining = 10; // 10 seconds
+    let pollTimeRemaining = 60; // 60 seconds
 
     function startPollCountdown() {
-      pollTimeRemaining = 10;
+      pollTimeRemaining = 60;
       updatePollTimerDisplay();
-      
+
       if (pollCountdownInterval) {
         clearInterval(pollCountdownInterval);
       }
-      
+
       pollCountdownInterval = setInterval(() => {
         if (pollTimeRemaining > 0) {
           pollTimeRemaining--;
@@ -4445,7 +5546,7 @@ function stopFastRaffleTimer() {
     }
 
     function resetPollCountdown() {
-      pollTimeRemaining = 10;
+      pollTimeRemaining = 60;
       updatePollTimerDisplay();
     }
 

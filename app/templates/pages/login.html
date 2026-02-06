@@ -1006,39 +1006,50 @@
       submitBtn.disabled = true;
       btnText.innerHTML = '<svg class="spinner" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Signing In...';
       
-      // Get form data
-      const formData = new FormData(loginForm);
+      // Get form values
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
       
       try {
-        // Submit login request
-        const response = await fetch('/login', {
+        // Submit login request to API endpoint
+        const response = await fetch('/api/auth/login', {
           method: 'POST',
-          body: formData
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({ username, password }),
+          credentials: 'include'  // Critical: ensure cookies are sent/received
         });
         
-        if (response.ok) {
-          // Check if it's a redirect response
-          const contentType = response.headers.get('content-type');
-          
+        const data = await response.json();
+        
+        if (response.ok && data.ok) {
           // Show success message
           successAlert.style.display = 'flex';
           btnText.textContent = 'Success!';
           
-          // Redirect after 1.5 seconds
+          console.log('✅ Login successful, session established');
+          
+          // Wait a moment for cookie to be fully set, then redirect
           setTimeout(() => {
             window.location.href = '/dashboard';
-          }, 1500);
+          }, 800);
         } else {
-          // If login failed, show client-side error message
+          // If login failed, show error message
           errorAlert.style.display = 'flex';
+          document.getElementById('errorTitle').textContent = data.error || 'Login failed';
+          document.getElementById('errorDescription').textContent = 'Please check your credentials and try again.';
           submitBtn.disabled = false;
           btnText.textContent = 'Sign In';
         }
       } catch (error) {
         console.error('Login error:', error);
+        errorAlert.style.display = 'flex';
+        document.getElementById('errorTitle').textContent = 'Connection error';
+        document.getElementById('errorDescription').textContent = 'Could not connect to server. Please try again.';
         submitBtn.disabled = false;
         btnText.textContent = 'Sign In';
-        alert('An error occurred. Please try again.');
       }
     });
   </script>

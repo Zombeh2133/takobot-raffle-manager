@@ -1,6 +1,6 @@
 {
   "name": "tako-raffle-manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TakoBot Raffle Manager Desktop App",
   "main": "main.js",
   "scripts": {
@@ -9,7 +9,7 @@
     "publish": "electron-builder --win --x64 --publish always"
   },
   "keywords": [],
-  "author": "",
+  "author": "Rina",
   "license": "ISC",
   "devDependencies": {
     "electron": "^40.1.0",
@@ -45,6 +45,7 @@
     }
   },
   "dependencies": {
+    "compression": "^1.8.1",
     "electron-log": "^5.0.1",
     "electron-updater": "^6.7.3"
   }
