@@ -428,6 +428,10 @@ def scan_and_match_payments(username: str, raffle_id: int, days_back: int = None
         participants = raffle['participants'] or []
         cost_per_spot = raffle.get('cost_per_spot', 0)
         
+        # Convert Decimal to float to avoid type errors in calculations
+        if cost_per_spot is not None:
+            cost_per_spot = float(cost_per_spot)
+        
         # Add cost_per_spot to each participant for matching logic
         for p in participants:
             p['costPerSpot'] = cost_per_spot

@@ -1210,6 +1210,86 @@
     .access-modal-btn-primary:active {
       transform: translateY(0);
     }
+
+    /* TOGGLE SWITCH STYLES */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding: 18px;
+      background: #F8FAFC;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .toggle-label-wrapper {
+      flex: 1;
+    }
+
+    .toggle-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #111827;
+      margin: 0 0 4px 0;
+    }
+
+    .toggle-desc {
+      font-size: 13px;
+      color: #64748B;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 56px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #CBD5E1;
+      transition: 0.3s;
+      border-radius: 30px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 22px;
+      width: 22px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+
+    .toggle-switch input:checked + .toggle-slider {
+      background: linear-gradient(135deg, #8B5CF6, #7C3AED);
+    }
+
+    .toggle-switch input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+
+    .toggle-switch input:focus + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+    }
   </style>
 </head>
 
@@ -1335,6 +1415,17 @@
           <option value="America/Los_Angeles">Pacific Time (PT)</option>
           <option value="UTC">UTC</option>
         </select>
+
+        <div class="toggle-container">
+          <div class="toggle-label-wrapper">
+            <p class="toggle-label">🎓 Auto-record Parser Corrections</p>
+            <p class="toggle-desc">Automatically learn from manual spot edits to improve parser accuracy over time</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="autoRecordCorrections">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
       </div>
 
       <div class="save-row">
@@ -2170,10 +2261,84 @@
       document.getElementById('deleteGmailOauthModal').classList.add('show');
     });
 
+    // Load settings on page load
+    (async function loadSettings() {
+      // Load timezone
+      const savedTimezone = localStorage.getItem('takobot_timezone');
+      if (savedTimezone) {
+        const timezoneSelect = document.getElementById("timezone");
+        if (timezoneSelect) timezoneSelect.value = savedTimezone;
+      }
+
+      // Load auto-record setting from database (default to false)
+      try {
+        console.log('📥 Loading auto-record setting from database...');
+        const response = await fetch('/api/settings/auto_record_corrections');
+        if (response.ok) {
+          const result = await response.json();
+          console.log('📥 Received:', result);
+          const autoRecordCheckbox = document.getElementById("autoRecordCorrections");
+          if (autoRecordCheckbox) {
+            // Handle both response formats:
+            // Format 1: { ok: true, data: "true" }
+            // Format 2: { id: 3, key: "auto_record_corrections", value: "true", updated_at: "..." }
+            let value;
+            if (result.data !== undefined) {
+              // Node.js format: { ok: true, data: "true" }
+              value = result.data;
+            } else if (result.value !== undefined) {
+              // Direct DB row format: { value: "true", ... }
+              value = result.value;
+            } else {
+              value = null;
+            }
+            
+            // Default to false if not set
+            autoRecordCheckbox.checked = value === 'true';
+            console.log(`📥 Set checkbox to: ${autoRecordCheckbox.checked} (value was "${value}")`);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load auto-record setting:', err);
+        // Default to false on error
+        const autoRecordCheckbox = document.getElementById("autoRecordCorrections");
+        if (autoRecordCheckbox) autoRecordCheckbox.checked = false;
+      }
+    })();
+
     // Save settings
-    document.getElementById("saveSettings")?.addEventListener("click", () => {
+    document.getElementById("saveSettings")?.addEventListener("click", async () => {
       const tz = document.getElementById("timezone")?.value || "America/New_York";
-      showToast('Settings Saved', `Timezone set to ${tz}`, 'success');
+      const autoRecord = document.getElementById("autoRecordCorrections")?.checked ?? false;
+      
+      console.log(`💾 Saving settings: autoRecord=${autoRecord}`);
+      
+      localStorage.setItem('takobot_timezone', tz);
+      
+      // Save auto-record setting to database
+      try {
+        console.log(`💾 Sending to API: key="auto_record_corrections", value="${String(autoRecord)}"`);
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            key: 'auto_record_corrections',
+            value: String(autoRecord)
+          })
+        });
+        
+        const responseData = await response.json();
+        console.log('💾 API Response:', responseData);
+        
+        if (response.ok) {
+          showToast('Settings Saved', `Settings updated successfully`, 'success');
+        } else {
+          showToast('Settings Error', 'Failed to save auto-record setting', 'error');
+        }
+      } catch (err) {
+        console.error('Failed to save auto-record setting:', err);
+        showToast('Settings Error', 'Network error saving settings', 'error');
+      }
     });
 
     // ===== ACCESS DENIED MODAL =====

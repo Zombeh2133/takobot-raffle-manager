@@ -14,9 +14,12 @@ try:
 except ImportError:
     pass  # python-dotenv not installed, will use system environment variables
 
-# OpenAI API Configuration
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')  # Set via environment variable
-USE_AI_PARSING = os.environ.get('USE_AI_PARSING', 'false').lower() == 'true'
+# OpenAI API Configuration - DISABLED
+OPENAI_API_KEY = ''  # Removed - not using AI parsing
+USE_AI_PARSING = False  # Hardcoded to False
+
+# Historical corrections database file
+CORRECTIONS_DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'parser_corrections.json')
 
 # Rotating User Agents
 USER_AGENTS = [
@@ -111,246 +114,7 @@ def clean_comment_text(text: str) -> str:
     
     return text
 
-def parse_spots_with_ai(text: str) -> Tuple[bool, Optional[int]]:
-    """Use OpenAI to parse spot count from comment text"""
-    if not OPENAI_API_KEY:
-        # Fallback to regex if no API key
-        print("⚠️ No API key found - using regex fallback", file=sys.stderr)
-        return parse_spots_regex(text)
-
-    try:
-        print(f"🤖 Using OpenAI AI parsing for: {text[:50]}...", file=sys.stderr)
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {OPENAI_API_KEY}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'model': 'gpt-4o',  # Ultra-fast and most accurate model
-                'messages': [
-                    {
-                        'role': 'system',
-                        'content': '''You are a Reddit raffle comment parser. Your job is to extract the TOTAL NUMBER OF SPOTS being requested from a comment.
-
-CRITICAL RULES:
-0. **REJECT COMMENTS WITH NO NUMBERS**: If a comment contains NO numbers at all, return 0. Only parse comments that contain at least one number.
-   - Example: "sorry for the slow day, will be cancelling" → 0 (no numbers = not a spot request)
-   - Example: "This raffle has been cancelled" → 0 (no numbers = not a spot request)
-   - Example: "good luck everyone!" → 0 (no numbers = not a spot request)
-1. Count EACH explicitly mentioned spot number as 1 spot (e.g., "5, 12, 99" = 3 spots)
-2. Count ranges inclusively (e.g., "1-20" = 20 spots, "5-8" = 4 spots)
-   - IMPORTANT: When you see MULTIPLE ranges separated by commas, count EACH range separately and ADD them together
-   - Example: "1-5, 17-21" means range 1 to 5 (that's 5 spots) PLUS range 17 to 21 (that's 5 spots) = 10 total spots
-3. "random" or "rando" alone (case-insensitive) = 1 spot (e.g., "Random", "random", "RANDOM" all = 1 spot)
-   - IMPORTANT: When "and random" or "and Random" appears AFTER a list of explicit numbers, add 1 spot to the count
-   - Example: "6,30,44,67 and Random" = count the 4 numbers (6, 30, 44, 67) PLUS the word "Random" = 5 total spots
-4. "X randoms" = X spots (e.g., "5 randoms" = 5 spots)
-5. "X spots" means X spots total (e.g., "5 spots" = 5 spots)
-6. ADD explicit spots + random spots together (e.g., "spot 5, 12 and 3 randoms" = 2 + 3 = 5 total)
-7. Ignore any names, dollar amounts, or non-spot-request text
-8. Return ONLY the total number, nothing else
-9. IGNORE numbers in usernames after "tabbed" or "tag" keywords (e.g., "tabbed chewy96" - ignore the 96)
-   - EXCEPTION: When there are MULTIPLE comma-separated numbers BEFORE the word "tabbed", count ALL those numbers
-   - Example: "5,9,12,56,65 tabbed doublechen" = count all 5 numbers (5, 9, 12, 56, 65) = 5 spots (ignore "doublechen")
-   - Example: "37 tabbed slum" = only 1 number before "tabbed" = 1 spot
-10. Handle slang: "booties" = randoms, "drama" = 0 spots (parsed but defaults to 0)
-11. Handle typos/misspellings of "random": "tandom", "randon", "milking", etc.
-12. Words before "random" like "additional", "more", "extra" don't negate the quantity (e.g., "10 additional random" = 10 spots)
-13. "or" means ONE choice, not both (e.g., "spot 33 or 34" = 1 spot, not 2)
-14. "sub" or "if not available" indicates conditional/substitute - count only ONE set (e.g., "2,22 sub 13,10" = 2 spots, not 4)
-15. "spot X" refers to a specific spot NUMBER, which counts as 1 spot (e.g., "spot 82" = 1 spot, not 82 spots)
-16. Ignore conversational context - only parse actual requests
-17. "close" or "closer" = 0 spots (special keyword for closing raffle)
-
-TRAINING EXAMPLES (learn from these mistakes):
-"Random" → 1 (just the word "random" alone, any capitalization)
-"random" → 1 (lowercase works too)
-"RANDOM" → 1 (uppercase works too)
-"5 booties please" → 5 (not 0, "booties" is slang for randoms)
-"10 additional random please" → 10 (not 1, "additional" doesn't negate the 10)
-"10 tandom" → 10 (not 1, "tandom" is a typo for "random")
-"20 milking spots" → 20 (not 1, "milking" is autocorrect error for "random")
-"2 more" → 2 (not 1, "2 more" means 2 additional spots)
-"2 randoms tabbed chewy96" → 2 (not 3, ignore the 96 in username)
-"spot 33 or 34" → 1 (not 2, "or" means one choice)
-"2,22 sub 13 and 10 if not available" → 2 (not 4, wants 2 total: either 2+22 OR 13+10)
-"spot 82" → 1 (not 82, this is requesting spot NUMBER 82, which is 1 spot)
-"37 tabbed slum" → 1 (TAB format: requesting spot #37, which is 1 spot, not 37 spots)
-"Spot 32 tabbed to chen" → 1 (TAB format: requesting spot #32, which is 1 spot)
-"Spot 21 tabbed Jealous (WFF)" → 1 (TAB format: requesting spot #21, which is 1 spot)
-"1-20" → 20 (range from 1 to 20 = 20 spots total)
-"5, 12, 99 and 2 randoms" → 5 (3 specific spots + 2 randoms)
-"3 odd numbers" → 3 (qualifier word "odd" doesn't change count, extract the number)
-"Random 10 tabbed drip" → 10 (extract the number, ignore qualifier "random")
-"10 even spots plz" → 10 (qualifier word "even" doesn't change count)
-"Sniper" → 1 (slang for trying to grab last/winning spot, always 1 spot)
-"snipe" → 1 (variation of "sniper")
-"sniping" → 1 (variation of "sniper")
-"10-20 24 28 35 67 69 no sub" → Count the spots in the request, but NOTE: actual assigned spots depend on host confirmation
-"17 no sub" → Requested spot may result in 0 if taken (no substitution allowed, host won't reply)
-"1-5, 10 random" → 15 (range 1-5 = 5 spots, PLUS 10 random = 10 spots, ADD them: 5 + 10 = 15 total)
-"5 more tabbed to dr wins" → 5 (\"5 more\" means 5 spots, don't count it as 1 spot)
-"drama" → 0 (special keyword meaning participant wants to be on waitlist, no spots requested)
-
-MORE EXAMPLES:
-"Spot 5 and 12 please" → 2
-"5 spots please" → 5
-"1-20" → 20
-"Spot 17, 23, and 2 randoms" → 4
-"3, 4, 33, 34, 343, and 5 randoms pls" → 10
-"7, 11, 22, 77 and 4 random" → 8
-"5 random" → 5
-"a random" → 1
-"Henry Thang 373" → 1
-"spot 69" → 1
-"3 even" → 3
-"5 odd" → 5
-"snipe" → 1
-"close" → 0
-"6,30,44,67 and Random" → 5 (4 explicit spots + 1 random = 5 total)
-"5,9,12,56,65 tabbed doublechen w/t" → 5 (5 explicit comma-separated spots)
-"1-5, 17-21" → 10 (range 1-5 = 5 spots, range 17-21 = 5 spots, total = 10)'''
-                    },
-                    {
-                        'role': 'user',
-                        'content': text
-                    }
-                ],
-                'temperature': 0,
-                'max_tokens': 10
-            },
-            timeout=5
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            spots_str = result['choices'][0]['message']['content'].strip()
-            spots = int(spots_str)
-            return (True, spots)
-        else:
-            # Fallback to regex if API call fails
-            return parse_spots_regex(text)
-
-    except Exception as e:
-        # Fallback to regex on any error
-        return parse_spots_regex(text)
-
-def parse_spots_with_ai_batch(comments: List[str]) -> List[Tuple[bool, Optional[int]]]:
-    """Use OpenAI to parse spot counts for multiple comments in a single batch (MUCH faster and cheaper!)"""
-    if not OPENAI_API_KEY:
-        print("⚠️ No API key found - using regex fallback for all comments", file=sys.stderr)
-        return [parse_spots_regex(text) for text in comments]
-
-    if not comments:
-        return []
-
-    try:
-        print(f"🚀 Batching {len(comments)} comments into a single AI call...", file=sys.stderr)
-
-        # Build batch input: number each comment
-        batch_input = ""
-        for i, text in enumerate(comments):
-            batch_input += f"{i+1}. {text}\n"
-
-        response = requests.post(
-            'https://api.openai.com/v1/chat/completions',
-            headers={
-                'Authorization': f'Bearer {OPENAI_API_KEY}',
-                'Content-Type': 'application/json'
-            },
-            json={
-                'model': 'gpt-4o',
-                'messages': [
-                    {
-                        'role': 'system',
-                        'content': '''You are a Reddit raffle comment parser. Parse EACH numbered comment and return ONLY a JSON array of spot counts.
-
-CRITICAL RULES:
-0. **REJECT COMMENTS WITH NO NUMBERS**: If a comment contains NO numbers at all, return 0. Only parse comments that contain at least one number.
-   - Example: "sorry for the slow day, will be cancelling" → 0 (no numbers = not a spot request)
-   - Example: "This raffle has been cancelled" → 0 (no numbers = not a spot request)
-   - Example: "good luck everyone!" → 0 (no numbers = not a spot request)
-1. Count EACH explicitly mentioned spot number as 1 spot (e.g., "5, 12, 99" = 3 spots)
-2. Count ranges inclusively (e.g., "1-20" = 20 spots, "5-8" = 4 spots)
-   - IMPORTANT: When you see MULTIPLE ranges separated by commas, count EACH range separately and ADD them together
-   - Example: "1-5, 17-21" means range 1 to 5 (that's 5 spots) PLUS range 17 to 21 (that's 5 spots) = 10 total spots
-3. "random" or "rando" alone (case-insensitive) = 1 spot (e.g., "Random", "random", "RANDOM" all = 1 spot)
-   - IMPORTANT: When "and random" or "and Random" appears AFTER a list of explicit numbers, add 1 spot to the count
-   - Example: "6,30,44,67 and Random" = count the 4 numbers (6, 30, 44, 67) PLUS the word "Random" = 5 total spots
-4. "X randoms" = X spots (e.g., "5 randoms" = 5 spots)
-5. "X spots" means X spots total (e.g., "5 spots" = 5 spots)
-6. ADD explicit spots + random spots together (e.g., "spot 5, 12 and 3 randoms" = 2 + 3 = 5 total)
-7. Ignore any names, dollar amounts, or non-spot-request text
-8. IGNORE numbers in usernames after "tabbed" or "tag" keywords (e.g., "tabbed chewy96" - ignore the 96)
-   - EXCEPTION: When there are MULTIPLE comma-separated numbers BEFORE the word "tabbed", count ALL those numbers
-   - Example: "5,9,12,56,65 tabbed doublechen" = count all 5 numbers (5, 9, 12, 56, 65) = 5 spots (ignore "doublechen")
-   - Example: "37 tabbed slum" = only 1 number before "tabbed" = 1 spot
-9. Handle slang: "booties" = randoms, "drama" = 0 spots (parsed but defaults to 0)
-10. Handle typos/misspellings of "random": "tandom", "randon", "milking", etc.
-11. Words before "random" like "additional", "more", "extra" don't negate the quantity (e.g., "10 additional random" = 10 spots)
-12. "or" means ONE choice, not both (e.g., "spot 33 or 34" = 1 spot, not 2)
-13. "sub" or "if not available" indicates conditional/substitute - count only ONE set (e.g., "2,22 sub 13,10" = 2 spots, not 4)
-14. "spot X" refers to a specific spot NUMBER, which counts as 1 spot (e.g., "spot 82" = 1 spot, not 82 spots)
-15. Ignore conversational context - only parse actual requests
-16. "close" or "closer" = 0 spots (special keyword for closing raffle)
-
-OUTPUT FORMAT:
-Return ONLY a JSON array of numbers, one per comment, in order.
-Example: [2, 5, 20, 4, 1, 0]
-
-TRAINING EXAMPLES (learn from these):
-"Random" → 1
-"6,30,44,67 and Random" → 5 (4 explicit spots + 1 random = 5 total)
-"5,9,12,56,65 tabbed doublechen w/t" → 5 (5 explicit comma-separated spots)
-"1-5, 17-21" → 10 (range 1-5 = 5 spots, range 17-21 = 5 spots, total = 10)
-"37 tabbed slum" → 1 (single number with tabbed = 1 spot)
-"Spot 5 and 12 please" → 2
-"5 spots please" → 5
-"1-20" → 20
-"Spot 17, 23, and 2 randoms" → 4
-
-Do NOT include any other text, explanation, or formatting. JUST the JSON array.'''
-                    },
-                    {
-                        'role': 'user',
-                        'content': batch_input
-                    }
-                ],
-                'temperature': 0,
-                'max_tokens': len(comments) * 5  # ~5 tokens per spot count
-            },
-            timeout=15  # Longer timeout for batch processing
-        )
-
-        if response.status_code == 200:
-            result = response.json()
-            content = result['choices'][0]['message']['content'].strip()
-
-            # Parse JSON array from response
-            spot_counts = json.loads(content)
-
-            if len(spot_counts) != len(comments):
-                print(f"⚠️ AI returned {len(spot_counts)} counts but expected {len(comments)}, falling back to regex", file=sys.stderr)
-                return [parse_spots_regex(text) for text in comments]
-
-            # Convert to tuple format
-            results = []
-            for count in spot_counts:
-                if isinstance(count, int) and count >= 0:
-                    results.append((True, count))
-                else:
-                    results.append((False, 0))
-
-            print(f"✅ Successfully parsed {len(results)} comments in batch!", file=sys.stderr)
-            return results
-        else:
-            print(f"⚠️ AI batch call failed with status {response.status_code}, falling back to regex", file=sys.stderr)
-            return [parse_spots_regex(text) for text in comments]
-
-    except Exception as e:
-        print(f"⚠️ AI batch parsing error: {str(e)}, falling back to regex", file=sys.stderr)
-        return [parse_spots_regex(text) for text in comments]
+# AI parsing functions removed - using regex only
 
 def parse_spots_regex(text: str) -> Tuple[bool, Optional[int]]:
     """Parse spot count from comment text using regex (fallback method)"""
@@ -459,11 +223,60 @@ def parse_spots_regex(text: str) -> Tuple[bool, Optional[int]]:
     return (False, 0)
 
 def parse_spots(text: str) -> Tuple[bool, Optional[int]]:
-    """Main parsing function - uses AI if enabled, otherwise regex"""
-    if USE_AI_PARSING and OPENAI_API_KEY:
-        return parse_spots_with_ai(text)
-    else:
-        return parse_spots_regex(text)
+    """Main parsing function - uses regex only"""
+    return parse_spots_regex(text)
+
+def parse_host_reply(reply_text: str) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Parse host's reply to extract spot count
+    
+    Returns: (status, spot_count)
+    - status: "confirmed", "waitlist", or None
+    - spot_count: number of spots assigned (count of numbers in "You got X, Y, Z")
+    """
+    if not reply_text:
+        return (None, None)
+    
+    reply_lower = reply_text.strip().lower()
+    
+    # Check for waitlist
+    if "waitlist starts here" in reply_lower:
+        return ("waitlist", 0)
+    
+    # Check for "You got" format anywhere in the reply (not just at start)
+    if "you got" not in reply_lower:
+        return (None, None)
+    
+    # Find the "You got" part and extract ONLY that section
+    # Strategy: Extract everything between "You got" and any delimiter
+    
+    # First, find where "You got" starts (case-insensitive)
+    you_got_index = reply_lower.find("you got")
+    if you_got_index == -1:
+        return (None, None)
+    
+    # Extract from "You got" onwards
+    from_you_got = reply_text[you_got_index:]
+    
+    # Now split at common delimiters to isolate ONLY the spot numbers
+    # Stop at: newline, "Please", "Follow", "GL", etc.
+    spot_section = from_you_got.split('\n')[0]  # Take first line only
+    
+    # Also stop at common phrases that come AFTER spot assignment
+    for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
+        if delimiter in spot_section:
+            spot_section = spot_section.split(delimiter)[0]
+            break
+    
+    # Now extract numbers ONLY from the spot section
+    # "You got 5, 12, 23, 48, 91" → [5, 12, 23, 48, 91] → 5 spots
+    numbers = re.findall(r'\b\d+\b', spot_section)
+    
+    if numbers:
+        spot_count = len(numbers)
+        return ("confirmed", spot_count)
+    
+    return (None, None)
 
 def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]], depth: int = 0):
     """Recursively walk Reddit comment tree"""
@@ -472,16 +285,21 @@ def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]],
             continue
         d = child.get("data") or {}
 
-        # Collect replies for payment detection
-        reply_texts = []
+        # Collect OP replies for spot confirmation
+        op_replies = []
         replies = d.get("replies")
         if isinstance(replies, dict):
             rep_children = (replies.get("data") or {}).get("children") or []
             for rep_child in rep_children:
                 if rep_child and rep_child.get("kind") == "t1":
                     rep_data = rep_child.get("data") or {}
-                    rep_body = (rep_data.get("body") or "").lower()
-                    reply_texts.append(rep_body)
+                    # Check if this reply is from OP (is_submitter = True)
+                    if rep_data.get("is_submitter", False):
+                        op_replies.append({
+                            "author": rep_data.get("author", ""),
+                            "body": rep_data.get("body", ""),
+                            "is_submitter": True
+                        })
 
         out.append({
             "id": d.get("id", ""),
@@ -490,7 +308,7 @@ def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]],
             "created_utc": d.get("created_utc", 0),
             "permalink": ("https://www.reddit.com" + d["permalink"]) if d.get("permalink") else "",
             "depth": depth,
-            "reply_texts": reply_texts,  # Store reply texts for payment detection
+            "op_replies": op_replies,  # Store OP replies for parsing
             "is_submitter": d.get("is_submitter", False),  # Is this comment from the post author (OP)?
             "parent_id": d.get("parent_id", ""),  # Parent comment ID for threading
         })
@@ -685,42 +503,307 @@ def has_payment_confirmation(reply_texts: List[str]) -> bool:
 
     return False
 
-def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional[int] = None) -> List[Dict[str, Any]]:
+# ============ HISTORICAL PATTERN LEARNING ============
+
+def load_corrections_database() -> Dict[str, Any]:
+    """Load historical corrections from JSON file"""
+    try:
+        if os.path.exists(CORRECTIONS_DB_FILE):
+            with open(CORRECTIONS_DB_FILE, 'r') as f:
+                return json.load(f)
+        else:
+            # Initialize with empty database
+            return {"patterns": [], "stats": {"total_corrections": 0, "last_updated": None}}
+    except Exception as e:
+        print(f"⚠️ Error loading corrections database: {e}", file=sys.stderr)
+        return {"patterns": [], "stats": {"total_corrections": 0, "last_updated": None}}
+
+def save_corrections_database(db: Dict[str, Any]):
+    """Save corrections database to JSON file"""
+    try:
+        db["stats"]["last_updated"] = time.time()
+        with open(CORRECTIONS_DB_FILE, 'w') as f:
+            json.dump(db, f, indent=2)
+        print(f"💾 Saved corrections database to {CORRECTIONS_DB_FILE}", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️ Error saving corrections database: {e}", file=sys.stderr)
+
+def normalize_pattern(text: str) -> str:
+    """Normalize comment text to a pattern for matching"""
+    # Convert to lowercase
+    text = text.lower().strip()
+    
+    # Replace specific numbers with placeholders for pattern matching
+    # e.g., "5,9,12,56,65 tabbed username" → "N,N,N,N,N tabbed <username>"
+    
+    # Count comma-separated numbers at the start
+    number_list_match = re.match(r'^([\d,\s]+)\s+tabbed', text)
+    if number_list_match:
+        number_list = number_list_match.group(1)
+        num_count = len(re.findall(r'\d+', number_list))
+        # Create pattern: "N,N,N,N,N tabbed <username>"
+        pattern = f"{','.join(['N'] * num_count)} tabbed <username>"
+        return pattern
+    
+    # Replace single numbers with N for pattern matching
+    # "37 tabbed username" → "N tabbed <username>"
+    text = re.sub(r'\b\d+\b', 'N', text)
+    
+    # Replace usernames after "tabbed" with placeholder
+    text = re.sub(r'tabbed\s+\S+', 'tabbed <username>', text)
+    
+    return text
+
+def match_known_pattern(comment: str, db: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Check if comment matches a known problem pattern"""
+    if not db or "patterns" not in db:
+        return None
+    
+    normalized = normalize_pattern(comment)
+    
+    # Search for matching pattern
+    for pattern_entry in db["patterns"]:
+        if pattern_entry["pattern"] == normalized:
+            # Check confidence threshold (only apply if seen multiple times)
+            if pattern_entry["frequency"] >= 2:  # Require at least 2 occurrences
+                return pattern_entry
+    
+    return None
+
+def apply_learned_corrections(participants: List[Dict[str, Any]], cost_per_spot: float) -> List[Dict[str, Any]]:
+    """Apply historical pattern corrections to participants"""
+    db = load_corrections_database()
+    
+    if not db or "patterns" not in db or len(db["patterns"]) == 0:
+        print("📚 No historical patterns loaded yet", file=sys.stderr)
+        return participants
+    
+    corrections_applied = 0
+    
+    for i, p in enumerate(participants):
+        comment = p.get("comment", "")
+        current_spots = p.get("spots", 0)
+        
+        # Check if this comment matches a known problem pattern
+        matched_pattern = match_known_pattern(comment, db)
+        
+        if matched_pattern:
+            correct_spots = matched_pattern["correct_parse"]
+            
+            # Only apply if there's a discrepancy
+            if current_spots != correct_spots:
+                print(f"🎓 LEARNED PATTERN MATCH: \"{comment}\"", file=sys.stderr)
+                print(f"   Pattern: {matched_pattern['pattern']}", file=sys.stderr)
+                print(f"   Correcting {current_spots} → {correct_spots} spots (confidence: {matched_pattern['frequency']} occurrences)", file=sys.stderr)
+                
+                participants[i]["spots"] = correct_spots
+                participants[i]["owed"] = correct_spots * cost_per_spot
+                participants[i]["requestedSpots"] = correct_spots
+                corrections_applied += 1
+    
+    if corrections_applied > 0:
+        print(f"\n🎓 Applied {corrections_applied} learned corrections from historical patterns", file=sys.stderr)
+    
+    return participants
+
+def record_correction(comment: str, wrong_parse: int, correct_parse: int):
+    """Record a manual correction to the historical database"""
+    
+    # ============ VALIDATION: Filter out suspicious corrections ============
+    # Prevent learning from typos and mistakes instead of real parser errors
+    
+    # 1. Check for digit appending typo (e.g., "3" → "32", "5" → "54")
+    wrong_str = str(wrong_parse)
+    correct_str = str(correct_parse)
+    
+    if len(correct_str) == len(wrong_str) + 1 and correct_str.startswith(wrong_str):
+        print(f"⚠️ REJECTED: Likely typo detected (digit appended: {wrong_parse} → {correct_parse})", file=sys.stderr)
+        print(f"   Pattern: \"{comment}\"", file=sys.stderr)
+        print(f"   This correction was NOT saved to the learning database.", file=sys.stderr)
+        return None
+    
+    # 2. Check for small number becoming large number (likely mistake)
+    if wrong_parse > 0 and wrong_parse <= 10 and correct_parse > wrong_parse * 5:
+        print(f"⚠️ REJECTED: Suspicious large increase ({wrong_parse} → {correct_parse}, {correct_parse/wrong_parse:.1f}x)", file=sys.stderr)
+        print(f"   Pattern: \"{comment}\"", file=sys.stderr)
+        print(f"   This correction was NOT saved to the learning database.", file=sys.stderr)
+        return None
+    
+    # 3. Check if parser result seems reasonable - don't learn if parser was likely correct
+    # Extract number from comment for basic validation
+    numbers_in_comment = re.findall(r'\b(\d+)\b', comment)
+    if numbers_in_comment:
+        first_number = int(numbers_in_comment[0])
+        # If parser matched the first number exactly, it was probably correct
+        if wrong_parse == first_number and correct_parse != first_number:
+            print(f"⚠️ REJECTED: Parser correctly matched the number in comment ({wrong_parse})", file=sys.stderr)
+            print(f"   Pattern: \"{comment}\"", file=sys.stderr)
+            print(f"   Manual edit to {correct_parse} appears to be an intentional modification, not a parser error.", file=sys.stderr)
+            print(f"   This correction was NOT saved to the learning database.", file=sys.stderr)
+            return None
+    
+    # 4. Require significant change - don't learn from minor adjustments (±1 or ±2)
+    if abs(correct_parse - wrong_parse) <= 2:
+        print(f"⚠️ REJECTED: Change too small ({wrong_parse} → {correct_parse}), likely intentional adjustment", file=sys.stderr)
+        print(f"   Pattern: \"{comment}\"", file=sys.stderr)
+        print(f"   This correction was NOT saved to the learning database.", file=sys.stderr)
+        return None
+    
+    # ============ VALIDATION PASSED - Record the correction ============
+    
+    db = load_corrections_database()
+    
+    # Normalize the comment to a pattern
+    pattern = normalize_pattern(comment)
+    
+    # Check if pattern already exists
+    pattern_found = False
+    for pattern_entry in db["patterns"]:
+        if pattern_entry["pattern"] == pattern:
+            # Update existing pattern
+            pattern_entry["frequency"] += 1
+            pattern_entry["examples"].append({
+                "comment": comment[:100],
+                "wrong_parse": wrong_parse,
+                "correct_parse": correct_parse,
+                "timestamp": time.time()
+            })
+            # Keep only last 10 examples
+            pattern_entry["examples"] = pattern_entry["examples"][-10:]
+            pattern_found = True
+            print(f"📝 Updated existing pattern (frequency: {pattern_entry['frequency']})", file=sys.stderr)
+            break
+    
+    if not pattern_found:
+        # Add new pattern
+        db["patterns"].append({
+            "pattern": pattern,
+            "correct_parse": correct_parse,
+            "frequency": 1,
+            "examples": [{
+                "comment": comment[:100],
+                "wrong_parse": wrong_parse,
+                "correct_parse": correct_parse,
+                "timestamp": time.time()
+            }]
+        })
+        print(f"📝 Recorded new pattern: {pattern}", file=sys.stderr)
+    
+    # Update stats
+    db["stats"]["total_corrections"] += 1
+    
+    # Save database
+    save_corrections_database(db)
+    
+    return db
+
+def validate_parse_results(participants: List[Dict[str, Any]], total_spots: Optional[int], cost_per_spot: float) -> List[Dict[str, Any]]:
+    """Validate parsed results and flag potential errors for re-parsing or review"""
+    if not participants:
+        return participants
+    
+    validation_flags = []
+    
+    # CHECK 1: Calculate total assigned spots
+    total_assigned = sum(p.get("spots", 0) for p in participants)
+    
+    if total_spots and total_assigned > total_spots:
+        validation_flags.append({
+            "type": "over_assigned",
+            "message": f"⚠️ VALIDATION: Total assigned spots ({total_assigned}) exceeds limit ({total_spots})"
+        })
+        print(f"⚠️ VALIDATION: Total assigned spots ({total_assigned}) exceeds limit ({total_spots})", file=sys.stderr)
+    
+    # CHECK 2: Flag unusually high spot counts
+    HIGH_SPOT_THRESHOLD = 25  # Configurable threshold
+    for i, p in enumerate(participants):
+        spot_count = p.get("spots", 0)
+        if spot_count > HIGH_SPOT_THRESHOLD:
+            validation_flags.append({
+                "type": "high_spot_count",
+                "user": p.get("redditUser", "unknown"),
+                "spots": spot_count,
+                "comment": p.get("comment", "")[:60]
+            })
+            print(f"⚠️ VALIDATION: u/{p.get('redditUser')} requested {spot_count} spots (>{HIGH_SPOT_THRESHOLD}) - Comment: \"{p.get('comment', '')[:60]}...\"", file=sys.stderr)
+            
+            # Optional: Re-parse with stricter prompt
+            comment = p.get("comment", "")
+            if comment and USE_AI_PARSING and OPENAI_API_KEY:
+                print(f"🔄 Re-parsing high spot count comment with double-check...", file=sys.stderr)
+                found, revalidated_count = parse_spots_with_ai(comment)
+                if found and revalidated_count != spot_count:
+                    print(f"  ✅ Corrected: {spot_count} → {revalidated_count}", file=sys.stderr)
+                    participants[i]["spots"] = revalidated_count
+                    participants[i]["owed"] = revalidated_count * cost_per_spot
+                    participants[i]["requestedSpots"] = revalidated_count
+    
+    # CHECK 3: Allow multiple comments from same user (removed duplicate validation)
+    # Users can request spots multiple times in the same raffle
+    
+    # CHECK 4: Invalid spot counts (negative or zero, except for legitimate close/drama)
+    for i, p in enumerate(participants):
+        spots = p.get("spots", 0)
+        comment = p.get("comment", "").lower()
+        
+        # Negative spots should never happen
+        if spots < 0:
+            validation_flags.append({
+                "type": "negative_spots",
+                "user": p.get("redditUser", "unknown"),
+                "spots": spots
+            })
+            print(f"⚠️ VALIDATION: u/{p.get('redditUser')} has NEGATIVE spots ({spots}) - setting to 0", file=sys.stderr)
+            participants[i]["spots"] = 0
+            participants[i]["owed"] = 0
+    
+    # CHECK 5: Sanity check - spot count shouldn't exceed total raffle spots
+    if total_spots:
+        for i, p in enumerate(participants):
+            spots = p.get("spots", 0)
+            if spots > total_spots:
+                validation_flags.append({
+                    "type": "exceeds_total",
+                    "user": p.get("redditUser", "unknown"),
+                    "spots": spots,
+                    "total": total_spots
+                })
+                print(f"⚠️ VALIDATION: u/{p.get('redditUser')} requested {spots} spots but raffle only has {total_spots} total - may be a parsing error", file=sys.stderr)
+    
+    # Print summary
+    if validation_flags:
+        print(f"\n🔍 VALIDATION SUMMARY: Found {len(validation_flags)} potential issues", file=sys.stderr)
+    else:
+        print(f"\n✅ VALIDATION: All checks passed!", file=sys.stderr)
+    
+    return participants
+
+def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional[int] = None, existing_comment_ids: Optional[List[str]] = None, current_assigned_spots: int = 0) -> List[Dict[str, Any]]:
     """Main function to parse Reddit post and extract participants"""
     comments, op_author = fetch_reddit_comments(post_url)
     participants = []
-
-    # Collect all comment bodies for batch parsing
-    comment_bodies = [comment.get("body", "") for comment in comments]
-
-    # Parse spots using batch AI if enabled
-    if USE_AI_PARSING and OPENAI_API_KEY:
-        spot_results = parse_spots_with_ai_batch(comment_bodies)
-    else:
-        spot_results = [parse_spots_regex(body) for body in comment_bodies]
+    
+    # ✅ Filter out already-processed comments BEFORE parsing
+    if existing_comment_ids:
+        existing_ids_set = set(existing_comment_ids)
+        original_count = len(comments)
+        comments = [c for c in comments if c.get('id') not in existing_ids_set]
+        filtered_count = original_count - len(comments)
+        print(f"✅ Filtered out {filtered_count} already-processed comments BEFORE parsing. {len(comments)} new comments to parse.", file=sys.stderr)
 
     for i, comment in enumerate(comments):
         author = comment.get("author", "")
         body = comment.get("body", "")
-        reply_texts = comment.get("reply_texts", [])
+        op_replies = comment.get("op_replies", [])
         created_utc = comment.get("created_utc", 0)
-        comment_id = comment.get("id", "")  # Get Reddit comment ID for duplicate detection
+        comment_id = comment.get("id", "")
 
         # Skip deleted/removed comments and AutoModerator
         if not author or author in ["[deleted]", "[removed]", "AutoModerator"]:
             continue
 
-        # ✅ CHANGED: Allow OP/host comments (for escrow participation)
-        # The is_bot_confirmation() check below will filter out spot assignment replies
-        # if author == op_author:
-        #     continue
-
         # Skip bot confirmation messages (includes "You got" spot assignments from host)
         if is_bot_confirmation(body):
-            continue
-
-        # Skip comments that have payment confirmation replies
-        if has_payment_confirmation(reply_texts):
             continue
 
         # Skip host/bot replies
@@ -732,125 +815,123 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         if not cleaned_for_check or len(cleaned_for_check.strip()) == 0:
             continue
 
-        # Parse spots
-        found, spot_count = spot_results[i]
+        # ============ NEW PARSING LOGIC: Parse from HOST REPLY ============
+        # Look for OP's reply to this comment
+        host_status = None
+        spot_count = None
+        
+        if op_replies:
+            # Check each OP reply for "You got" format
+            for op_reply in op_replies:
+                reply_body = op_reply.get("body", "")
+                status, spots = parse_host_reply(reply_body)
+                
+                if status:
+                    host_status = status
+                    spot_count = spots
+                    print(f"✅ Found host reply for u/{author}: '{reply_body[:50]}...' → {spots} spots (status: {status})", file=sys.stderr)
+                    break
+        
+        # ONLY parse comments that have host confirmation with "You got"
+        if host_status is None:
+            print(f"⏭️ Skipping u/{author} - no host confirmation yet", file=sys.stderr)
+            continue  # Skip this comment - don't add to participants
 
-        if found and spot_count is not None:
-            actual_spots = spot_count
+        # Clean comment text (remove URLs and images) before storing
+        cleaned_comment = clean_comment_text(body)
 
-            # ✅ SKIP COMMENTS WITH NO SPOTS (e.g., cancellation announcements, non-request comments)
-            # Only add participants who actually requested spots
-            if actual_spots is None or actual_spots == 0:
-                print(f"⚠️ Skipping comment from u/{author} - no spots requested: \"{body[:60]}...\"", file=sys.stderr)
-                continue  # Skip this comment, don't add to participants
-
-            # Clean comment text (remove URLs and images) before storing
-            cleaned_comment = clean_comment_text(body)
-
-            # Add participant with timestamp and comment ID
-            participants.append({
-                "redditUser": author,
-                "name": "",  # Will be filled by name mapping
-                "comment": cleaned_comment[:100],
-                "spots": actual_spots,
-                "requestedSpots": actual_spots,  # Store original request BEFORE limit enforcement
-                "owed": actual_spots * cost_per_spot,
-                "paid": False,
-                "created_utc": created_utc,  # Include timestamp for sorting
-                "commentId": comment_id  # IMPORTANT: Reddit comment ID for duplicate detection
-            })
+        # Add participant with host confirmation status
+        participants.append({
+            "redditUser": author,
+            "name": "",  # Will be filled by name mapping
+            "comment": cleaned_comment[:100],  # Keep original user comment for display
+            "spots": spot_count if host_status == "confirmed" else 0,
+            "requestedSpots": spot_count if host_status == "confirmed" else 0,
+            "owed": (spot_count * cost_per_spot) if host_status == "confirmed" else 0,
+            "paid": False,
+            "created_utc": created_utc,
+            "commentId": comment_id,
+            "status": host_status  # "confirmed" or "waitlist"
+        })
 
     # Sort by timestamp descending (newest first = oldest at bottom)
     participants.sort(key=lambda p: p.get("created_utc", 0), reverse=True)
 
-    # ============ ENFORCE SPOT LIMIT ============
-    # If total_spots is provided, prevent over-assignment
+    # ============ SPOT LIMIT ENFORCEMENT - Only for confirmed spots ============
     if total_spots is not None and total_spots > 0:
-        running_total = 0
+        running_total = current_assigned_spots
+        print(f"📊 Starting spot enforcement with {running_total} already assigned spots", file=sys.stderr)
+        
         for i in range(len(participants) - 1, -1, -1):  # Iterate from oldest to newest
-            requested_spots = participants[i]["requestedSpots"]  # Use ORIGINAL request, not current assignment
+            # Only enforce limits on confirmed entries
+            if participants[i]["status"] != "confirmed":
+                continue
+                
+            requested_spots = participants[i]["requestedSpots"]
 
             # Check if this request would exceed the limit
             if running_total >= total_spots:
-                # Raffle is full - set to 0 spots
+                # Raffle is full
                 participants[i]["spots"] = 0
                 participants[i]["owed"] = 0
+                print(f"⚠️ Raffle FULL ({running_total}/{total_spots}) - cannot assign {requested_spots} spots to u/{participants[i]['redditUser']}", file=sys.stderr)
             elif running_total + requested_spots > total_spots:
-                # Partial assignment - give only what's left
+                # Partial assignment
                 remaining = total_spots - running_total
                 participants[i]["spots"] = remaining
                 participants[i]["owed"] = remaining * cost_per_spot
                 running_total = total_spots
+                print(f"⚠️ Partial assignment for u/{participants[i]['redditUser']}: requested {requested_spots}, got {remaining} spots ({running_total}/{total_spots})", file=sys.stderr)
             else:
-                # Full assignment - within limits
+                # Full assignment
+                participants[i]["spots"] = requested_spots
+                participants[i]["owed"] = requested_spots * cost_per_spot
                 running_total += requested_spots
+                print(f"✅ Assigned {requested_spots} spots to u/{participants[i]['redditUser']} ({running_total}/{total_spots})", file=sys.stderr)
 
-    # ============ HANDLE "CLOSE" or "CLOSER" LOGIC ============
-    # If total_spots is provided, handle the "close"/"closer" keyword
-    if total_spots is not None and total_spots > 0:
-        # Find the first "close" or "closer" comment (chronologically oldest)
-        close_index = -1
-        for i, p in enumerate(participants):
-            # Check if the participant has 0 spots (which indicates "close"/"closer")
-            # Also verify the comment text contains "close" or "closer"
-            if p["spots"] == 0 and re.search(r'\b(close|closer)\b', p["comment"], re.IGNORECASE):
-                close_index = i
-                break
-
-        if close_index >= 0:
-            # Calculate spots already allocated BEFORE the "close" comment
-            spots_before_close = sum(p["spots"] for i, p in enumerate(participants) if i > close_index)
-
-            # Calculate remaining spots
-            remaining_spots = max(0, total_spots - spots_before_close)
-
-            # Assign remaining spots to the "close" comment
-            participants[close_index]["spots"] = remaining_spots
-            participants[close_index]["owed"] = remaining_spots * cost_per_spot
-
-            # Set all comments AFTER "close" to 0 spots
-            for i in range(close_index):
-                participants[i]["spots"] = 0
-                participants[i]["owed"] = 0
+    # Validate parsed results
+    participants = validate_parse_results(participants, total_spots, cost_per_spot)
 
     return participants
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print(json.dumps({"ok": False, "error": "Usage: reddit_parser.py <post_url> <cost_per_spot> [total_spots] [existing_comment_ids_json]"}))
+        print(json.dumps({"ok": False, "error": "Usage: reddit_parser.py <post_url> <cost_per_spot> [total_spots] [existing_comment_ids_json] [current_assigned_spots]"}))
         sys.exit(1)
 
     try:
         post_url = sys.argv[1]
         cost_per_spot = float(sys.argv[2])
-        total_spots = int(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] != 'null' and not sys.argv[3].startswith('[') else None
         
-        # Parse existing comment IDs from 4th argument (JSON array)
+        # Parse totalSpots from argv[3] (always present, 'null' if not set)
+        total_spots = None
+        if len(sys.argv) > 3 and sys.argv[3] != 'null':
+            try:
+                total_spots = int(sys.argv[3])
+            except:
+                pass
+        
+        # Parse existing comment IDs from argv[4] (always present, '[]' if empty)
         existing_comment_ids = []
         if len(sys.argv) > 4:
             try:
                 existing_comment_ids = json.loads(sys.argv[4])
             except:
                 pass
-        elif len(sys.argv) > 3 and sys.argv[3].startswith('['):
-            # If 3rd arg is a JSON array, it's the existing_comment_ids (no total_spots)
+
+        # Parse current assigned spots from argv[5] (always present, '0' if not set)
+        current_assigned_spots = 0
+        if len(sys.argv) > 5:
             try:
-                existing_comment_ids = json.loads(sys.argv[3])
+                current_assigned_spots = int(sys.argv[5])
             except:
                 pass
 
         print(f"📊 Filtering out {len(existing_comment_ids)} already-processed comment IDs", file=sys.stderr)
+        print(f"📊 Current assigned spots: {current_assigned_spots}", file=sys.stderr)
 
-        result = parse_reddit_post(post_url, cost_per_spot, total_spots)
+        result = parse_reddit_post(post_url, cost_per_spot, total_spots, existing_comment_ids, current_assigned_spots)
         
-        # FILTER OUT already-processed comments BEFORE returning
-        if existing_comment_ids:
-            existing_ids_set = set(existing_comment_ids)
-            original_count = len(result)
-            result = [p for p in result if p.get('commentId') not in existing_ids_set]
-            filtered_count = original_count - len(result)
-            print(f"✅ Filtered out {filtered_count} already-processed comments. {len(result)} new comments to parse.", file=sys.stderr)
-
         print(json.dumps({"ok": True, "participants": result}))
     except Exception as e:
         print(json.dumps({"ok": False, "error": str(e)}))

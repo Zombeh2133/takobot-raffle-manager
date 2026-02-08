@@ -9,13 +9,30 @@ const session = require('express-session');
 const app = express();
 const port = process.env.PORT || 3001;
 
-const compression = require('compression');
-app.use(compression());
-
 // PostgreSQL connection
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
+
+// Initialize database tables
+async function initializeDatabase() {
+  try {
+    // Ensure settings table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key VARCHAR(255) PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    console.log('✅ Database initialized: settings table ready');
+  } catch (error) {
+    console.error('❌ Error initializing database:', error);
+  }
+}
+
+// Call initialization on startup
+initializeDatabase();
 
 app.use(cors());
 app.use(express.json());
@@ -904,36 +921,28 @@ app.delete('/api/activity/clear', async (req, res) => {
 app.post('/api/settings', async (req, res) => {
   try {
     const { key, value } = req.body;
+    
+    console.log(`💾 Saving setting: key="${key}", value="${value}"`);
 
     await pool.query(
       `INSERT INTO settings (key, value, updated_at)
        VALUES ($1, $2, NOW())
-       ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = NOW()`,
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
       [key, value]
     );
+    
+    // Verify the save by reading it back
+    const verifyResult = await pool.query(
+      'SELECT value FROM settings WHERE key = $1',
+      [key]
+    );
+    
+    console.log(`✅ Setting saved successfully`);
+    console.log(`🔍 Verification: DB now contains value="${verifyResult.rows[0]?.value}"`);
 
     res.json({ ok: true });
   } catch (error) {
     console.error('Error saving setting:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-// Get setting
-app.get('/api/settings/:key', async (req, res) => {
-  try {
-    const result = await pool.query(
-      'SELECT value FROM settings WHERE key = $1',
-      [req.params.key]
-    );
-
-    if (result.rows.length === 0) {
-      return res.json({ ok: true, data: null });
-    }
-
-    res.json({ ok: true, data: result.rows[0].value });
-  } catch (error) {
-    console.error('Error fetching setting:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
@@ -1033,11 +1042,47 @@ app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
   }
 });
 
+// Get setting (generic - must be AFTER specific routes)
+app.get('/api/settings/:key', async (req, res) => {
+  try {
+    console.log(`🔍 Getting setting: key="${req.params.key}"`);
+    
+    const result = await pool.query(
+      'SELECT value FROM settings WHERE key = $1',
+      [req.params.key]
+    );
+
+    if (result.rows.length === 0) {
+      console.log(`⚠️  Setting not found: "${req.params.key}"`);
+      return res.json({ ok: true, data: null });
+    }
+
+    const responsePayload = { ok: true, data: result.rows[0].value };
+    console.log(`✅ Setting found: value="${result.rows[0].value}"`);
+    console.log(`✅ Sending response:`, responsePayload);
+    res.json(responsePayload);
+  } catch (error) {
+    console.error('Error fetching setting:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// Debug endpoint: Get ALL settings
+app.get('/api/settings-debug/all', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT key, value, updated_at FROM settings ORDER BY key');
+    res.json({ ok: true, settings: result.rows });
+  } catch (error) {
+    console.error('Error fetching all settings:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ============ REDDIT SCANNING ENDPOINT ============
 
 app.post('/api/reddit/scan', async (req, res) => {
   try {
-    const { redditLink, costPerSpot, totalSpots, existingCommentIds } = req.body;
+    const { redditLink, costPerSpot, totalSpots, existingCommentIds, currentAssignedSpots } = req.body;
 
     if (!redditLink || !costPerSpot) {
       return res.status(400).json({
@@ -1051,20 +1096,20 @@ app.post('/api/reddit/scan', async (req, res) => {
 
     console.log('Starting Reddit scan:', redditLink, 'Cost:', costPerSpot);
     console.log(`📊 Total spots: ${totalSpots || 'unlimited'}`);
+    console.log(`📊 Current assigned spots: ${currentAssignedSpots || 0}`);
     console.log(`📊 Existing comment IDs to skip: ${existingCommentIds?.length || 0}`);
 
     // Build arguments for Python script
     const args = [pythonScript, redditLink, costPerSpot.toString()];
     
-    // Add totalSpots if provided
-    if (totalSpots) {
-      args.push(totalSpots.toString());
-    }
+    // Always add totalSpots to maintain consistent argument positions (use 'null' if not provided)
+    args.push(totalSpots ? totalSpots.toString() : 'null');
     
-    // Add existingCommentIds as JSON string if provided
-    if (existingCommentIds && existingCommentIds.length > 0) {
-      args.push(JSON.stringify(existingCommentIds));
-    }
+    // Add existingCommentIds as JSON string if provided, otherwise empty array
+    args.push(existingCommentIds && existingCommentIds.length > 0 ? JSON.stringify(existingCommentIds) : '[]');
+    
+    // Add currentAssignedSpots (use '0' if not provided)
+    args.push(currentAssignedSpots !== undefined && currentAssignedSpots !== null ? currentAssignedSpots.toString() : '0');
 
     // Spawn Python process
     const python = spawn('python3', args, {
@@ -1161,6 +1206,97 @@ app.post('/api/reddit/scan', async (req, res) => {
 
   } catch (error) {
     console.error('Reddit scan error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+// ============ PARSER CORRECTION LEARNING ENDPOINT ============
+
+// Record parser correction for automatic learning
+app.post('/api/parser/record-correction', async (req, res) => {
+  try {
+    const { comment, wrongParse, correctParse } = req.body;
+
+    // Validate input
+    if (!comment || wrongParse === undefined || correctParse === undefined) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Missing required fields: comment, wrongParse, correctParse'
+      });
+    }
+
+    // Check if historical learning is enabled
+    try {
+      const settingsResult = await pool.query(
+        'SELECT value FROM settings WHERE key = $1',
+        ['historical_learning_enabled']
+      );
+      const learningEnabled = settingsResult.rows.length > 0 
+        ? settingsResult.rows[0].value === 'true' 
+        : true; // Default to enabled if setting doesn't exist
+
+      if (!learningEnabled) {
+        console.log('⏸️  Historical learning is DISABLED - skipping correction recording');
+        return res.json({
+          ok: true,
+          skipped: true,
+          message: 'Historical learning is currently disabled'
+        });
+      }
+    } catch (settingsError) {
+      // If settings table doesn't exist, just continue (default to enabled)
+      console.warn('Settings table not found, defaulting to learning enabled');
+    }
+
+    // Path to Python script with record_correction function
+    const pythonScript = '/home/ubuntu/takobot-electron/app/record_parser_correction.py';
+
+    console.log('📝 Recording parser correction:');
+    console.log(`  Comment: "${comment}"`);
+    console.log(`  Wrong: ${wrongParse} → Correct: ${correctParse}`);
+
+    // Call Python script to record correction
+    const python = spawn('python3', [pythonScript, comment, wrongParse.toString(), correctParse.toString()], {
+      timeout: 10000 // 10 seconds
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    python.stdout.on('data', (data) => {
+      stdout += data.toString();
+    });
+
+    python.stderr.on('data', (data) => {
+      stderr += data.toString();
+    });
+
+    python.on('close', (code) => {
+      if (code !== 0) {
+        console.error('Failed to record correction:', stderr || stdout);
+        return res.status(500).json({
+          ok: false,
+          error: 'Failed to record correction'
+        });
+      }
+
+      console.log('✅ Correction recorded successfully');
+      res.json({
+        ok: true,
+        message: 'Correction recorded - parser will learn from this!'
+      });
+    });
+
+    python.on('error', (err) => {
+      console.error('Python process error:', err);
+      res.status(500).json({
+        ok: false,
+        error: `Process error: ${err.message}`
+      });
+    });
+
+  } catch (error) {
+    console.error('Record correction error:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });

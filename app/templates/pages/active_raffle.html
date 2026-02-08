@@ -774,6 +774,7 @@
     .btn-green  { background: #10B981; }
     .btn-purple { background: linear-gradient(90deg, #7C3AED, #EC4899); }
     .btn-orange { background: #F97316; }
+    .btn-gray   { background: #6B7280; }
     .btn-red    { background: #EF4444; }
 
     .search-box input {
@@ -1812,11 +1813,13 @@
       <div class="participants-header">
         <div>
           <h3 class="participants-title">Participants</h3>
-          <div class="participants-sub"><span id="totalParticipants">0</span> total participants • Next poll in <span id="nextPollTimer">60</span>s</div>
+          <div class="participants-sub"><span id="totalParticipants">0</span> total participants • Next poll in <span id="nextPollTimer">10</span>s</div>
         </div>
 <div style="display:flex; gap:10px;">
   <button id="setupBtn" class="btn btn-blue">Setup</button>
   <button id="summaryBtn" class="btn btn-purple">Summary</button>
+  <button id="scanEmailBtn" class="btn btn-orange">📧 Scan Gmail</button>
+  <button id="clearIdsBtn" class="btn btn-gray">🗑️ Clear IDs</button>
   <button id="markPaidBtn" class="btn btn-green">Mark All Paid</button>
   <button id="finishRaffleBtn" class="btn btn-red">Finish Raffle</button>
 </div>
@@ -1851,13 +1854,9 @@
 
           <thead>
             <tr>
-              <th data-col="0" class="sortable" data-sort="reddit">
+              <th data-col="0">
                 <div class="th-inner">
                   Reddit User
-                  <span class="sort-indicator">
-                    <span class="sort-arrow sort-arrow-up">▲</span>
-                    <span class="sort-arrow sort-arrow-down">▼</span>
-                  </span>
                   <span class="col-resizer"></span>
                 </div>
               </th>
@@ -1868,13 +1867,9 @@
                 </div>
               </th>
               <th data-col="2"><div class="th-inner">Tabbed<span class="col-resizer"></span></div></th>
-              <th data-col="3" class="sortable" data-sort="comment">
+              <th data-col="3">
                 <div class="th-inner">
                   Comment
-                  <span class="sort-indicator">
-                    <span class="sort-arrow sort-arrow-up">▲</span>
-                    <span class="sort-arrow sort-arrow-down">▼</span>
-                  </span>
                   <span class="col-resizer"></span>
                 </div>
               </th>
@@ -1889,7 +1884,16 @@
                 </div>
               </th>
               <th data-col="5"><div class="th-inner">Owed<span class="col-resizer"></span></div></th>
-              <th data-col="6"><div class="th-inner">Paid<span class="col-resizer"></span></div></th>
+              <th data-col="6" class="sortable" data-sort="paid">
+                <div class="th-inner">
+                  Paid
+                  <span class="sort-indicator">
+                    <span class="sort-arrow sort-arrow-up">▲</span>
+                    <span class="sort-arrow sort-arrow-down">▼</span>
+                  </span>
+                  <span class="col-resizer"></span>
+                </div>
+              </th>
               <th data-col="7"><div class="th-inner">Status<span class="col-resizer"></span></div></th>
             </tr>
           </thead>
@@ -1907,7 +1911,7 @@
         <div id="footerShowing">Showing 0 of 0 participants</div>
         <div id="autoScanIndicator" class="auto-scan-indicator" style="display: none;">
           <div class="auto-scan-pulse"></div>
-          <span>Auto scanning Every 60 Seconds</span>
+          <span>Auto scanning Every 10 Seconds</span>
         </div>
         <div id="footerStats">Paid: <strong>0</strong> &nbsp;&nbsp; Pending: <strong>0</strong></div>
       </div>
@@ -2499,7 +2503,127 @@
       });
     }
 
+    // ✅ NEW: Insert new rows at the top of table without rebuilding entire table
+    async function insertNewRowsAtTop(newParticipants) {
+      const tbody = document.getElementById("participantsTbody");
+      const emptyRow = document.getElementById("emptyRow");
+      
+      // Remove empty row if it exists
+      if (emptyRow) {
+        emptyRow.remove();
+      }
+      
+      // Load name mappings for display
+      const localMappings = JSON.parse(localStorage.getItem('raffleui_reddit_name_mapping') || '{}');
+      let sharedMappings = {};
+      try {
+        const response = await fetch('/api/settings/get-all-name-mappings', {
+          method: 'GET',
+          credentials: 'include'
+        });
+        const data = await response.json();
+        if (data.ok) {
+          sharedMappings = data.mappings;
+        }
+      } catch (err) {
+        console.error('Failed to load shared name mappings:', err);
+      }
+      const nameMappings = { ...sharedMappings, ...localMappings };
+      
+      // Create new rows
+      const fragment = document.createDocumentFragment();
+      
+      newParticipants.forEach((participant) => {
+        // Find the index in appState.participants (should be at the beginning)
+        const index = appState.participants.findIndex(p => p.commentId === participant.commentId);
+        if (index === -1) return; // Safety check
+        
+        const storedName = nameMappings[participant.redditUser] || nameMappings[participant.redditUser.toLowerCase()];
+        const displayName = storedName || participant.name || '';
+        
+        const row = document.createElement('tr');
+        row.dataset.reddit = participant.redditUser;
+        row.dataset.name = displayName;
+        row.dataset.comment = participant.comment;
+        row.dataset.paid = participant.paid;
+        row.dataset.spots = participant.spots;
+        row.dataset.index = index;
+        
+        // Add row styling classes based on payment status
+        if (participant.paid) {
+          row.classList.add('paid-row');
+        } else if (participant.spots > 0) {
+          row.classList.add('unpaid-row');
+        }
+        
+        const initial = participant.redditUser.charAt(2).toUpperCase();
+        
+        // Check if this is a tab entry
+        const isTab = participant.comment && (
+          participant.comment.toLowerCase().includes('tab') ||
+          participant.comment.toLowerCase().includes('tabbed') ||
+          participant.comment.toLowerCase().includes('wff')
+        );
+        const tabBadge = isTab ? '<span class="tab-badge">TAB</span>' : '';
+        
+        const currentTabbed = participant.tabbed || '';
+        const tabbedName = currentTabbed ? (nameMappings[currentTabbed] || nameMappings[currentTabbed.toLowerCase()]) : null;
+        const currentTabbedDisplay = currentTabbed ? (tabbedName ? `${currentTabbed} (${tabbedName})` : currentTabbed) : '';
+        
+        row.innerHTML = `
+          <td>
+            <div class="user-cell">
+              <div class="avatar">${initial}</div>
+              <a class="reddit-link" href="#" onclick="return false;">${participant.redditUser}</a>
+              ${tabBadge}
+            </div>
+          </td>
+          <td><span class="name-field" data-index="${index}" style="cursor: pointer; display: inline-block; min-width: 100px; padding: 4px;" title="Click to edit name">${displayName || '<span style="color: #94a3b8;">—</span>'}</span></td>
+          <td>
+            <div class="tabbed-search-container">
+              <input
+                type="text"
+                class="tabbed-search-input"
+                data-index="${index}"
+                data-reddit="${participant.redditUser}"
+                data-selected="${currentTabbed}"
+                value="${currentTabbedDisplay}"
+                placeholder="— None —"
+                autocomplete="off"
+              />
+              <div class="tabbed-dropdown-list" data-index="${index}"></div>
+            </div>
+          </td>
+          <td><span class=\"comment-muted\">${participant.comment || ''}</span></td>
+          <td style="text-align: center;"><span class="spots-pill" data-index="${index}" style="cursor: pointer;" title="Double-click to edit">${participant.spots}</span></td>
+          <td style="text-align: center; font-weight: 700;">$${parseFloat(participant.owed).toFixed(2)}</td>
+          <td style="text-align: center;">
+            <input type="checkbox" class="paid-checkbox" data-index="${index}" ${participant.paid ? 'checked' : ''} />
+          </td>
+          <td style="text-align: center;"><span class="status-dot ${participant.paid ? 'dot-paid' : 'dot-pending'}"></span></td>
+        `;
+        
+        fragment.appendChild(row);
+      });
+      
+      // Insert at the beginning of tbody
+      tbody.insertBefore(fragment, tbody.firstChild);
+      
+      // Re-attach event listeners for the new rows
+      attachSpotEditListeners();
+      attachNameEditListeners();
+      attachPaidCheckboxListeners();
+      attachTabbedDropdownListeners();
+      
+      console.log(`✅ Inserted ${newParticipants.length} new rows at top of table`);
+    }
+
   async function rebuildTable() {
+      // ✅ Close all open dropdowns before rebuilding to prevent positioning issues
+      document.querySelectorAll('.tabbed-dropdown-list').forEach(list => {
+        list.classList.remove('show');
+      });
+      
       // ✅ Read current tabbed input values BEFORE clearing the table
       syncTabbedInputsToAppState();
       const tbody = document.getElementById("participantsTbody");
@@ -2658,9 +2782,14 @@
       displayParticipants.forEach((participant, index) => {
         // Index is already correct since we're not reversing
 
+        // Use pre-loaded name mappings instead of function call per participant
+        // Use case-insensitive lookup to handle different casing in database vs participants
+        const storedName = nameMappings[participant.redditUser] || nameMappings[participant.redditUser.toLowerCase()];
+        const displayName = storedName || participant.name || '';
+
         const row = document.createElement('tr');
         row.dataset.reddit = participant.redditUser;
-        row.dataset.name = participant.name;
+        row.dataset.name = displayName;  // ✅ Use displayName from mappings for search functionality
         row.dataset.comment = participant.comment;
         row.dataset.paid = participant.paid;
         row.dataset.spots = participant.spots;
@@ -2687,11 +2816,6 @@
           participant.comment.toLowerCase().includes('wff')
         );
         const tabBadge = isTab ? '<span class="tab-badge">TAB</span>' : '';
-
-        // Use pre-loaded name mappings instead of function call per participant
-        // Use case-insensitive lookup to handle different casing in database vs participants
-        const storedName = nameMappings[participant.redditUser] || nameMappings[participant.redditUser.toLowerCase()];
-        const displayName = storedName || participant.name || '';
 
         // ✅ NEW: Prepare search input with current tabbed value
         const currentTabbed = participant.tabbed || '';
@@ -2788,12 +2912,17 @@
       return { valid: true };
     }
 
-    function attachSpotEditListeners() {
-      const spotsPills = document.querySelectorAll('.spots-pill');
+    // ✅ Flag to track if spot edit listener is attached
+    let spotEditListenerAttached = false;
 
-      spotsPills.forEach(pill => {
-        pill.addEventListener('dblclick', function() {
-          const index = parseInt(this.dataset.index);
+    function attachSpotEditListeners() {
+      // Only attach once using event delegation
+      if (!spotEditListenerAttached) {
+        document.addEventListener('dblclick', function(e) {
+          const pill = e.target.closest('.spots-pill');
+          if (!pill) return;
+
+          const index = parseInt(pill.dataset.index);
           const currentSpots = appState.participants[index].spots;
 
           // Create input field
@@ -2813,9 +2942,9 @@
           input.style.outline = 'none';
 
           // Replace pill with input
-          const originalContent = this.textContent;
-          this.textContent = '';
-          this.appendChild(input);
+          const originalContent = pill.textContent;
+          pill.textContent = '';
+          pill.appendChild(input);
           input.focus();
           input.select();
 
@@ -2829,16 +2958,47 @@
               return;
             }
 
-            // ✅ Check if new spots would exceed the limit
+            // ✅ Check if new spots would exceed the limit (warn but allow)
             const spotCheck = checkSpotsLimit(newSpots, index);
             if (!spotCheck.valid) {
-              showErrorToast('Spot Limit Exceeded', [
+              showErrorToast('⚠️ Spot Limit Warning', [
                 `This raffle has a limit of ${spotCheck.limit} spots.`,
                 `Current total: ${spotCheck.currentTotal} spots`,
-                `Proposed total: ${spotCheck.proposedTotal} spots (exceeds by ${spotCheck.exceededBy})`
+                `Proposed total: ${spotCheck.proposedTotal} spots (exceeds by ${spotCheck.exceededBy})`,
+                `✓ Update allowed - please verify this is correct.`
               ]);
-              pill.textContent = originalContent;
-              return;
+              // Continue with the update despite exceeding limit
+            }
+
+            // ✅ AUTO-RECORD PARSER CORRECTION (if enabled and spots were changed)
+            if (currentSpots !== newSpots && appState.participants[index].comment) {
+              try {
+                // Check database setting
+                const settingResponse = await fetch('/api/settings/auto_record_corrections');
+                let shouldAutoRecord = false;
+                
+                if (settingResponse.ok) {
+                  const settingResult = await settingResponse.json();
+                  shouldAutoRecord = settingResult.data === 'true';
+                }
+                
+                if (shouldAutoRecord) {
+                  await fetch('/api/parser/record-correction', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      comment: appState.participants[index].comment,
+                      wrongParse: currentSpots,
+                      correctParse: newSpots
+                    })
+                  });
+                  console.log(`🎓 Auto-recorded correction: "${appState.participants[index].comment}" ${currentSpots} → ${newSpots}`);
+                }
+              } catch (err) {
+                console.warn('Failed to check/record parser correction:', err);
+                // Don't block the save if correction recording fails
+              }
             }
 
             // Update participant data
@@ -2908,7 +3068,10 @@
 
           input.addEventListener('blur', saveEdit);
         });
-      });
+
+        spotEditListenerAttached = true;
+        console.log('✅ Spot edit listener attached (event delegation)');
+      }
     }
 
     // ============ NAME MAPPING LOCALSTORAGE ============
@@ -3025,7 +3188,7 @@
         // Save cleaned mappings back to localStorage
         if (duplicatesRemoved > 0) {
           localStorage.setItem(NAME_MAPPING_KEY, JSON.stringify(cleaned));
-          console.log(`✅ Removed ${duplicatesRemoved} duplicate name mapping(s)`);
+          console.log(`�� Removed ${duplicatesRemoved} duplicate name mapping(s)`);
         }
 
         return duplicatesRemoved;
@@ -3108,31 +3271,55 @@
       }
     }
 
+    // ✅ Flag to track if global listeners are attached
+    let tabbedListenersAttached = false;
+
     // ✅ NEW: Search-based tabbed input with all shared mappings + spreadsheet names
     function attachTabbedDropdownListeners() {
-      const inputs = document.querySelectorAll('.tabbed-search-input');
-
-      inputs.forEach(input => {
-        const index = parseInt(input.dataset.index);
-        const redditUser = input.dataset.reddit;
-        const dropdownList = document.querySelector(`.tabbed-dropdown-list[data-index="${index}"]`);
-
-        // Show dropdown on focus
-        input.addEventListener('focus', function() {
-          showDropdown(this, dropdownList);
+      // Only attach document-level click handler once
+      if (!tabbedListenersAttached) {
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!e.target.closest('.tabbed-search-container')) {
+            document.querySelectorAll('.tabbed-dropdown-list').forEach(list => {
+              list.classList.remove('show');
+            });
+          }
         });
-
-        // Filter on input
-        input.addEventListener('input', function() {
-          const searchTerm = this.value.toLowerCase();
-          filterAndShowDropdown(this, dropdownList, searchTerm);
+        
+        // Use event delegation for focus and input events
+        document.addEventListener('focus', async function(e) {
+          if (e.target.classList.contains('tabbed-search-input')) {
+            const input = e.target;
+            const index = parseInt(input.dataset.index);
+            const dropdownList = document.querySelector(`.tabbed-dropdown-list[data-index="${index}"]`);
+            showDropdown(input, dropdownList);
+          }
+        }, true); // Use capture phase
+        
+        document.addEventListener('input', function(e) {
+          if (e.target.classList.contains('tabbed-search-input')) {
+            const input = e.target;
+            const index = parseInt(input.dataset.index);
+            const searchTerm = input.value.toLowerCase();
+            const dropdownList = document.querySelector(`.tabbed-dropdown-list[data-index="${index}"]`);
+            filterAndShowDropdown(input, dropdownList, searchTerm);
+          }
         });
-
+        
         // Handle selection from dropdown
-        dropdownList.addEventListener('click', async function(e) {
+        document.addEventListener('click', async function(e) {
           const item = e.target.closest('.tabbed-dropdown-item');
           if (!item) return;
-
+          
+          const dropdownList = item.closest('.tabbed-dropdown-list');
+          if (!dropdownList) return;
+          
+          const index = parseInt(dropdownList.dataset.index);
+          const input = document.querySelector(`.tabbed-search-input[data-index="${index}"]`);
+          if (!input) return;
+          
+          const redditUser = input.dataset.reddit;
           const selectedUser = item.dataset.reddit || '';
           const selectedName = item.dataset.name || '';
 
@@ -3161,16 +3348,10 @@
             populateSummary();
           }
         });
-      });
-
-      // Close dropdown when clicking outside
-      document.addEventListener('click', (e) => {
-        if (!e.target.closest('.tabbed-search-container')) {
-          document.querySelectorAll('.tabbed-dropdown-list').forEach(list => {
-            list.classList.remove('show');
-          });
-        }
-      });
+        
+        tabbedListenersAttached = true;
+        console.log('✅ Tabbed dropdown listeners attached (event delegation)');
+      }
     }
 
     function showDropdown(input, dropdownList) {
@@ -3942,7 +4123,7 @@ function updateStats() {
           details.push('📝 Reddit post linked');
         }
         details.push(`🎯 ${data.totalSpots} spots @ $${data.spotCost} each`);
-        details.push(`🤖 Auto-scanning every 60 sec`);
+        details.push(`🤖 Auto-scanning every 10 sec`);
 
         showToast('Setup Saved Successfully!', details);
         closeModal();
@@ -4822,8 +5003,6 @@ function updateStats() {
     })();
 
     // ============ SCAN EMAIL BUTTON ============
-    // REMOVED FROM UI - Functionality preserved for future use
-    /*
     document.getElementById("scanEmailBtn").addEventListener("click", async () => {
       // Debug: Log the current app state
       console.log('🔍 Scan Email clicked. Current state:', {
@@ -4849,15 +5028,22 @@ function updateStats() {
       // Check if Gmail OAuth credentials are configured
       try {
         const checkResponse = await fetch('/api/paypal/check-credentials');
-        const checkResult = await checkResponse.json();
+        
+        // If server error (500), skip the check and let the scan handle it
+        if (!checkResponse.ok) {
+          console.warn('⚠️ Credential check endpoint error, skipping pre-check. Status:', checkResponse.status);
+          // Continue to scan - it will show proper error if credentials are really missing
+        } else {
+          const checkResult = await checkResponse.json();
 
-        if (!checkResult.ok || !checkResult.hasCredentials) {
-          showRestrictionModal(
-            `Please upload your Gmail OAuth credentials in <b>Settings</b> before scanning emails.<br><br>Go to Settings → Bot Configuration → Upload Gmail OAuth JSON file.`,
-            false,
-            "Gmail OAuth Not Configured"
-          );
-          return;
+          if (!checkResult.ok || !checkResult.hasCredentials) {
+            showRestrictionModal(
+              `Please upload your Gmail OAuth credentials in <b>Settings</b> before scanning emails.<br><br>Go to Settings → Bot Configuration → Upload Gmail OAuth JSON file.`,
+              false,
+              "Gmail OAuth Not Configured"
+            );
+            return;
+          }
         }
       } catch (error) {
         console.error('Failed to check Gmail credentials:', error);
@@ -4928,11 +5114,8 @@ function updateStats() {
       }
       });
     });
-    */
 
     // ============ CLEAR IDS BUTTON ============
-    // REMOVED FROM UI - Functionality preserved for future use
-    /*
     document.getElementById("clearIdsBtn").addEventListener("click", async () => {
       if (!appState.activeRaffleId) {
         showRestrictionModal(`No active raffle found.`);
@@ -4976,7 +5159,6 @@ function updateStats() {
         showRestrictionModal(`Failed to clear records.<br><br>${error.message}`);
       }
     });
-    */
 
     // ============ MARK ALL PAID BUTTON ============
     document.getElementById("markPaidBtn").addEventListener("click", async () => {
@@ -5053,51 +5235,7 @@ function updateStats() {
     document.getElementById("paymentFilter").addEventListener("change", filterAndSearch);
 
     // ============ TABLE SORTING ============
-    // Make Paid and Tabbed columns sortable dynamically
-    const tabbedHeader = document.querySelector('.p-table thead th[data-col="2"]');
-    const paidHeader = document.querySelector('.p-table thead th[data-col="6"]');
-
-    if (tabbedHeader && !tabbedHeader.classList.contains('sortable')) {
-      tabbedHeader.classList.add('sortable');
-      tabbedHeader.dataset.sort = 'tabbed';
-      const thInner = tabbedHeader.querySelector('.th-inner');
-      if (thInner) {
-        // Find the resizer element
-        const resizer = thInner.querySelector('.col-resizer');
-        // Insert sort indicator before the resizer
-        const sortIndicator = document.createElement('span');
-        sortIndicator.className = 'sort-indicator';
-        sortIndicator.innerHTML = `
-          <span class="sort-arrow sort-arrow-up">▲</span>
-          <span class="sort-arrow sort-arrow-down">▼</span>
-        `;
-        if (resizer) {
-          thInner.insertBefore(sortIndicator, resizer);
-        } else {
-          thInner.appendChild(sortIndicator);
-        }
-      }
-    }
-
-    if (paidHeader && !paidHeader.classList.contains('sortable')) {
-      paidHeader.classList.add('sortable');
-      paidHeader.dataset.sort = 'paid';
-      const thInner = paidHeader.querySelector('.th-inner');
-      if (thInner) {
-        const resizer = thInner.querySelector('.col-resizer');
-        const sortIndicator = document.createElement('span');
-        sortIndicator.className = 'sort-indicator';
-        sortIndicator.innerHTML = `
-          <span class="sort-arrow sort-arrow-up">▲</span>
-          <span class="sort-arrow sort-arrow-down">▼</span>
-        `;
-        if (resizer) {
-          thInner.insertBefore(sortIndicator, resizer);
-        } else {
-          thInner.appendChild(sortIndicator);
-        }
-      }
-    }
+    // Sorting is only enabled for Spots and Paid columns (defined in HTML)
 
     document.querySelectorAll('.p-table thead th.sortable').forEach(th => {
       th.addEventListener('click', (e) => {
@@ -5112,7 +5250,7 @@ function updateStats() {
       });
     });
 
-    // ============ KEYBOARD SHORTCUT: CTRL + F ============
+    // ============ KEYBOARD SHORTCUTS: CTRL + F, CTRL + R ============
     document.addEventListener("keydown", (e) => {
       // Check if CTRL + F (or CMD + F on Mac)
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
@@ -5122,6 +5260,12 @@ function updateStats() {
           searchInput.focus();
           searchInput.select(); // Select all text in the search box
         }
+      }
+      
+      // Check if CTRL + R (or CMD + R on Mac) - Refresh page
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault(); // Prevent default to control the reload
+        location.reload(); // Refresh the page
       }
     });
 
@@ -5193,12 +5337,21 @@ function updateStats() {
 
     // ============ AUTO-POLLING REDDIT SCAN ============
     let pollingInterval = null;
+    let isScanning = false;
 
     async function performAutoScan() {
+      // Prevent concurrent scans
+      if (isScanning) {
+        console.log('⚠️ Scan already in progress, skipping...');
+        return;
+      }
+
       // Only scan if Reddit link and cost per spot are configured
       if (!appState.redditLink || !appState.costPerSpot) {
         return;
       }
+
+      isScanning = true;
 
       // Validate Reddit URL format before scanning
       const redditRegex = /^https?:\/\/(www\.)?(reddit\.com|old\.reddit\.com)\/r\/[^\/]+\/comments\/[^\/]+\/[^\/]+\/?/i;
@@ -5214,7 +5367,11 @@ function updateStats() {
         const existingCommentIds = appState.participants.map(p => p.commentId).filter(Boolean);
         console.log(`📊 Passing ${existingCommentIds.length} existing comment IDs to skip AI parsing`);
 
-        const result = await API.scanReddit(appState.redditLink, appState.costPerSpot, appState.totalSpots, existingCommentIds);
+        // Calculate current assigned spots to prevent overfilling
+        const currentAssignedSpots = appState.participants.reduce((sum, p) => sum + (parseInt(p.spots) || 0), 0);
+        console.log(`📊 Current assigned spots: ${currentAssignedSpots}/${appState.totalSpots || 'unlimited'}`);
+
+        const result = await API.scanReddit(appState.redditLink, appState.costPerSpot, appState.totalSpots, existingCommentIds, currentAssignedSpots);
 
         if (!result.ok) {
           console.error('Auto-scan failed:', result.error);
@@ -5245,13 +5402,15 @@ function updateStats() {
           return;
         }
 
-        // Add only NEW participants (unshift to add at beginning so newest appear at top)
-        trulyNewParticipants.forEach(newP => {
-          appState.participants.unshift(newP);
-        });
+        // Add only NEW participants (prepend in correct order so newest appear at top)
+        // trulyNewParticipants is already sorted newest-first from the parser
+        appState.participants.unshift(...trulyNewParticipants);
 
         await saveState();
-        rebuildTable();
+        
+        // ✅ OPTIMIZED: Insert new rows at top without rebuilding entire table
+        await insertNewRowsAtTop(trulyNewParticipants);
+        
         updateStats();
         updateFooter();
         // ✅ Apply default filter after auto-scan (hides Waitlist participants)
@@ -5276,6 +5435,8 @@ function updateStats() {
 
       } catch (error) {
         console.error('Auto-scan error:', error);
+      } finally {
+        isScanning = false;
       }
     }
 
@@ -5300,16 +5461,16 @@ function updateStats() {
       localStorage.setItem(getUserLocalStorageKey('autoPollingActive'), 'true');
       localStorage.setItem(getUserLocalStorageKey('autoPollingRaffleId'), appState.activeRaffleId);
 
-      // Start polling every 60 seconds (60000ms)
+      // Start polling every 10 seconds (10000ms)
       pollingInterval = setInterval(() => {
         performAutoScan();
         resetPollCountdown();
-      }, 60000);
+      }, 10000);
 
       // Start countdown timer
       startPollCountdown();
 
-      console.log('✓ Auto-polling started - scanning every 60 seconds (active across all pages)');
+      console.log('✓ Auto-polling started - scanning every 10 seconds (active across all pages)');
     }
 
     function stopAutoPolling() {
@@ -5498,7 +5659,7 @@ function stopFastRaffleTimer() {
     timerElement.classList.remove('warning');
   }
 
-  console.log('⏱️ Fast raffle timer stopped');
+  console.log('���️ Fast raffle timer stopped');
 }
 
   </script>
@@ -5527,10 +5688,10 @@ function stopFastRaffleTimer() {
   <!-- Poll Countdown Timer -->
   <script>
     let pollCountdownInterval = null;
-    let pollTimeRemaining = 60; // 60 seconds
+    let pollTimeRemaining = 10; // 10 seconds
 
     function startPollCountdown() {
-      pollTimeRemaining = 60;
+      pollTimeRemaining = 10;
       updatePollTimerDisplay();
 
       if (pollCountdownInterval) {
@@ -5546,7 +5707,7 @@ function stopFastRaffleTimer() {
     }
 
     function resetPollCountdown() {
-      pollTimeRemaining = 60;
+      pollTimeRemaining = 10;
       updatePollTimerDisplay();
     }
 
