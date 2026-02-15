@@ -1,6 +1,6 @@
 {
   "name": "tako-raffle-manager",
-  "version": "1.0.1",
+  "version": "1.5.0",
   "description": "TakoBot Raffle Manager Desktop App",
   "main": "main.js",
   "scripts": {
@@ -13,29 +13,55 @@
   "license": "ISC",
   "devDependencies": {
     "electron": "^40.1.0",
-    "electron-builder": "^24.9.1"
+    "electron-builder": "^26.7.0"
   },
   "build": {
     "appId": "com.takobot.rafflemanager",
     "productName": "TakoBot Raffle Manager",
+    "compression": "maximum",
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "differentialPackage": true
     },
     "files": [
       "**/*",
-      "!venv/**/*"
+      "!venv/**/*",
+      "!**/*.map",
+      "!**/.git*",
+      "!**/README.md",
+      "!**/LICENSE*",
+      "!**/*.md",
+      "!.editorconfig",
+      "!.eslintrc*",
+      "!.prettierrc*",
+      "!**/.DS_Store",
+      "!**/Thumbs.db",
+      "!dist/**/*",
+      "!node_modules/.cache/**/*",
+      "!**/__pycache__/**/*",
+      "!**/*.pyc",
+      "!**/*.pyo"
+    ],
+    "asarUnpack": [
+      "venv/**/*"
     ],
     "extraResources": [
       {
         "from": "venv",
         "to": "venv",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/__pycache__/**/*",
+          "!**/*.pyc",
+          "!**/*.pyo",
+          "!**/test/**/*",
+          "!**/tests/**/*",
+          "!**/pip/_internal/cache/**/*"
         ]
       }
     ],
@@ -50,3 +76,4 @@
     "electron-updater": "^6.7.3"
   }
 }
+

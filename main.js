@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, globalShortcut } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
@@ -37,6 +37,9 @@ function createWindow() {
     },
     icon: path.join(__dirname, 'icon.ico')
   });
+
+  // Remove the menu bar
+  Menu.setApplicationMenu(null);
 
   // Configure session to persist cookies - CRITICAL FIX
   const session = mainWindow.webContents.session;
@@ -184,6 +187,20 @@ app.whenReady().then(async () => {
     console.log('✅ Persistent session enabled with partition: persist:raffle-app');
     createWindow();
 
+    // Register global shortcut for DevTools: Ctrl+Shift+I
+    globalShortcut.register('CommandOrControl+Shift+I', () => {
+      if (mainWindow) {
+        mainWindow.webContents.toggleDevTools();
+      }
+    });
+
+    // Also register F12 as alternative
+    globalShortcut.register('F12', () => {
+      if (mainWindow) {
+        mainWindow.webContents.toggleDevTools();
+      }
+    });
+
   } catch (error) {
     console.error('Error during startup:', error);
     createWindow();
@@ -191,6 +208,8 @@ app.whenReady().then(async () => {
 });
 
 app.on('window-all-closed', () => {
+  // Unregister all shortcuts
+  globalShortcut.unregisterAll();
   if (process.platform !== 'darwin') {
     app.quit();
   }

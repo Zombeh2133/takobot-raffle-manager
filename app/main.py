@@ -354,6 +354,14 @@ def db_init_raffle_tables():
     )
     """)
 
+    # Add status column if it doesn't exist (migration for existing databases)
+    try:
+        cur.execute("ALTER TABLE participants ADD COLUMN status TEXT DEFAULT 'confirmed'")
+        print("✅ Added status column to participants table")
+    except Exception as e:
+        # Column already exists or SQLite doesn't support IF NOT EXISTS in ALTER
+        pass
+
     con.commit()
     con.close()
 
@@ -752,7 +760,12 @@ async def admin_get_all_raffles(request: Request):
                 },
                 timeout=30.0
             )
-            return JSONResponse(content=response.json(), status_code=response.status_code)
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
     except Exception as e:
         print(f"Error fetching all raffles: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -792,7 +805,12 @@ async def admin_delete_any_raffle(request: Request):
                 content=json_lib.dumps({"id": raffle_id, "type": raffle_type}),
                 timeout=30.0
             )
-            return JSONResponse(content=response.json(), status_code=response.status_code)
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
     except Exception as e:
         print(f"Error deleting raffle: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -831,10 +849,15 @@ async def admin_finish_raffle(request: Request):
                     "X-User-Is-Admin": "true" if user.get("is_admin") else "false",
                     "Content-Type": "application/json"
                 },
-                json={"id": raffle_id, "type": raffle_type},
+                json=body,  # Forward the entire body including winner data
                 timeout=30.0
             )
-            return JSONResponse(content=response.json(), status_code=response.status_code)
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
     except Exception as e:
         print(f"Error finishing raffle: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -875,7 +898,12 @@ async def admin_cancel_raffle(request: Request):
                 json={"id": raffle_id, "type": raffle_type},
                 timeout=30.0
             )
-            return JSONResponse(content=response.json(), status_code=response.status_code)
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
     except Exception as e:
         print(f"Error cancelling raffle: {e}")
         return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
@@ -909,6 +937,48 @@ async def api_auth_logout(request: Request):
     print(f"🚪 LOGOUT called - Clearing session for user_id: {request.session.get('user_id')}")
     request.session.clear()
     return {"ok": True, "message": "Logged out successfully"}
+
+# =========================
+# API: Name Mappings (Shared)
+# =========================
+@app.get("/api/name-mappings")
+async def get_name_mappings(request: Request):
+    """Get all shared name mappings (Reddit username -> Initials)"""
+    try:
+        user = get_current_user(request)
+        if not user:
+            return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+        conn = get_pg_connection()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
+        
+        # Fetch all name mappings from shared table
+        cur.execute("""
+            SELECT reddit_username, first_initial, last_initial, created_at
+            FROM shared_name_mappings
+            ORDER BY reddit_username
+        """)
+        
+        mappings = cur.fetchall()
+        conn.close()
+        
+        # Convert to list of dicts
+        mappings_list = [
+            {
+                "reddit_username": row["reddit_username"],
+                "first_initial": row["first_initial"],
+                "last_initial": row["last_initial"],
+                "created_at": row["created_at"].isoformat() if row.get("created_at") else None
+            }
+            for row in mappings
+        ]
+        
+        return {"ok": True, "mappings": mappings_list}
+    except Exception as e:
+        print(f"Error fetching name mappings: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
 
 # =========================
 # API: System Status
@@ -2043,6 +2113,7 @@ async def scan_reddit_endpoint(request: Request):
         costPerSpot = request.query_params.get('costPerSpot')
         totalSpots = request.query_params.get('totalSpots')  # Optional parameter
         existingCommentIds = request.query_params.get('existingCommentIds')  # Optional: JSON array of comment IDs
+        participantStatuses = request.query_params.get('participantStatuses')  # Optional: JSON object mapping commentId -> status
 
         if not url or not costPerSpot:
             return JSONResponse(
@@ -2050,10 +2121,8 @@ async def scan_reddit_endpoint(request: Request):
                 status_code=400
             )
 
-        # Use optimized parser if available, fallback to regular parser
-        parser_path = APP_DIR.parent / "reddit_parser_optimized.py"
-        if not parser_path.exists():
-            parser_path = APP_DIR / "reddit_parser.py"
+        # Use Reddit parser from takobot-electron directory
+        parser_path = Path("/home/ubuntu/takobot-electron/app/reddit_parser.py")
 
         if not parser_path.exists():
             return JSONResponse(
@@ -2065,22 +2134,58 @@ async def scan_reddit_endpoint(request: Request):
         cmd_args = ["python3", str(parser_path), url, str(costPerSpot)]
         if totalSpots:
             cmd_args.append(str(totalSpots))
+        else:
+            cmd_args.append('null')  # Placeholder for positional arg
 
-        # Pass existing comment IDs to optimized parser (to skip AI calls)
-        if existingCommentIds and "optimized" in str(parser_path):
-            # Parse JSON string if it's a string, otherwise use as-is
+        # ✅ NEW: Separate confirmed/waitlist IDs from tab_pending IDs
+        existing_ids_list = []
+        pending_tab_ids_list = []
+
+        # Parse participantStatuses to separate by status
+        if participantStatuses:
+            try:
+                if isinstance(participantStatuses, str):
+                    statuses_dict = json.loads(participantStatuses)
+                else:
+                    statuses_dict = participantStatuses
+
+                for comment_id, status in statuses_dict.items():
+                    if status == 'tab_pending':
+                        pending_tab_ids_list.append(comment_id)
+                    else:
+                        # confirmed or waitlist - don't re-scan these
+                        existing_ids_list.append(comment_id)
+
+                print(f"📊 Parsed statuses: {len(existing_ids_list)} confirmed/waitlist, {len(pending_tab_ids_list)} tab_pending")
+            except (json.JSONDecodeError, TypeError) as e:
+                print(f"⚠️ Failed to parse participantStatuses: {e}")
+
+        # ✅ FIX BUG #99: Fallback should check if any IDs were actually parsed, not just if participantStatuses was provided
+        # If participantStatuses was empty {} or failed to parse, use existingCommentIds as fallback
+        if not existing_ids_list and not pending_tab_ids_list and existingCommentIds:
             try:
                 if isinstance(existingCommentIds, str):
                     existing_ids_list = json.loads(existingCommentIds)
                 else:
                     existing_ids_list = existingCommentIds
-
-                # Only pass if we have valid IDs
-                if existing_ids_list and len(existing_ids_list) > 0:
-                    cmd_args.append(json.dumps(existing_ids_list))
-                    print(f"📊 Passing {len(existing_ids_list)} existing comment IDs to skip AI parsing")
             except (json.JSONDecodeError, TypeError) as e:
                 print(f"⚠️ Failed to parse existingCommentIds: {e}")
+
+        # Pass existing comment IDs (argv[4])
+        cmd_args.append(json.dumps(existing_ids_list) if existing_ids_list else '[]')
+
+        # Pass current assigned spots (argv[5])
+        # ✅ FIX: Read currentAssignedSpots from request instead of hardcoding to 0
+        current_assigned = request.query_params.get('currentAssignedSpots', '0')
+        cmd_args.append(str(current_assigned))
+
+        # ✅ Pass pending tab comment IDs (argv[6])
+        cmd_args.append(json.dumps(pending_tab_ids_list) if pending_tab_ids_list else '[]')
+
+        if existing_ids_list:
+            print(f"📊 Passing {len(existing_ids_list)} existing comment IDs to skip parsing")
+        if pending_tab_ids_list:
+            print(f"🔄 Passing {len(pending_tab_ids_list)} tab_pending comment IDs for re-scan")
 
         # ✅ Pass environment variables to subprocess (including OPENAI_API_KEY and USE_AI_PARSING)
         env = os.environ.copy()
@@ -2140,6 +2245,380 @@ async def scan_reddit_endpoint(request: Request):
             status_code=500
         )
 
+
+@app.post("/api/reddit/scan")  # ✅ POST version for background polling
+async def scan_reddit_post_endpoint(request: Request):
+    """Scan Reddit post (POST version) - accepts JSON body"""
+    try:
+        body = await request.json()
+
+        url = body.get('redditLink') or body.get('url')
+        costPerSpot = body.get('costPerSpot')
+        totalSpots = body.get('totalSpots')
+        existingCommentIds = body.get('existingCommentIds')
+        participantStatuses = body.get('participantStatuses')
+        currentAssignedSpots = body.get('currentAssignedSpots', 0)  # ✅ FIX: Read from request body
+
+        if not url or not costPerSpot:
+            return JSONResponse(
+                {"ok": False, "error": "Missing url or costPerSpot parameter"},
+                status_code=400
+            )
+
+        # Use Reddit parser from takobot-electron directory
+        parser_path = Path("/home/ubuntu/takobot-electron/app/reddit_parser.py")
+
+        if not parser_path.exists():
+            return JSONResponse(
+                {"ok": False, "error": f"Reddit parser not found at {parser_path}"},
+                status_code=500
+            )
+
+        # Run the Python parser script
+        cmd_args = ["python3", str(parser_path), url, str(costPerSpot)]
+        if totalSpots:
+            cmd_args.append(str(totalSpots))
+        else:
+            cmd_args.append('null')
+
+        # ✅ Separate confirmed/waitlist IDs from tab_pending IDs
+        existing_ids_list = []
+        pending_tab_ids_list = []
+
+        # Parse participantStatuses to separate by status
+        if participantStatuses:
+            try:
+                for comment_id, status in participantStatuses.items():
+                    if status == 'tab_pending':
+                        pending_tab_ids_list.append(comment_id)
+                    else:
+                        existing_ids_list.append(comment_id)
+
+                print(f"📊 Parsed statuses: {len(existing_ids_list)} confirmed/waitlist, {len(pending_tab_ids_list)} tab_pending")
+            except (AttributeError, TypeError) as e:
+                print(f"⚠️ Failed to parse participantStatuses: {e}")
+
+        # ✅ FIX BUG #99: Fallback should check if any IDs were actually parsed, not just if participantStatuses was provided
+        # If participantStatuses was empty {} or failed to parse, use existingCommentIds as fallback
+        if not existing_ids_list and not pending_tab_ids_list and existingCommentIds:
+            existing_ids_list = existingCommentIds if isinstance(existingCommentIds, list) else []
+
+        # Pass arguments to parser
+        cmd_args.append(json.dumps(existing_ids_list) if existing_ids_list else '[]')
+        cmd_args.append(str(currentAssignedSpots))  # ✅ FIX: Use actual value from request
+        cmd_args.append(json.dumps(pending_tab_ids_list) if pending_tab_ids_list else '[]')
+
+        if existing_ids_list:
+            print(f"📊 Passing {len(existing_ids_list)} existing comment IDs to skip parsing")
+        if pending_tab_ids_list:
+            print(f"🔄 Passing {len(pending_tab_ids_list)} tab_pending comment IDs for re-scan")
+
+        env = os.environ.copy()
+
+        result = subprocess.run(
+            cmd_args,
+            capture_output=True,
+            text=True,
+            timeout=120,
+            env=env
+        )
+
+        if result.returncode != 0:
+            error_msg = result.stderr or result.stdout or "Unknown error"
+            return JSONResponse(
+                {"ok": False, "error": f"Parser error: {error_msg}"},
+                status_code=500
+            )
+
+        try:
+            response_data = json.loads(result.stdout)
+        except json.JSONDecodeError as e:
+            return JSONResponse(
+                {"ok": False, "error": f"Invalid JSON from parser: {str(e)}\nOutput: {result.stdout[:500]}"},
+                status_code=500
+            )
+
+        # Map 'username' to 'redditUser'
+        if response_data.get("ok") and "participants" in response_data:
+            for participant in response_data["participants"]:
+                if "username" in participant:
+                    participant["redditUser"] = participant.pop("username")
+                if "redditUser" not in participant:
+                    participant["redditUser"] = "unknown"
+
+        return JSONResponse(response_data)
+
+    except subprocess.TimeoutExpired:
+        return JSONResponse(
+            {"ok": False, "error": "Reddit scan timed out"},
+            status_code=500
+        )
+    except Exception as e:
+        import traceback
+        return JSONResponse(
+            {"ok": False, "error": f"Failed to scan Reddit: {str(e)}\n{traceback.format_exc()}"},
+            status_code=500
+        )
+
+# =========================
+# PARTICIPANTS ENDPOINT - Direct PostgreSQL update (no Node.js proxy)
+# =========================
+@app.patch("/api/participants/{participant_id}/paid")
+async def update_participant_paid_status(participant_id: str, request: Request):
+    """
+    Update participant paid status - directly updates PostgreSQL
+    participant_id can be either a numeric ID or a commentId (e.g., "t1_abc123")
+    """
+    print(f"🎯 PARTICIPANTS ENDPOINT HIT: participant_id={participant_id} (type: {type(participant_id)})")
+    print(f"🎯 Request URL: {request.url}")
+
+    user = get_current_user(request)
+    if not user:
+        print(f"❌ No user in session")
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+    print(f"✅ User found: {user['username']} (id: {user['id']})")
+
+    try:
+        # Get request body
+        body = await request.json()
+        paid_status = body.get("paid", False)
+        print(f"📦 Request body: {body}, new paid status: {paid_status}")
+
+        # Connect to PostgreSQL using existing function
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+
+        # Find the active raffle for this user
+        cursor.execute("""
+            SELECT id, participants, cost_per_spot
+            FROM active_raffle
+            WHERE user_id = %s
+            LIMIT 1
+        """, (user['id'],))
+
+        raffle = cursor.fetchone()
+
+        if not raffle:
+            print(f"❌ No active raffle found for user {user['id']}")
+            cursor.close()
+            conn.close()
+            return JSONResponse({"ok": False, "error": "Active raffle not found"}, status_code=404)
+
+        print(f"✅ Found raffle: id={raffle['id']}")
+
+        # Parse participants JSONB
+        participants = raffle['participants'] or []
+        print(f"📊 Total participants: {len(participants)}")
+
+        # Find the participant by commentId or index
+        participant_found = False
+        updated_participants = []
+
+        for idx, p in enumerate(participants):
+            # Match by commentId (e.g., "t1_abc123") or by numeric index
+            p_comment_id = p.get('commentId', '')
+            p_id = p.get('id', '')
+
+            # Check if this is the participant we're looking for
+            is_match = (
+                str(participant_id) == str(p_comment_id) or  # Match by commentId
+                str(participant_id) == str(p_id) or           # Match by ID
+                str(participant_id) == str(idx)               # Match by index (fallback)
+            )
+
+            if is_match:
+                print(f"✅ Found participant at index {idx}: {p.get('redditUser', 'Unknown')}")
+                print(f"   commentId: {p_comment_id}, id: {p_id}")
+
+                # Update paid status
+                p['paid'] = paid_status
+                if paid_status:
+                    p['paidAt'] = datetime.now().isoformat()
+                else:
+                    p.pop('paidAt', None)  # Remove paidAt if unpaid
+
+                participant_found = True
+                print(f"💰 Updated paid status to: {paid_status}")
+
+            updated_participants.append(p)
+
+        if not participant_found:
+            print(f"❌ Participant not found: {participant_id}")
+            print(f"   Available commentIds: {[p.get('commentId', 'none') for p in participants[:5]]}...")
+            cursor.close()
+            conn.close()
+            return JSONResponse({"ok": False, "error": "Participant not found"}, status_code=404)
+
+        # Update the raffle with modified participants
+        cursor.execute("""
+            UPDATE active_raffle
+            SET participants = %s::jsonb
+            WHERE id = %s
+        """, (json.dumps(updated_participants), raffle['id']))
+
+        conn.commit()
+        print(f"✅ Database updated successfully")
+
+        cursor.close()
+        conn.close()
+
+        return JSONResponse({
+            "ok": True,
+            "message": "Participant paid status updated"
+        })
+
+    except Exception as e:
+        print(f"❌ Error updating participant paid status: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"ok": False, "error": str(e)},
+            status_code=500
+        )
+
+
+# =========================
+# RAFFLE LOAD - Proxy to Node.js with proper participant IDs
+# =========================
+@app.get("/api/raffle/load")
+async def load_raffle_from_nodejs(request: Request):
+    """
+    Load raffle data from Node.js backend (includes proper participant IDs)
+    """
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+
+    # Get raffleId from query params
+    raffle_id = request.query_params.get('raffleId')
+
+    print(f"🔄 Proxying raffle/load to Node.js: raffleId={raffle_id}")
+
+    try:
+        # Forward to Node.js with authentication headers
+        async with httpx.AsyncClient() as client:
+            url = f"http://localhost:3001/api/raffle/load"
+            if raffle_id:
+                url += f"?raffleId={raffle_id}"
+
+            response = await client.get(
+                url,
+                headers={
+                    "X-User-Id": str(user["id"]),
+                    "X-User-Name": user["username"],
+                    "X-User-Admin": "true" if user.get("is_admin") else "false"
+                },
+                timeout=30.0
+            )
+
+            print(f"✅ Node.js response: status={response.status_code}")
+
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json() if response.text else {}
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            
+            return JSONResponse(
+                content=content,
+                status_code=response.status_code
+            )
+    except Exception as e:
+        print(f"❌ Error loading raffle from Node.js: {e}")
+        import traceback
+        traceback.print_exc()
+        return JSONResponse(
+            {"ok": False, "error": str(e)},
+            status_code=500
+        )
+
+# =========================
+# Raffle History Proxy Endpoints (MUST be before db_router)
+# =========================
+@app.get("/api/raffle/history")
+async def get_raffle_history_proxy(request: Request):
+    """Proxy raffle history GET to Node.js with user authentication"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    print(f"📜 Proxying GET /api/raffle/history for user_id={user['id']}")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://localhost:3001/api/raffle/history",
+                headers={"x-user-id": str(user["id"])},
+                timeout=30.0
+            )
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
+    except Exception as e:
+        print(f"❌ Error proxying raffle history GET: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+@app.post("/api/raffle/history")
+async def save_raffle_history_proxy(request: Request):
+    """Proxy raffle history POST to Node.js with user authentication"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    body = await request.body()
+    print(f"💾 Proxying POST /api/raffle/history for user_id={user['id']}")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://localhost:3001/api/raffle/history",
+                headers={
+                    "x-user-id": str(user["id"]),
+                    "Content-Type": "application/json"
+                },
+                content=body,
+                timeout=30.0
+            )
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
+    except Exception as e:
+        print(f"❌ Error proxying raffle history POST: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+@app.delete("/api/raffle/history")
+async def delete_raffle_history_proxy(request: Request):
+    """Proxy raffle history DELETE to Node.js with user authentication"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    print(f"🗑️  Proxying DELETE /api/raffle/history for user_id={user['id']}")
+    
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.delete(
+                "http://localhost:3001/api/raffle/history",
+                headers={"x-user-id": str(user["id"])},
+                timeout=30.0
+            )
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
+    except Exception as e:
+        print(f"❌ Error proxying raffle history DELETE: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
 # =========================
 # API Proxy to Node.js Backend
 # =========================
@@ -2156,7 +2635,7 @@ async def proxy_to_nodejs(path: str, request: Request):
     """
     # Skip paths that should be handled by FastAPI router (except specific Node.js settings routes)
     FASTAPI_ROUTER_PREFIXES = ["users", "transactions", "stats"]
-    
+
     # Settings routes handled by FastAPI (don't proxy these)
     FASTAPI_SETTINGS_ROUTES = [
         "settings/upload-gmail-oauth",
@@ -2168,12 +2647,12 @@ async def proxy_to_nodejs(path: str, request: Request):
         "settings/export-name-mappings",
         "settings/clear-name-mappings"
     ]
-    
+
     # Check if this is a FastAPI-only route
     for prefix in FASTAPI_ROUTER_PREFIXES:
         if path.startswith(prefix):
             raise HTTPException(status_code=404, detail="Route not found in proxy")
-    
+
     # Check if this is a FastAPI settings route (don't proxy)
     if path.startswith("settings/"):
         for fastapi_route in FASTAPI_SETTINGS_ROUTES:
@@ -2217,8 +2696,14 @@ async def proxy_to_nodejs(path: str, request: Request):
                 timeout=120.0  # Increased to 120 seconds for long-running operations
             )
 
+            # ✅ FIX BUG #100: Safe JSON parsing with fallback
+            try:
+                content = response.json() if response.text else {}
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response from backend: {response.text[:200]}"}
+            
             return JSONResponse(
-                content=response.json() if response.text else {},
+                content=content,
                 status_code=response.status_code
             )
     except Exception as e:
@@ -2233,26 +2718,35 @@ async def proxy_to_nodejs(path: str, request: Request):
 # =========================
 from fastapi.responses import Response
 
-@app.get("/background-polling.js")
-async def proxy_background_polling():
-    """Proxy background-polling.js from Node.js backend"""
-    async with httpx.AsyncClient() as client:
-        response = await client.get("http://localhost:3001/background-polling.js")
-        return Response(content=response.content, media_type="application/javascript")
-
-@app.get("/global-scan-indicator.js")
-async def proxy_global_scan_indicator():
-    """Proxy global-scan-indicator.js from Node.js backend"""
-    async with httpx.AsyncClient() as client:
-        response = await client.get("http://localhost:3001/global-scan-indicator.js")
-        return Response(content=response.content, media_type="application/javascript")
+# ✅ REMOVED: Background polling and global scan indicator endpoints (no longer used - switched to auto-scan)
+# Background polling was replaced with auto-scan functionality triggered from Active Raffle page
 
 @app.get("/sidebar-admin-control.js")
 async def proxy_sidebar_admin_control():
     """Proxy sidebar-admin-control.js from Node.js backend"""
-    async with httpx.AsyncClient() as client:
-        response = await client.get("http://localhost:3001/sidebar-admin-control.js")
-        return Response(content=response.content, media_type="application/javascript")
+    # ✅ FIX BUG #101: Add error handling for JS file proxying
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://localhost:3001/sidebar-admin-control.js",
+                timeout=10.0
+            )
+            if response.status_code == 200:
+                return Response(content=response.content, media_type="application/javascript")
+            else:
+                print(f"❌ Failed to fetch sidebar-admin-control.js: status={response.status_code}")
+                return Response(
+                    content=b"// Error loading sidebar-admin-control.js from Node.js backend\nconsole.error('Failed to load sidebar-admin-control.js');",
+                    media_type="application/javascript",
+                    status_code=200
+                )
+    except Exception as e:
+        print(f"❌ Error proxying sidebar-admin-control.js: {e}")
+        return Response(
+            content=b"// Error loading sidebar-admin-control.js\nconsole.error('Failed to load sidebar-admin-control.js');",
+            media_type="application/javascript",
+            status_code=200
+        )
 
 # =========================
 # Page routes

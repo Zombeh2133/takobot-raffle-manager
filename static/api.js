@@ -193,7 +193,7 @@ const API = {
     return response.json();
   },
 
-  scanReddit: async (redditLink, costPerSpot, totalSpots = null, existingCommentIds = null, currentAssignedSpots = 0) => {
+  scanReddit: async (redditLink, costPerSpot, totalSpots = null, existingCommentIds = null, currentAssignedSpots = 0, participantStatuses = null) => {
     // Send as POST with JSON body (matching server.js expectations)
     const response = await fetch(`${API_BASE_URL}/api/reddit/scan`, {
       method: 'POST',
@@ -206,7 +206,8 @@ const API = {
         costPerSpot,
         totalSpots,
         existingCommentIds,
-        currentAssignedSpots
+        currentAssignedSpots,
+        participantStatuses
       })
     });
     return response.json();

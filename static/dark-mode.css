@@ -141,7 +141,7 @@
 }
 
 /* ============================== 
-   KEEP ALL TABLES WHITE 
+   MAKE TABLES DARK
    ============================== */
 [data-theme="dark"] table,
 [data-theme="dark"] .participant-list,
@@ -149,53 +149,209 @@
 [data-theme="dark"] .activity-wrap table,
 [data-theme="dark"] .admin-content table,
 [data-theme="dark"] .user-content table {
-  background-color: #ffffff !important;
-  color: #1a1a1a !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-light) !important;
+}
+
+/* Table wrapper - the big white area */
+[data-theme="dark"] .table-wrap {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* RAFFLE HISTORY PAGE - Table wrapper */
+[data-theme="dark"] .h-table-wrap {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] table.h-table {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .h-table thead th {
+  background-color: var(--bg-tertiary) !important;
+  color: #ffffff !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .h-table tbody tr,
+[data-theme="dark"] .h-table tbody td {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-light) !important;
+}
+
+[data-theme="dark"] .h-table tbody tr:hover,
+[data-theme="dark"] .h-table tbody tr:hover td {
+  background-color: var(--bg-hover) !important;
+}
+
+/* ACTIVITY LOG PAGE - Activity feed */
+[data-theme="dark"] .activity-feed {
+  background-color: var(--bg-secondary) !important;
+}
+
+[data-theme="dark"] .activity-item {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .activity-item:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] .activity-text {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .activity-time {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .activity-head {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .a-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .a-sub {
+  color: var(--text-secondary) !important;
+}
+
+/* ADMIN PAGE - Tables */
+[data-theme="dark"] .admin-page-btn {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .admin-page-btn:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: #8b5cf6 !important;
+  color: #8b5cf6 !important;
+}
+
+[data-theme="dark"] .admin-page-btn.active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+  border-color: #8b5cf6 !important;
+  color: white !important;
+}
+
+[data-theme="dark"] .admin-tabs {
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .admin-tab-btn {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .admin-tab-btn:hover {
+  color: #8b5cf6 !important;
+  background: rgba(139, 92, 246, 0.1) !important;
+}
+
+[data-theme="dark"] .admin-tab-btn.active {
+  color: #8b5cf6 !important;
+  border-bottom-color: #8b5cf6 !important;
+}
+
+[data-theme="dark"] .admin-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .admin-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .year-display {
+  color: var(--text-primary) !important;
+}
+
+/* Participants card container */
+[data-theme="dark"] .participants-card {
+  background-color: var(--bg-secondary) !important;
+}
+
+/* Participants header */
+[data-theme="dark"] .participants-header {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .participants-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .participants-sub {
+  color: var(--text-secondary) !important;
+}
+
+/* Participants footer */
+[data-theme="dark"] .participants-foot {
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
 }
 
 [data-theme="dark"] thead,
 [data-theme="dark"] thead th {
-  background-color: #f5f5f5 !important;
-  color: #1a1a1a !important;
+  background-color: var(--bg-tertiary) !important;
+  color: #ffffff !important;
+  border-color: var(--border-light) !important;
 }
 
 [data-theme="dark"] tbody,
 [data-theme="dark"] tbody tr,
 [data-theme="dark"] tbody td {
-  background-color: #ffffff !important;
-  color: #1a1a1a !important;
-  border-bottom: 1px solid #e0e0e0 !important;
+  background-color: var(--bg-secondary) !important;
+  color: var(--text-primary) !important;
+  border-bottom: 1px solid var(--border-light) !important;
 }
 
 [data-theme="dark"] tbody tr:hover,
 [data-theme="dark"] tbody tr:hover td {
-  background-color: #f9f9f9 !important;
+  background-color: var(--bg-hover) !important;
 }
 
-/* Keep participant list white */
+/* Fix comment text visibility in dark mode */
+[data-theme="dark"] .comment-muted {
+  color: #94A3B8 !important; /* Light gray for italicized comments */
+  font-style: italic;
+}
+
+/* Ensure all table cell text is visible */
+[data-theme="dark"] table td,
+[data-theme="dark"] .p-table td {
+  color: var(--text-primary) !important;
+}
+
+/* Participant list dark */
 [data-theme="dark"] .participant-list {
-  background-color: #ffffff !important;
+  background-color: var(--bg-secondary) !important;
 }
 
 [data-theme="dark"] .p-title {
-  color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
 [data-theme="dark"] .p-sub {
-  color: #666666 !important;
+  color: var(--text-secondary) !important;
 }
 
 /* ============================== 
-   STAT CARDS & METRIC CARDS (KEEP WHITE)
+   STAT CARDS & METRIC CARDS - MAKE DARK
    ============================== */
 [data-theme="dark"] .stat-card,
 [data-theme="dark"] .metric-card,
 [data-theme="dark"] .card {
-  background-color: #ffffff !important;
-  border-color: #e0e0e0 !important;
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
 }
 
-/* Text in white cards should be DARK for readability */
+/* Text in dark cards should be WHITE for readability */
 [data-theme="dark"] .stat-card,
 [data-theme="dark"] .stat-card *,
 [data-theme="dark"] .metric-card,
@@ -205,7 +361,7 @@
 [data-theme="dark"] .card-title,
 [data-theme="dark"] .card-desc,
 [data-theme="dark"] .label {
-  color: #1a1a1a !important;
+  color: var(--text-primary) !important;
 }
 
 /* EXCEPTION: Active Raffle stat cards keep their original gradient colors */
@@ -384,6 +540,66 @@
 
 [data-theme="dark"] .modal-footer {
   border-top: 1px solid var(--border-light);
+}
+
+/* Access Denied Modals - consistent dark styling */
+[data-theme="dark"] .access-denied-modal {
+  background-color: var(--bg-modal) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .access-denied-modal h2,
+[data-theme="dark"] .access-denied-modal h3,
+[data-theme="dark"] .access-denied-modal p {
+  color: var(--text-primary) !important;
+}
+
+/* Bulk Tab Assignment Modal */
+[data-theme="dark"] .bulk-tab-item {
+  background-color: var(--bg-tertiary) !important;
+  border-color: var(--border-light) !important;
+}
+
+[data-theme="dark"] .bulk-tab-item:hover {
+  background-color: var(--bg-hover) !important;
+}
+
+[data-theme="dark"] .bulk-tab-user {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .bulk-tab-spots {
+  color: #e2e8f0 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .bulk-tab-comment {
+  color: #cbd5e1 !important;
+}
+
+/* Clear Log Modal and other confirmation modals */
+[data-theme="dark"] .clear-log-modal,
+[data-theme="dark"] .confirmation-modal,
+[data-theme="dark"] .delete-modal {
+  background-color: var(--bg-modal) !important;
+  color: var(--text-primary) !important;
+}
+
+/* User Drilldown Modal (Admin page) */
+[data-theme="dark"] .user-drilldown-modal {
+  background-color: var(--bg-modal) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Modal buttons */
+[data-theme="dark"] .modal-btn-cancel {
+  background-color: var(--bg-tertiary) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-medium) !important;
+}
+
+[data-theme="dark"] .modal-btn-cancel:hover {
+  background-color: var(--bg-hover) !important;
 }
 
 /* ============================== 
@@ -629,6 +845,37 @@
   color: var(--text-primary);
 }
 
+/* Year Selector (Admin page) */
+[data-theme="dark"] .year-btn {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .year-btn:hover {
+  background-color: var(--bg-hover) !important;
+  border-color: #8b5cf6 !important;
+}
+
+[data-theme="dark"] .year-btn.active {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
+  border-color: #8b5cf6 !important;
+}
+
+/* Admin page chart and table cards */
+[data-theme="dark"] .chart-card,
+[data-theme="dark"] .table-card {
+  background-color: var(--bg-secondary) !important;
+  border-color: var(--border-light) !important;
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .chart-card h3,
+[data-theme="dark"] .table-card h3 {
+  color: #ffffff !important;
+}
+
 /* ============================== 
    SUCCESS MODAL DARK MODE
    ============================== */
@@ -664,4 +911,130 @@
 [data-theme="dark"] .modal-close-btn:hover {
   background: var(--bg-hover);
   color: #ffffff;
+}
+
+/* ============================== 
+   DASHBOARD WIDGETS DARK MODE
+   ============================== */
+
+/* Widget Switcher */
+[data-theme="dark"] .widget-switcher {
+  background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .widget-tab {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .widget-tab.active {
+  background: var(--bg-secondary) !important;
+  color: #8b5cf6 !important;
+}
+
+/* Activity Feed */
+[data-theme="dark"] .activity-feed-item {
+  background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .activity-feed-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+[data-theme="dark"] .activity-title {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .activity-desc {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .activity-time {
+  color: var(--text-muted) !important;
+}
+
+/* Raffle Widget */
+[data-theme="dark"] .raffle-widget-item {
+  background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-hover)) !important;
+}
+
+[data-theme="dark"] .raffle-widget-item:hover {
+  border-color: #8b5cf6 !important;
+}
+
+[data-theme="dark"] .raffle-name {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .raffle-stats {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .raffle-progress-bar {
+  background: var(--bg-primary) !important;
+}
+
+/* Leaderboard */
+[data-theme="dark"] .leaderboard-item {
+  background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .leaderboard-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+[data-theme="dark"] .leaderboard-name {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .leaderboard-subtitle {
+  color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .leaderboard-value {
+  color: #8b5cf6 !important;
+}
+
+/* Payment Overview */
+[data-theme="dark"] .payment-stat.paid {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)) !important;
+}
+
+[data-theme="dark"] .payment-stat.unpaid {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2)) !important;
+}
+
+[data-theme="dark"] .payment-stat.pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2)) !important;
+}
+
+[data-theme="dark"] .payment-stat.total {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2), rgba(124, 58, 237, 0.2)) !important;
+}
+
+[data-theme="dark"] .payment-stat.paid .payment-stat-value { 
+  color: #34d399 !important; 
+}
+
+[data-theme="dark"] .payment-stat.unpaid .payment-stat-value { 
+  color: #f87171 !important; 
+}
+
+[data-theme="dark"] .payment-stat.pending .payment-stat-value { 
+  color: #fbbf24 !important; 
+}
+
+[data-theme="dark"] .payment-stat.total .payment-stat-value { 
+  color: #8b5cf6 !important; 
+}
+
+[data-theme="dark"] .payment-user {
+  background: var(--bg-tertiary) !important;
+}
+
+[data-theme="dark"] .payment-user-name {
+  color: #ffffff !important;
+}
+
+[data-theme="dark"] .payment-user-amount {
+  color: #f87171 !important;
 }

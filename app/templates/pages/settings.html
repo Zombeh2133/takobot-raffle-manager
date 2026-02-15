@@ -1415,17 +1415,6 @@
           <option value="America/Los_Angeles">Pacific Time (PT)</option>
           <option value="UTC">UTC</option>
         </select>
-
-        <div class="toggle-container">
-          <div class="toggle-label-wrapper">
-            <p class="toggle-label">🎓 Auto-record Parser Corrections</p>
-            <p class="toggle-desc">Automatically learn from manual spot edits to improve parser accuracy over time</p>
-          </div>
-          <label class="toggle-switch">
-            <input type="checkbox" id="autoRecordCorrections">
-            <span class="toggle-slider"></span>
-          </label>
-        </div>
       </div>
 
       <div class="save-row">
@@ -1440,10 +1429,7 @@
   <a class="nav-item" href="/dashboard"><img class="nav-icon" src="/static/assets/Icons/Heart-Rate.png" alt="">Dashboard</a>
   <a class="nav-item" href="/active-raffle"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy.png" alt="">Active Raffle</a>
   <a class="nav-item" href="/raffle-history"><img class="nav-icon" src="/static/assets/Icons/Graph.png" alt="">Raffle History</a>
-  <a class="nav-item" href="/activity-log"><img class="nav-icon" src="/static/assets/Icons/activity.png" alt="">Activity Log</a>
-  <a class="nav-item" href="/profile"><img class="nav-icon" src="/static/assets/Icons/icons8-user-30%201.png" alt="">Profile</a>
   <a class="nav-item" href="/discord"><img class="nav-icon" src="/static/assets/Icons/discord_white_logo%201.png" alt="">Discord</a>
-  <a class="nav-item" href="/help"><img class="nav-icon" src="/static/assets/Icons/help.png" alt="">Help</a>
   <a class="nav-item" href="/donate"><img class="nav-icon" src="/static/assets/Icons/Graph%20Copy%204.png" alt="">Donate</a>
   <a class="nav-item" href="/admin">Admin</a>
 </nav>
@@ -1461,7 +1447,7 @@
 </div>
 
 <!-- APP VERSION -->
-<div class="app-version">v1.0.0</div>
+<div class="app-version">v1.5.0</div>
 
 <script>
   // ============ USER SECTION & LOGOUT ============
@@ -2269,76 +2255,14 @@
         const timezoneSelect = document.getElementById("timezone");
         if (timezoneSelect) timezoneSelect.value = savedTimezone;
       }
-
-      // Load auto-record setting from database (default to false)
-      try {
-        console.log('📥 Loading auto-record setting from database...');
-        const response = await fetch('/api/settings/auto_record_corrections');
-        if (response.ok) {
-          const result = await response.json();
-          console.log('📥 Received:', result);
-          const autoRecordCheckbox = document.getElementById("autoRecordCorrections");
-          if (autoRecordCheckbox) {
-            // Handle both response formats:
-            // Format 1: { ok: true, data: "true" }
-            // Format 2: { id: 3, key: "auto_record_corrections", value: "true", updated_at: "..." }
-            let value;
-            if (result.data !== undefined) {
-              // Node.js format: { ok: true, data: "true" }
-              value = result.data;
-            } else if (result.value !== undefined) {
-              // Direct DB row format: { value: "true", ... }
-              value = result.value;
-            } else {
-              value = null;
-            }
-            
-            // Default to false if not set
-            autoRecordCheckbox.checked = value === 'true';
-            console.log(`📥 Set checkbox to: ${autoRecordCheckbox.checked} (value was "${value}")`);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to load auto-record setting:', err);
-        // Default to false on error
-        const autoRecordCheckbox = document.getElementById("autoRecordCorrections");
-        if (autoRecordCheckbox) autoRecordCheckbox.checked = false;
-      }
     })();
 
     // Save settings
     document.getElementById("saveSettings")?.addEventListener("click", async () => {
       const tz = document.getElementById("timezone")?.value || "America/New_York";
-      const autoRecord = document.getElementById("autoRecordCorrections")?.checked ?? false;
-      
-      console.log(`💾 Saving settings: autoRecord=${autoRecord}`);
       
       localStorage.setItem('takobot_timezone', tz);
-      
-      // Save auto-record setting to database
-      try {
-        console.log(`💾 Sending to API: key="auto_record_corrections", value="${String(autoRecord)}"`);
-        const response = await fetch('/api/settings', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            key: 'auto_record_corrections',
-            value: String(autoRecord)
-          })
-        });
-        
-        const responseData = await response.json();
-        console.log('💾 API Response:', responseData);
-        
-        if (response.ok) {
-          showToast('Settings Saved', `Settings updated successfully`, 'success');
-        } else {
-          showToast('Settings Error', 'Failed to save auto-record setting', 'error');
-        }
-      } catch (err) {
-        console.error('Failed to save auto-record setting:', err);
-        showToast('Settings Error', 'Network error saving settings', 'error');
-      }
+      showToast('Settings Saved', `Timezone set to ${tz}`, 'success');
     });
 
     // ===== ACCESS DENIED MODAL =====
