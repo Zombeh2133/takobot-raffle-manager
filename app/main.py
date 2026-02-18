@@ -2479,6 +2479,36 @@ async def update_participant_paid_status(participant_id: str, request: Request):
 
 
 # =========================
+# WINNERS DASHBOARD - Proxy to Node.js
+# =========================
+@app.get("/api/winners")
+async def get_winners(request: Request):
+    """Get all winners and their statistics"""
+    user = get_current_user(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "Not logged in"}, status_code=401)
+    
+    # Only admin users can access winner dashboard
+    if not user.get("is_admin"):
+        return JSONResponse({"ok": False, "error": "Admin access required"}, status_code=403)
+    
+    try:
+        import httpx
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                "http://localhost:3001/api/winners",
+                timeout=30.0
+            )
+            try:
+                content = response.json()
+            except (json.JSONDecodeError, ValueError):
+                content = {"ok": False, "error": f"Invalid JSON response: {response.text[:200]}"}
+            return JSONResponse(content=content, status_code=response.status_code)
+    except Exception as e:
+        print(f"Error fetching winners: {e}")
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=500)
+
+# =========================
 # RAFFLE LOAD - Proxy to Node.js with proper participant IDs
 # =========================
 @app.get("/api/raffle/load")
@@ -2877,6 +2907,20 @@ async def raffle_monitor_page(request: Request):
         return HTMLResponse("<h1>raffle_monitor.html not found</h1><p>Create: app/templates/pages/raffle_monitor.html</p>", status_code=404)
 
     return templates.TemplateResponse("pages/raffle_monitor.html", {"request": request, "user": user})
+
+@app.get("/winner-dashboard.html", response_class=HTMLResponse)
+async def winner_dashboard_page(request: Request):
+    """Winner Dashboard page - requires admin privileges"""
+    user = get_current_user(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=303)
+
+    # Always render the page - let JavaScript handle access control with modal
+    page = TEMPLATES_DIR / "pages" / "winner-dashboard.html"
+    if not page.exists():
+        return HTMLResponse("<h1>winner-dashboard.html not found</h1><p>Create: app/templates/pages/winner-dashboard.html</p>", status_code=404)
+
+    return templates.TemplateResponse("pages/winner-dashboard.html", {"request": request, "user": user})
 
 @app.get("/discord", response_class=HTMLResponse)
 async def discord_page(request: Request):

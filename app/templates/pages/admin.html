@@ -855,6 +855,9 @@
             <button class="admin-page-btn" onclick="window.location.href='/master-tracker'">
               🗂️ Master Tracker
             </button>
+            <button class="admin-page-btn" onclick="window.location.href='/winner-dashboard.html'">
+              🏆 Winners
+            </button>
           </div>
         </div>
       </div>
@@ -1322,6 +1325,13 @@
     function renderMonthlyChart(monthlyData) {
       const ctx = document.getElementById('monthlyChart');
       
+      // ⚡ FIX: Ensure canvas has dimensions before rendering
+      if (!ctx || ctx.offsetWidth === 0 || ctx.offsetHeight === 0) {
+        console.warn('Chart container not ready, retrying...');
+        requestAnimationFrame(() => renderMonthlyChart(monthlyData));
+        return;
+      }
+      
       if (monthlyChart) {
         monthlyChart.destroy();
       }
@@ -1399,6 +1409,13 @@
 
     function renderStatusChart(data) {
       const ctx = document.getElementById('statusChart');
+      
+      // ⚡ FIX: Ensure canvas has dimensions before rendering
+      if (!ctx || ctx.offsetWidth === 0 || ctx.offsetHeight === 0) {
+        console.warn('Status chart container not ready, retrying...');
+        requestAnimationFrame(() => renderStatusChart(data));
+        return;
+      }
       
       if (statusChart) {
         statusChart.destroy();

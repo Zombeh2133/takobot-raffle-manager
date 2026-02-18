@@ -26,7 +26,7 @@
     }
 
     body{
-      background-color:#FAF8F6;
+      background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 50%, #1e1b4b 100%);
       display:flex;
       justify-content:flex-start;  /* Align left instead of center */
       align-items:flex-start;      /* Align top instead of center */
@@ -872,6 +872,46 @@
     }
 
     /* Mark Paid Modal Styles */
+    .mark-paid-filter-buttons {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mark-paid-filter-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid #e2e8f0;
+      background: white;
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mark-paid-filter-btn:hover {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .mark-paid-filter-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .mark-paid-filter-btn.active.filter-paid {
+      background: #16a34a;
+      border-color: #16a34a;
+    }
+
+    .mark-paid-filter-btn.active.filter-unpaid {
+      background: #dc2626;
+      border-color: #dc2626;
+    }
+
     .mark-paid-item {
       display: flex;
       align-items: center;
@@ -965,6 +1005,93 @@
     .mark-paid-status.status-paid {
       background: #dcfce7;
       color: #166534;
+    }
+
+    /* Dark mode styles for mark-paid modal */
+    [data-theme="dark"] .mark-paid-item {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    [data-theme="dark"] .mark-paid-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #22c55e;
+    }
+
+    [data-theme="dark"] .mark-paid-item.paid {
+      background: rgba(34, 197, 94, 0.2);
+      border-color: #22c55e;
+    }
+
+    [data-theme="dark"] .mark-paid-user {
+      color: #ffffff;
+    }
+
+    [data-theme="dark"] .mark-paid-spots {
+      color: #d8b4fe;
+      background: rgba(168, 85, 247, 0.2);
+    }
+
+    [data-theme="dark"] .mark-paid-comment {
+      color: #d8b4fe;
+    }
+
+    [data-theme="dark"] .mark-paid-owed {
+      color: #fca5a5;
+    }
+
+    [data-theme="dark"] .mark-paid-status.status-unpaid {
+      background: rgba(251, 191, 36, 0.2);
+      color: #fbbf24;
+    }
+
+    [data-theme="dark"] .mark-paid-status.status-paid {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+
+    [data-theme="dark"] .mark-paid-item.paid .mark-paid-user::after {
+      color: #4ade80;
+      background: rgba(34, 197, 94, 0.2);
+    }
+
+    /* Dark mode modal container and list */
+    [data-theme="dark"] .modal-content {
+      background: #1e293b;
+    }
+
+    [data-theme="dark"] .modal-title {
+      color: #ffffff;
+    }
+
+    [data-theme="dark"] #markPaidList {
+      background: rgba(15, 23, 42, 0.6) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+
+    /* Dark mode - green banner visibility */
+    [data-theme="dark"] #markPaidCounter {
+      color: #4ade80 !important;
+    }
+
+    [data-theme="dark"] #markPaidCounter::parent,
+    [data-theme="dark"] #markPaidModal div[style*="background: #dcfce7"] {
+      background: rgba(34, 197, 94, 0.2) !important;
+      border: 1px solid rgba(34, 197, 94, 0.4) !important;
+    }
+
+    /* Dark mode - empty message visibility in bulk tab modal */
+    [data-theme="dark"] #bulkTabList p {
+      color: #94a3b8 !important;
+    }
+
+    /* Dark mode - bulk tab counter box and text */
+    [data-theme="dark"] #bulkTabCounter {
+      color: #c084fc !important;
+    }
+    
+    [data-theme="dark"] div[style*="background: #ede9fe"] {
+      background: rgba(168, 85, 247, 0.2) !important;
     }
 
     /* Paid Cell Display - Similar to Tabbed Cell */
@@ -1800,6 +1927,55 @@
       display: flex;
       flex-direction: column;
       padding: 32px 28px 48px 28px !important; /* Extended padding: top right bottom left */
+      position: relative;
+    }
+
+    .summary-nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      transition: all 0.2s;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    }
+
+    .summary-nav-arrow:hover {
+      background: #2563eb;
+      transform: translateY(-50%) scale(1.1);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+
+    .summary-nav-arrow.left {
+      left: -20px;
+    }
+
+    .summary-nav-arrow.right {
+      right: -20px;
+    }
+
+    .summary-nav-arrow:disabled {
+      display: none;
+    }
+
+    .summary-page {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    .summary-page.active {
+      display: flex;
     }
 
     .summary-stats-grid {
@@ -1888,7 +2064,7 @@
       background: #f8fafc;
       border-radius: 12px;
       padding: 12px;
-      max-height: 280px;
+      max-height: 450px;
       overflow-y: auto;
     }
 
@@ -2663,53 +2839,79 @@
   <!-- SUMMARY MODAL -->
   <div id="summaryModal" class="modal-overlay">
     <div class="modal-content summary-modal-content">
+      <!-- Navigation Arrows -->
+      <button id="summaryPrevBtn" class="summary-nav-arrow left">‹</button>
+      <button id="summaryNextBtn" class="summary-nav-arrow right">›</button>
+
       <h3 class="modal-title">Raffle Summary</h3>
 
-      <!-- Three Column Stats -->
-      <div class="summary-stats-grid">
-        <div class="summary-stat-box confirmed">
-          <div class="summary-stat-box-label">CONFIRMED</div>
-          <div class="summary-stat-box-value" id="summaryConfirmed">0</div>
+      <!-- PAGE 1: Participants -->
+      <div class="summary-page active" id="summaryPage1">
+        <!-- Three Column Stats -->
+        <div class="summary-stats-grid">
+          <div class="summary-stat-box confirmed">
+            <div class="summary-stat-box-label">CONFIRMED</div>
+            <div class="summary-stat-box-value" id="summaryConfirmed">0</div>
+          </div>
+          <div class="summary-stat-box waitlist">
+            <div class="summary-stat-box-label">WAITLIST</div>
+            <div class="summary-stat-box-value" id="summaryWaitlist">0</div>
+          </div>
+          <div class="summary-stat-box tabs">
+            <div class="summary-stat-box-label">TABS</div>
+            <div class="summary-stat-box-value" id="summaryTabs">0</div>
+          </div>
         </div>
-        <div class="summary-stat-box waitlist">
-          <div class="summary-stat-box-label">WAITLIST</div>
-          <div class="summary-stat-box-value" id="summaryWaitlist">0</div>
-        </div>
-        <div class="summary-stat-box tabs">
-          <div class="summary-stat-box-label">TABS</div>
-          <div class="summary-stat-box-value" id="summaryTabs">0</div>
+
+        <!-- Participants Section -->
+        <div class="summary-section">
+          <div class="summary-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Participants (<span id="participantCount">0</span>)
+          </div>
+          <div class="summary-section-list" id="participantsList">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
 
-      <!-- Participants Section -->
-      <div class="summary-section">
-        <div class="summary-section-header">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-          </svg>
-          Participants (<span id="participantCount">0</span>)
+      <!-- PAGE 2: Tab Requests -->
+      <div class="summary-page" id="summaryPage2">
+        <!-- Three Column Stats -->
+        <div class="summary-stats-grid">
+          <div class="summary-stat-box confirmed">
+            <div class="summary-stat-box-label">CONFIRMED</div>
+            <div class="summary-stat-box-value" id="summaryConfirmed2">0</div>
+          </div>
+          <div class="summary-stat-box waitlist">
+            <div class="summary-stat-box-label">WAITLIST</div>
+            <div class="summary-stat-box-value" id="summaryWaitlist2">0</div>
+          </div>
+          <div class="summary-stat-box tabs">
+            <div class="summary-stat-box-label">TABS</div>
+            <div class="summary-stat-box-value" id="summaryTabs2">0</div>
+          </div>
         </div>
-        <div class="summary-section-list" id="participantsList">
-          <!-- Populated by JS -->
-        </div>
-      </div>
 
-      <!-- Tab Requests Section -->
-      <div class="summary-section">
-        <div class="summary-section-header">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <line x1="19" y1="8" x2="19" y2="14"></line>
-            <line x1="22" y1="11" x2="16" y2="11"></line>
-          </svg>
-          Tab Requests (<span id="tabCount">0</span>)
-        </div>
-        <div class="summary-section-list" id="tabRequestsList">
-          <!-- Populated by JS -->
+        <!-- Tab Requests Section -->
+        <div class="summary-section">
+          <div class="summary-section-header">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <line x1="19" y1="8" x2="19" y2="14"></line>
+              <line x1="22" y1="11" x2="16" y2="11"></line>
+            </svg>
+            Tab Requests (<span id="tabCount">0</span>)
+          </div>
+          <div class="summary-section-list" id="tabRequestsList">
+            <!-- Populated by JS -->
+          </div>
         </div>
       </div>
 
@@ -2775,7 +2977,7 @@
             type="text" 
             id="bulkTabSearch" 
             class="form-input" 
-            placeholder="🔍 Search by username, comment, or assigned tab..."
+            placeholder="�� Search by username, comment, or assigned tab..."
             style="margin-bottom: 16px;"
           />
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
@@ -2811,11 +3013,18 @@
 
       <div class="modal-form">
         <div class="form-group">
+          <!-- Quick Filter Buttons -->
+          <div class="mark-paid-filter-buttons">
+            <button class="mark-paid-filter-btn active filter-all" data-filter="all">All</button>
+            <button class="mark-paid-filter-btn filter-paid" data-filter="paid">Paid</button>
+            <button class="mark-paid-filter-btn filter-unpaid" data-filter="unpaid">Unpaid</button>
+          </div>
+          
           <input 
             type="text" 
             id="markPaidSearch" 
             class="form-input" 
-            placeholder="🔍 Search by username, comment, or payment status..."
+            placeholder="🔍 Search by username, name, comment, or status..."
             style="margin-bottom: 16px;"
           />
           <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
@@ -2934,6 +3143,10 @@
     let cachedLowerNameMappings = null;
     const TAB_BADGE_HTML = '<span class="tab-badge">TAB</span>';
     const EMPTY_DISPLAY_HTML = '<span style="color: #94a3b8;">—</span>';
+    
+    // ⚡ Global polling/timer variables (must be declared early for use in updateStatsImmediate)
+    let pollingInterval = null;
+    let isScanning = false;
 
     function invalidateNameMappingCache() {
       cachedNameMappingsFresh = false;
@@ -2995,12 +3208,14 @@
           name: p.name || '',
           comment: p.comment || '',
           spots: p.spots || 0,
+          requestedSpots: p.requestedSpots || 0,
           owed: p.owed || 0,
           paid: p.paid === true,  // ⚡ CRITICAL: Normalize to boolean (true or false only)
           requestLink: p.requestLink || '',
           commentId: p.commentId || '',
           tabbed: p.tabbed || null,
           status: p.status || null,
+          created_utc: p.created_utc || null,
           sequenceNumber: p.sequenceNumber !== undefined ? p.sequenceNumber : index
         }));
 
@@ -3050,12 +3265,14 @@
             name: p.name || '',
             comment: p.comment || '',
             spots: p.spots || 0,
+            requestedSpots: p.requestedSpots || 0,
             owed: p.owed || 0,
             paid: p.paid === true || p.paid === 1 || p.paid === 'true',  // ⚡ CRITICAL: Normalize to boolean
             requestLink: p.requestLink || '',
             commentId: p.commentId || '',
             tabbed: p.tabbed || null,
             status: p.status || null,
+            created_utc: p.created_utc || null,
             sequenceNumber: p.sequenceNumber !== undefined ? p.sequenceNumber : index
           }));
           
@@ -3835,7 +4052,7 @@
               console.warn('⚠️ Row not found for spot edit');
               return;
             }
-            const owedCell = row.children[6]; // ⚡ CRITICAL BUG FIX: 7th column is index 6, not 5!
+            const owedCell = row.children[5]; // ✅ FIX: Owed column is index 5 (6th column: 0=Reddit,1=Name,2=Tabbed,3=Comment,4=Spots,5=Owed)
             if (owedCell) {
               owedCell.textContent = `$${(parseFloat(appState.participants[index].owed) || 0).toFixed(2)}`;
             }
@@ -3900,7 +4117,7 @@
 
     // Note: cachedNameMappings is defined at top of file in NAME MAPPING CACHE section
 
-    function saveNameMapping(redditUser, realName) {
+    async function saveNameMapping(redditUser, realName) {
       try {
         const mappings = JSON.parse(localStorage.getItem(NAME_MAPPING_KEY) || '{}');
 
@@ -3926,6 +4143,57 @@
             }
           }
           cachedNameMappings[normalizedKey] = realName;
+        }
+
+        // ⚡ Update window.allTabbedUsers array for tab dropdown functionality
+        if (window.allTabbedUsers && Array.isArray(window.allTabbedUsers)) {
+          // Find if user already exists in the array
+          const existingUserIndex = window.allTabbedUsers.findIndex(
+            u => u.reddit.toLowerCase() === normalizedKey
+          );
+          
+          const userEntry = {
+            reddit: normalizedKey,
+            name: realName,
+            redditLower: normalizedKey,
+            nameLower: realName.toLowerCase()
+          };
+          
+          if (existingUserIndex !== -1) {
+            // Update existing entry
+            window.allTabbedUsers[existingUserIndex] = userEntry;
+          } else {
+            // Add new entry and re-sort
+            window.allTabbedUsers.push(userEntry);
+            window.allTabbedUsers.sort((a, b) => a.reddit.localeCompare(b.reddit));
+          }
+        }
+
+        // ⚡ NEW: Automatically add to shared database if not already there
+        // This allows single-name additions to sync across all users
+        try {
+          const uploadResponse = await fetch('/api/settings/upload-name-mappings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              mappings: {
+                [normalizedKey]: realName
+              }
+            })
+          });
+
+          if (uploadResponse.ok) {
+            const uploadData = await uploadResponse.json();
+            if (uploadData.ok && uploadData.inserted > 0) {
+              console.log(`✅ Added ${normalizedKey} → ${realName} to shared database`);
+            } else if (uploadData.skipped > 0) {
+              console.log(`ℹ️ ${normalizedKey} already exists in shared database`);
+            }
+          }
+        } catch (dbError) {
+          // Don't fail the whole operation if database sync fails
+          console.warn('Failed to sync name mapping to database:', dbError);
         }
       } catch (e) {
         console.error('Failed to save name mapping:', e);
@@ -3954,6 +4222,18 @@
             if (key.toLowerCase() === normalizedKey) {
               delete cachedNameMappings[key];
             }
+          }
+        }
+
+        // ⚡ Update window.allTabbedUsers array to remove the name
+        // Note: We completely remove it from the dropdown since the database version
+        // will be reloaded on next page refresh if it exists in shared mappings
+        if (window.allTabbedUsers && Array.isArray(window.allTabbedUsers)) {
+          const userIndex = window.allTabbedUsers.findIndex(
+            u => u.reddit.toLowerCase() === normalizedKey
+          );
+          if (userIndex !== -1) {
+            window.allTabbedUsers.splice(userIndex, 1);
           }
         }
       } catch (e) {
@@ -4416,7 +4696,7 @@
 
             // Save to localStorage (or remove if empty)
             if (newName) {
-              saveNameMapping(participant.redditUser, newName);
+              await saveNameMapping(participant.redditUser, newName);
             } else {
               // Remove from localStorage when name is cleared
               removeNameMapping(participant.redditUser);
@@ -5601,6 +5881,12 @@ function updateStatsImmediate() {
       const summaryBtn = document.getElementById("summaryBtn");
       const modal = document.getElementById("summaryModal");
       const closeBtn = document.getElementById("summaryCloseBtn");
+      const prevBtn = document.getElementById("summaryPrevBtn");
+      const nextBtn = document.getElementById("summaryNextBtn");
+      const page1 = document.getElementById("summaryPage1");
+      const page2 = document.getElementById("summaryPage2");
+
+      let currentPage = 1;
 
       // ⚡ CRITICAL BUG FIX: Check if elements exist before adding listeners
       if (!summaryBtn || !modal || !closeBtn) {
@@ -5608,24 +5894,63 @@ function updateStatsImmediate() {
         return;
       }
 
+      function updateNavigation() {
+        // Show/hide arrows based on current page
+        if (prevBtn) {
+          prevBtn.style.display = currentPage === 1 ? 'none' : 'flex';
+        }
+        if (nextBtn) {
+          nextBtn.style.display = currentPage === 2 ? 'none' : 'flex';
+        }
+
+        // Show/hide pages
+        if (page1) {
+          page1.classList.toggle('active', currentPage === 1);
+        }
+        if (page2) {
+          page2.classList.toggle('active', currentPage === 2);
+        }
+      }
+
       summaryBtn.addEventListener("click", () => {
+        currentPage = 1; // Reset to page 1
         populateSummary();
+        updateNavigation();
         modal.classList.add("show");
       });
 
       function closeModal() {
         modal.classList.remove("show");
+        currentPage = 1; // Reset on close
       }
 
       closeBtn.addEventListener("click", closeModal);
+
+      if (prevBtn) {
+        prevBtn.addEventListener("click", () => {
+          if (currentPage > 1) {
+            currentPage--;
+            updateNavigation();
+          }
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener("click", () => {
+          if (currentPage < 2) {
+            currentPage++;
+            updateNavigation();
+          }
+        });
+      }
 
       modal.addEventListener("click", (e) => {
         if (e.target === modal) closeModal();
       });
 
       function populateSummary() {
-        // Separate tabbed and non-tabbed participants
-        const payerGroupsNonTabbed = {};
+        // Group participants by payer, tracking tabbed/non-tabbed separately
+        const payerGroups = {};
         const tabbedEntries = [];
 
         appState.participants.forEach(p => {
@@ -5642,22 +5967,39 @@ function updateStatsImmediate() {
               owed: parseFloat(p.owed) || 0,
               paid: p.paid
             });
-          } else {
-            if (!payerGroupsNonTabbed[payer]) {
-              payerGroupsNonTabbed[payer] = {
-                redditUser: payer,
-                name: p.name,
-                spots: 0,
-                owed: 0,
-                paid: p.paid
-              };
+          }
+
+          // Track all participants in payerGroups
+          if (!payerGroups[payer]) {
+            payerGroups[payer] = {
+              redditUser: payer,
+              name: p.name,
+              nonTabbedSpots: 0,
+              nonTabbedOwed: 0,
+              nonTabbedPaid: true, // Assume paid until we find unpaid
+              tabbedSpots: 0,
+              tabbedOwed: 0,
+              tabbedPaid: true // Assume paid until we find unpaid
+            };
+          }
+
+          if (isTabbed) {
+            payerGroups[payer].tabbedSpots += parseInt(p.spots) || 0;
+            payerGroups[payer].tabbedOwed += parseFloat(p.owed) || 0;
+            if (!p.paid) {
+              payerGroups[payer].tabbedPaid = false;
             }
-            payerGroupsNonTabbed[payer].spots += parseInt(p.spots) || 0;
-            payerGroupsNonTabbed[payer].owed += parseFloat(p.owed) || 0;
+          } else {
+            payerGroups[payer].nonTabbedSpots += parseInt(p.spots) || 0;
+            payerGroups[payer].nonTabbedOwed += parseFloat(p.owed) || 0;
+            if (!p.paid) {
+              payerGroups[payer].nonTabbedPaid = false;
+            }
           }
         });
 
-        const nonTabbedArray = Object.values(payerGroupsNonTabbed);
+        // Filter to only participants with non-tabbed spots for the participants list
+        const nonTabbedArray = Object.values(payerGroups).filter(p => p.nonTabbedSpots > 0);
         
         // Count confirmed (non-0-spot participants), waitlist (0-spot), and tabs
         // ⚡ OPTIMIZATION: Count in single pass instead of 2 separate filters (2x faster)
@@ -5672,14 +6014,20 @@ function updateStatsImmediate() {
         });
         const tabsCount = tabbedEntries.length;
 
-        // Update top stat boxes
+        // Update top stat boxes (both pages)
         const summaryConfirmedEl = document.getElementById('summaryConfirmed');
         const summaryWaitlistEl = document.getElementById('summaryWaitlist');
         const summaryTabsEl = document.getElementById('summaryTabs');
+        const summaryConfirmedEl2 = document.getElementById('summaryConfirmed2');
+        const summaryWaitlistEl2 = document.getElementById('summaryWaitlist2');
+        const summaryTabsEl2 = document.getElementById('summaryTabs2');
         
         if (summaryConfirmedEl) summaryConfirmedEl.textContent = confirmedCount;
         if (summaryWaitlistEl) summaryWaitlistEl.textContent = waitlistCount;
         if (summaryTabsEl) summaryTabsEl.textContent = tabsCount;
+        if (summaryConfirmedEl2) summaryConfirmedEl2.textContent = confirmedCount;
+        if (summaryWaitlistEl2) summaryWaitlistEl2.textContent = waitlistCount;
+        if (summaryTabsEl2) summaryTabsEl2.textContent = tabsCount;
 
         // Get container elements
         const participantsList = document.getElementById('participantsList');
@@ -5710,18 +6058,61 @@ function updateStatsImmediate() {
         // Populate participants list
         nonTabbedArray.forEach(participant => {
           const card = document.createElement('div');
-          card.className = `summary-card ${participant.paid ? 'participant-paid' : 'participant-unpaid'}`;
+          const hasTabbed = participant.tabbedSpots > 0;
+          const nonTabbedAllPaid = participant.nonTabbedPaid;
+          const tabbedAllPaid = participant.tabbedPaid;
           
-          const spotsText = participant.spots === 1 ? 'spot' : 'spots';
-          const badge = participant.paid ? '✓ PAID' : '⏳ UNPAID';
+          let cardClass = 'summary-card';
+          let badge = '';
+          let displayOwed = 0;
+          
+          if (hasTabbed) {
+            if (nonTabbedAllPaid && tabbedAllPaid) {
+              cardClass += ' participant-paid';
+              badge = '✓ PAID';
+              displayOwed = 0;
+            } else if (!nonTabbedAllPaid && !tabbedAllPaid) {
+              cardClass += ' participant-unpaid';
+              badge = '⏳ UNPAID';
+              displayOwed = participant.nonTabbedOwed + participant.tabbedOwed;
+            } else if (nonTabbedAllPaid && !tabbedAllPaid) {
+              cardClass += ' participant-unpaid';
+              badge = '⏳ TAB UNPAID';
+              displayOwed = participant.tabbedOwed;
+            } else {
+              cardClass += ' participant-unpaid';
+              badge = '⏳ UNPAID';
+              displayOwed = participant.nonTabbedOwed;
+            }
+          } else {
+            if (nonTabbedAllPaid) {
+              cardClass += ' participant-paid';
+              badge = '✓ PAID';
+              displayOwed = 0;
+            } else {
+              cardClass += ' participant-unpaid';
+              badge = '⏳ UNPAID';
+              displayOwed = participant.nonTabbedOwed;
+            }
+          }
+          
+          card.className = cardClass;
+          
+          const nonTabbedSpotsText = participant.nonTabbedSpots === 1 ? 'spot' : 'spots';
+          let spotDisplay = `${participant.nonTabbedSpots} ${nonTabbedSpotsText}`;
+          if (hasTabbed) {
+            const tabbedSpotsText = participant.tabbedSpots === 1 ? 'spot' : 'spots';
+            const totalSpots = participant.nonTabbedSpots + participant.tabbedSpots;
+            spotDisplay += ` • ${participant.tabbedSpots} tabbed ${tabbedSpotsText} (${totalSpots} total)`;
+          }
           
           card.innerHTML = `
             <div class="summary-card-left">
               <div class="summary-card-title">${escapeHtml(participant.redditUser)}</div>
-              <div class="summary-card-subtitle">${participant.spots} ${spotsText}</div>
+              <div class="summary-card-subtitle">${spotDisplay}</div>
             </div>
             <div class="summary-card-right">
-              <div class="summary-card-amount">$${(parseFloat(participant.owed) || 0).toFixed(2)}</div>
+              <div class="summary-card-amount">$${displayOwed.toFixed(2)}</div>
               <div class="summary-card-badge">${badge}</div>
             </div>
           `;
@@ -5745,8 +6136,11 @@ function updateStatsImmediate() {
           tabbedByRecipient[key].owed += entry.owed;
         });
 
+        // Sort tab requests alphabetically by payer name
+        const sortedTabs = Object.values(tabbedByRecipient).sort((a, b) => a.payer.localeCompare(b.payer));
+        
         // Populate tab requests list
-        Object.values(tabbedByRecipient).forEach(tab => {
+        sortedTabs.forEach(tab => {
           const card = document.createElement('div');
           card.className = 'summary-card tab-request';
           
@@ -6601,13 +6995,24 @@ function updateStatsImmediate() {
         return;
       }
       
-      // Filter by search term (show ALL participants, filter by search)
+      // Filter by search term AND tab-related comments only
       // ⚡ PERFORMANCE: Pre-lowercase searchTerm once instead of inside loop
       const searchLower = searchTerm.toLowerCase();
+      
+      // Tab-related keywords to filter
+      const tabKeywords = ['tabbed', 'tab', 'wff', 'retabs'];
+      
       const filtered = appState.participants.filter(p => {
+        const comment = (p.comment || '').toLowerCase();
+        
+        // First filter: Only show comments containing tab-related keywords
+        const hasTabKeyword = tabKeywords.some(keyword => comment.includes(keyword));
+        if (!hasTabKeyword) return false;
+        
+        // Second filter: Apply search term if provided
         if (!searchTerm) return true;
         return (p.redditUser || '').toLowerCase().includes(searchLower) ||
-               (p.comment || '').toLowerCase().includes(searchLower) ||
+               comment.includes(searchLower) ||
                (p.tabbed || '').toLowerCase().includes(searchLower);
       });
       
@@ -7054,6 +7459,7 @@ function updateStatsImmediate() {
     // ============ MARK PAID MODAL ============
     let markPaidChanges = {}; // Temporary storage for unsaved changes
     let markPaidGlobalListenersAttached = false; // Prevent duplicate document-level listeners
+    let markPaidCurrentFilter = 'all'; // Track current payment filter (all, paid, unpaid)
 
     function openMarkPaidModal() {
       const modal = document.getElementById('markPaidModal');
@@ -7069,10 +7475,23 @@ function updateStatsImmediate() {
       // Reset changes
       markPaidChanges = {};
       
+      // Reset filter to 'all'
+      markPaidCurrentFilter = 'all';
+      
       // Clear search
       if (search) {
         search.value = '';
       }
+      
+      // Reset filter buttons
+      const filterButtons = document.querySelectorAll('.mark-paid-filter-btn');
+      filterButtons.forEach(btn => {
+        if (btn.dataset.filter === 'all') {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
       
       // Render participant list
       renderMarkPaidList();
@@ -7090,36 +7509,12 @@ function updateStatsImmediate() {
       
       if (!listContainer) return;
       
-      // ✅ GROUP PARTICIPANTS BY USERNAME - Combine duplicate entries
-      const userGroups = new Map();
+      // ✅ SHOW EACH COMMENT AS SEPARATE ENTRY - No grouping
+      const entries = [];
       appState.participants.forEach((p, index) => {
         if ((p.spots || 0) === 0) return; // Skip waitlist
         
-        const user = p.redditUser;
-        if (!userGroups.has(user)) {
-          userGroups.set(user, {
-            redditUser: user,
-            totalSpots: 0,
-            totalOwed: 0,
-            allPaid: true,
-            indices: [],
-            tabComments: [],
-            nonTabComments: []
-          });
-        }
-        
-        const group = userGroups.get(user);
-        group.totalSpots += p.spots || 0;
-        group.totalOwed += parseFloat(p.owed) || 0;
-        group.indices.push(index);
-        
-        // Check if this entry is paid
         const isPaid = markPaidChanges.hasOwnProperty(index) ? markPaidChanges[index] : (p.paid || false);
-        if (!isPaid) {
-          group.allPaid = false;
-        }
-        
-        // Categorize comments
         const comment = p.comment || '';
         const commentLower = comment.toLowerCase();
         const isTab = commentLower && (
@@ -7128,84 +7523,127 @@ function updateStatsImmediate() {
           commentLower.includes('wff')
         );
         
-        if (comment) {
-          if (isTab) {
-            group.tabComments.push(comment);
-          } else {
-            group.nonTabComments.push(comment);
-          }
-        }
+        // Get name from mapping function instead of just p.name
+        const displayName = getNameFromMapping(p.redditUser) || p.name || '';
+        
+        // For TAB comments, get the tabbed person's name
+        const tabbedUser = p.tabbed || '';
+        const tabbedName = tabbedUser ? (getNameFromMapping(tabbedUser) || '') : '';
+        
+        entries.push({
+          index: index,
+          redditUser: p.redditUser,
+          name: displayName,
+          tabbedUser: tabbedUser,
+          tabbedName: tabbedName,
+          spots: p.spots || 0,
+          owed: parseFloat(p.owed) || 0,
+          isPaid: isPaid,
+          comment: comment,
+          isTab: isTab
+        });
       });
       
-      // Convert to array and filter by search term
-      const userArray = Array.from(userGroups.values());
-      const filteredUsers = userArray.filter((group) => {
+      // Filter by search term AND payment filter
+      const filteredEntries = entries.filter((entry) => {
+        // First apply payment filter based on ORIGINAL status (not pending changes)
+        const originalStatus = appState.participants[entry.index]?.paid || false;
+        if (markPaidCurrentFilter === 'paid' && !originalStatus) return false;
+        if (markPaidCurrentFilter === 'unpaid' && originalStatus) return false;
+        
+        // Then apply search term
         if (!searchTerm) return true;
         
         const search = searchTerm.toLowerCase();
-        const username = (group.redditUser || '').toLowerCase();
-        const allComments = [...group.tabComments, ...group.nonTabComments].join(' ').toLowerCase();
-        const status = group.allPaid ? 'paid' : 'unpaid';
+        const username = (entry.redditUser || '').toLowerCase();
+        const comment = (entry.comment || '').toLowerCase();
+        const status = entry.isPaid ? 'paid' : 'unpaid';
+        const fullName = (entry.name || '').toLowerCase();
+        const tabbedName = (entry.tabbedName || '').toLowerCase();
         
-        return username.includes(search) || allComments.includes(search) || status.includes(search);
+        // ✅ FIX: Exact match for status to prevent "paid" matching "unpaid"
+        const matchesStatus = status === search || (search === 'pending' && status === 'unpaid');
+        
+        return username.includes(search) || 
+               comment.includes(search) || 
+               matchesStatus ||
+               fullName.includes(search) ||
+               tabbedName.includes(search);
       });
       
       // Update participant count
       if (participantCount) {
-        participantCount.textContent = `${filteredUsers.length} participant${filteredUsers.length !== 1 ? 's' : ''}`;
+        participantCount.textContent = `${filteredEntries.length} entr${filteredEntries.length !== 1 ? 'ies' : 'y'}`;
       }
       
       // Render list
-      listContainer.innerHTML = filteredUsers.map((group) => {
-        const isPaid = group.allPaid;
-        const statusClass = isPaid ? 'status-paid' : 'status-unpaid';
-        const statusText = isPaid ? 'Paid' : 'Unpaid';
-        const itemClass = isPaid ? 'mark-paid-item paid' : 'mark-paid-item';
+      listContainer.innerHTML = filteredEntries.map((entry) => {
+        const statusClass = entry.isPaid ? 'status-paid' : 'status-unpaid';
+        const statusText = entry.isPaid ? 'Paid' : 'Unpaid';
+        const itemClass = entry.isPaid ? 'mark-paid-item paid' : 'mark-paid-item';
         
-        // ✅ Show ALL comments separately (each on new line)
+        // Format comment with TAB badge if applicable, or name/initials for non-tab
         let commentHTML = '';
-        const allComments = [];
-        
-        // Add TAB comments with badges
-        if (group.tabComments.length > 0) {
-          group.tabComments.forEach(comment => {
-            allComments.push(`<span class=\"tab-badge\">TAB</span> ${escapeHtml(comment)}`);
-          });
+        if (entry.comment) {
+          if (entry.isTab) {
+            // For TAB comments, show tabbed person's name or initials
+            let tabbedNameOrInitials = '';
+            if (entry.tabbedName && entry.tabbedName.trim()) {
+              // Use full name of tabbed person if available
+              tabbedNameOrInitials = entry.tabbedName.trim();
+            } else if (entry.tabbedUser) {
+              // Generate initials from tabbed user's Reddit username (2 letters with space)
+              const username = entry.tabbedUser.trim();
+              const initials = username.substring(0, 2).toUpperCase();
+              tabbedNameOrInitials = initials.split('').join(' '); // Add space: "AB" -> "A B"
+            }
+            
+            if (tabbedNameOrInitials) {
+              commentHTML = `<span class=\"tab-badge\">TAB</span> <strong>(${escapeHtml(tabbedNameOrInitials)})</strong> ${escapeHtml(entry.comment)}`;
+            } else {
+              commentHTML = `<span class=\"tab-badge\">TAB</span> ${escapeHtml(entry.comment)}`;
+            }
+          } else {
+            // For non-tab comments, show name or initials in parentheses
+            let nameOrInitials = '';
+            if (entry.name && entry.name.trim()) {
+              // Use full name if available
+              nameOrInitials = entry.name.trim();
+            } else if (entry.redditUser) {
+              // Generate initials from Reddit username (2 letters with space)
+              const username = entry.redditUser.trim();
+              const initials = username.substring(0, 2).toUpperCase();
+              nameOrInitials = initials.split('').join(' '); // Add space: "AB" -> "A B"
+            }
+            
+            if (nameOrInitials) {
+              commentHTML = `<strong>(${escapeHtml(nameOrInitials)})</strong> ${escapeHtml(entry.comment)}`;
+            } else {
+              commentHTML = escapeHtml(entry.comment);
+            }
+          }
         }
-        
-        // Add non-TAB comments (no badge, just plain)
-        if (group.nonTabComments.length > 0) {
-          group.nonTabComments.forEach(comment => {
-            allComments.push(escapeHtml(comment));
-          });
-        }
-        
-        commentHTML = allComments.join('<br>');
-        
-        // Store all indices as comma-separated string for click handler
-        const indicesStr = group.indices.join(',');
         
         return `
-          <div class=\"${itemClass}\" data-indices=\"${indicesStr}\">
+          <div class=\"${itemClass}\" data-indices=\"${entry.index}\">
             <div class=\"mark-paid-item-left\">
-              <span class=\"mark-paid-user\">${escapeHtml(group.redditUser || '')}</span>
-              <span class=\"mark-paid-spots\">${group.totalSpots} spot${group.totalSpots !== 1 ? 's' : ''}</span>
+              <span class=\"mark-paid-user\">${escapeHtml(entry.redditUser || '')}</span>
+              <span class=\"mark-paid-spots\">${entry.spots} spot${entry.spots !== 1 ? 's' : ''}</span>
               ${commentHTML ? `<span class=\"mark-paid-comment\">${commentHTML}</span>` : ''}
             </div>
             <div style=\"display: flex; align-items: center; gap: 12px;\">
-              <span class=\"mark-paid-owed\">$${group.totalOwed.toFixed(2)}</span>
+              <span class=\"mark-paid-owed\">$${entry.owed.toFixed(2)}</span>
               <span class=\"mark-paid-status ${statusClass}\">${statusText}</span>
             </div>
           </div>
         `;
       }).join('');
       
-      // Update counter - Count unique USERS who are paid, not individual entries
-      // ✅ BUG FIX: Counter now matches the grouped display
-      const paidUsers = userArray.filter(group => group.allPaid).length;
+      // Update counter - Count individual entries that are paid
+      const paidEntries = entries.filter(entry => entry.isPaid).length;
       
       if (counter) {
-        counter.textContent = `💵 ${paidUsers} participant${paidUsers !== 1 ? 's' : ''} marked as paid`;
+        counter.textContent = `💵 ${paidEntries} entr${paidEntries !== 1 ? 'ies' : 'y'} marked as paid`;
       }
       
       // Attach click listeners to toggle paid status
@@ -7214,24 +7652,21 @@ function updateStatsImmediate() {
           const item = e.target.closest('.mark-paid-item');
           if (!item) return;
           
-          // ✅ Get all indices for this user (may be multiple entries)
+          // ✅ Get the index for this individual entry
           const indicesStr = item.dataset.indices;
           if (!indicesStr) return;
           
-          const indices = indicesStr.split(',').map(i => parseInt(i)).filter(idx => !isNaN(idx)); // ⚡ CRITICAL BUG FIX: Filter out NaN values
+          const index = parseInt(indicesStr);
+          if (isNaN(index)) return;
           
-          // ✅ Determine current status (all must be paid for group to show as paid)
-          const allPaid = indices.every(index => {
-            const participant = appState.participants[index];
-            if (!participant) return false;
-            return markPaidChanges.hasOwnProperty(index) ? markPaidChanges[index] : (participant.paid || false);
-          });
+          // ✅ Determine current status for this entry
+          const participant = appState.participants[index];
+          if (!participant) return;
           
-          // ✅ Toggle all entries for this user
-          const newStatus = !allPaid;
-          indices.forEach(index => {
-            markPaidChanges[index] = newStatus;
-          });
+          const currentStatus = markPaidChanges.hasOwnProperty(index) ? markPaidChanges[index] : (participant.paid || false);
+          
+          // ✅ Toggle this single entry
+          markPaidChanges[index] = !currentStatus;
           
           // Re-render list to show changes
           const searchInput = document.getElementById('markPaidSearch');
@@ -7393,6 +7828,25 @@ function updateStatsImmediate() {
         });
       }
       
+      // Filter buttons
+      const filterButtons = document.querySelectorAll('.mark-paid-filter-btn');
+      filterButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const filter = btn.dataset.filter;
+          
+          // Update active state
+          filterButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Update current filter
+          markPaidCurrentFilter = filter;
+          
+          // Re-render list with current search term
+          const currentSearch = search ? search.value : '';
+          renderMarkPaidList(currentSearch);
+        });
+      });
+      
       // ❌ REMOVED: Click outside to close - users must click Cancel button
       // if (modal) {
       //   modal.addEventListener('click', (e) => {
@@ -7542,7 +7996,7 @@ function updateStatsImmediate() {
       try {
         localStorage.setItem('raffleui_tabbed_column_visible', isVisible ? '1' : '0');
       } catch (e) {
-        console.error('Failed to save tabbed column visibility:', e); // ⚡ CRITICAL BUG FIX: Prevent crash on quota exceeded
+        console.error('Failed to save tabbed column visibility:', e); // ��� CRITICAL BUG FIX: Prevent crash on quota exceeded
       }
     }
 
@@ -7635,8 +8089,7 @@ function updateStatsImmediate() {
     });
 
     // ============ AUTO-POLLING REDDIT SCAN ============
-    let pollingInterval = null;
-    let isScanning = false;
+    // (pollingInterval and isScanning declared at top of script section)
 
     async function performAutoScan() {
       // Prevent concurrent scans
@@ -7675,6 +8128,8 @@ function updateStatsImmediate() {
         
         appState.participants.forEach(p => {
           if (p.commentId) {
+            // ⚡ CRITICAL BUG FIX: Add ALL participants to existingCommentIds to prevent duplicate detection
+            // The participantStatuses map tells the backend which ones to re-scan for updates
             existingCommentIds.push(p.commentId);
             
             if (p.status) {
@@ -7705,8 +8160,18 @@ function updateStatsImmediate() {
           isScanning = false; // ⚡ CRITICAL BUG FIX: Reset flag on error!
           return;
         }
-
+        
         const newParticipants = result.participants || [];
+        
+        // ⚡ DEBUG: Log Python debug output to browser console (BEFORE early return!)
+        console.log('🔍 Auto-scan completed:', { 
+          newParticipants: newParticipants.length,
+          hasDebugLogs: !!result.debug_logs 
+        });
+        
+        if (result.debug_logs) {
+          console.log('🐍 PYTHON DEBUG OUTPUT:\n' + result.debug_logs);
+        }
 
         if (newParticipants.length === 0) {
           isScanning = false; // ⚡ CRITICAL BUG FIX: Reset flag when no new participants!

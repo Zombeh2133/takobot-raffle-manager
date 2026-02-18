@@ -34,7 +34,7 @@
 
 /* CHANGE TO: */
 body {
-  background-color: #FAF8F6;
+  background: linear-gradient(135deg, #1e1b4b 0%, #3b0764 50%, #1e1b4b 100%);
   display: flex;
   justify-content: flex-start;  /* Align left instead of center */
   align-items: flex-start;      /* Align top instead of center */
@@ -1930,11 +1930,19 @@ function loadTopParticipants(history, total, completed, cancelled, givvyFunds) {
     const participants = new Map();
 
     // OPTIMIZED: Use Map instead of object, and early exit for completed raffles
+    // Track unique raffles per user (not total comments)
     for (const raffle of history) {
       if (raffle.status !== 'completed' || !raffle.participants) continue;
 
+      // Use Set to track unique users in this raffle
+      const usersInThisRaffle = new Set();
       for (const p of raffle.participants) {
         const user = p.redditUser;
+        usersInThisRaffle.add(user);
+      }
+
+      // Count this raffle once per unique user
+      for (const user of usersInThisRaffle) {
         if (participants.has(user)) {
           const data = participants.get(user);
           data.count++;

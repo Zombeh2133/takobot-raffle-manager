@@ -16,9 +16,11 @@
 
   <style>
     :root {
-      --app-width: 1600px;
-      --app-height: 1020px;
+      --app-width: 100vw;
+      --app-height: 100vh;
       --sidebar-width: 252px;
+      --content-left: 276px;
+      --content-width: calc(100vw - 276px - 20px);
     }
 
     body{
@@ -30,14 +32,6 @@
       margin:0;
       font-family:'Inter',sans-serif;
       overflow: hidden;
-    }
-
-    /* Scale down for smaller screens */
-    @media (max-width: 1600px), (max-height: 1020px) {
-      .white-square {
-        transform-origin: center center;
-        transform: scale(calc(min(100vw / 1600, 100vh / 1020)));
-      }
     }
 
     .top-sidebar{
@@ -684,6 +678,9 @@
         </button>
         <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/master-tracker'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
           🗂️ Master Tracker
+        </button>
+        <button class="admin-page-btn" style="padding: 10px 20px; background: #ffffff; border: 2px solid #e5e7eb; border-radius: 10px; font-size: 14px; font-weight: 600; font-family: 'Inter', sans-serif; color: #374151; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; gap: 8px;" onclick="window.location.href='/winner-dashboard.html'" onmouseover="this.style.borderColor='#8b5cf6'; this.style.background='rgba(139, 92, 246, 0.05)'; this.style.color='#8b5cf6';" onmouseout="this.style.borderColor='#e5e7eb'; this.style.background='#ffffff'; this.style.color='#374151';">
+          🏆 Winners
         </button>
       </div>
 

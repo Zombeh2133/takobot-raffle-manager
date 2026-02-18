@@ -106,16 +106,17 @@ def clean_comment_text(text: str) -> str:
 
     return text
 
-def parse_host_reply(reply_text: str) -> Tuple[Optional[str], Optional[int]]:
+def parse_host_reply(reply_text: str) -> Tuple[Optional[str], Optional[int], Optional[str]]:
     """
-    Parse host's reply to extract spot count
+    Parse host's reply to extract spot count and beneficiary username
 
-    Returns: (status, spot_count)
-    - status: "confirmed", "waitlist", or None
+    Returns: (status, spot_count, beneficiary_username)
+    - status: "confirmed", "waitlist", "removed", or None
     - spot_count: number of spots assigned (count of numbers in "You got X, Y, Z")
+    - beneficiary_username: username mentioned in "u/username got X, Y, Z" format, or None
     """
     if not reply_text:
-        return (None, None)
+        return (None, None, None)
 
     # Strip whitespace from the original text so indices match
     reply_text = reply_text.strip()
@@ -123,45 +124,79 @@ def parse_host_reply(reply_text: str) -> Tuple[Optional[str], Optional[int]]:
 
     # Check for waitlist
     if "waitlist starts here" in reply_lower:
-        return ("waitlist", 0)
+        return ("waitlist", 0, None)
 
-    # Check for "You got" format anywhere in the reply (not just at start)
+    # CHECK 1: Proxy/mention format: "u/username got X, Y, Z" or "/u/username got X, Y, Z"
+    # This handles: proxy requests, host self-replies, etc.
+    proxy_match = re.search(r'/?u/(\w+)\s+got', reply_text, re.IGNORECASE)
+    if proxy_match:
+        beneficiary_username = proxy_match.group(1)
+        
+        # Extract spot numbers from the part AFTER "got"
+        got_index = reply_lower.find("got", proxy_match.start())
+        from_got = reply_text[got_index:]
+        
+        # Split at newline or common delimiters
+        spot_section = from_got.split('\n')[0]
+        for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
+            if delimiter in spot_section:
+                spot_section = spot_section.split(delimiter)[0]
+                break
+        
+        # Skip "got" text and extract numbers
+        after_got = spot_section[3:].strip()  # "got" is 3 characters
+        numbers = re.findall(r'\b\d+\b', after_got)
+        
+        if numbers:
+            spot_count = len(numbers)
+            return ("confirmed", spot_count, beneficiary_username)
+        
+        return (None, None, None)
+
+    # CHECK 2: Regular format "You got" - beneficiary is the comment author
     if "you got" not in reply_lower:
-        return (None, None)
+        return (None, None, None)
 
-    # Find the "You got" part and extract ONLY that section
-    # Strategy: Extract everything between "You got" and any delimiter
+    # ✅ WORKAROUND: Handle multiple "You got" occurrences (e.g., "You got the last two. GL.\nYou got 8, 20")
+    # Split by newlines and find the "You got" line with actual spot numbers
+    lines = reply_text.split('\n')
+    best_match = None
+    best_spot_count = 0
+    
+    for line in lines:
+        line_lower = line.lower()
+        if "you got" not in line_lower:
+            continue
+        
+        # Find "you got" in this line
+        you_got_index = line_lower.find("you got")
+        if you_got_index == -1:
+            continue
+        
+        # Extract from "You got" onwards in this line
+        from_you_got = line[you_got_index:]
+        
+        # Stop at common delimiters
+        spot_section = from_you_got
+        for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
+            if delimiter in spot_section:
+                spot_section = spot_section.split(delimiter)[0]
+                break
+        
+        # Extract numbers after "you got"
+        you_got_phrase = "you got"
+        after_you_got = spot_section[len(you_got_phrase):].strip()
+        numbers = re.findall(r'\b\d+\b', after_you_got)
+        
+        # Keep the match with the most numbers (actual spot assignments vs text like "the last two")
+        if numbers and len(numbers) > best_spot_count:
+            best_spot_count = len(numbers)
+            best_match = numbers
+    
+    if best_match:
+        return ("confirmed", best_spot_count, None)  # None = use comment author
 
-    # First, find where "You got" starts (case-insensitive)
-    you_got_index = reply_lower.find("you got")
-    if you_got_index == -1:
-        return (None, None)
-
-    # Extract from "You got" onwards (now using stripped text)
-    from_you_got = reply_text[you_got_index:]
-
-    # Now split at common delimiters to isolate ONLY the spot numbers
-    # Stop at: newline, "Please", "Follow", "GL", etc.
-    spot_section = from_you_got.split('\n')[0]  # Take first line only
-
-    # Also stop at common phrases that come AFTER spot assignment
-    for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
-        if delimiter in spot_section:
-            spot_section = spot_section.split(delimiter)[0]
-            break
-
-    # ✅ FIX: Skip "you got" text and extract numbers ONLY from the part AFTER "you got"
-    # This prevents "1 more spot! You got 5, 12" from capturing the "1"
-    # Use dynamic length instead of hard-coded 7 to handle edge cases
-    you_got_phrase = "you got"
-    after_you_got = spot_section[len(you_got_phrase):].strip()
-    numbers = re.findall(r'\b\d+\b', after_you_got)
-
-    if numbers:
-        spot_count = len(numbers)
-        return ("confirmed", spot_count)
-
-    return (None, None)
+    return (None, None, None)
 
 def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]], depth: int = 0, op_author: Optional[str] = None):
     """Recursively walk Reddit comment tree"""
@@ -172,6 +207,8 @@ def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]],
 
         # Collect OP replies for spot confirmation
         op_replies = []
+        # ✅ NEW: Also collect ALL replies (for removal detection)
+        all_replies = []
         replies = d.get("replies")
         if isinstance(replies, dict):
             rep_children = (replies.get("data") or {}).get("children") or []
@@ -179,6 +216,13 @@ def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]],
                 if rep_child and rep_child.get("kind") == "t1":
                     rep_data = rep_child.get("data") or {}
                     reply_author = rep_data.get("author", "")
+
+                    # Store ALL replies for removal detection
+                    all_replies.append({
+                        "author": reply_author,
+                        "body": rep_data.get("body", ""),
+                        "is_submitter": rep_data.get("is_submitter", False)
+                    })
 
                     # Check if this reply is from OP - check BOTH is_submitter flag AND author match
                     is_from_op = rep_data.get("is_submitter", False) or (op_author and reply_author.lower() == op_author.lower())
@@ -198,6 +242,7 @@ def walk_comment_tree(children: List[Dict[str, Any]], out: List[Dict[str, Any]],
             "permalink": ("https://www.reddit.com" + d["permalink"]) if d.get("permalink") else "",
             "depth": depth,
             "op_replies": op_replies,  # Store OP replies for parsing
+            "all_replies": all_replies,  # Store ALL replies for removal detection
             "is_submitter": d.get("is_submitter", False),  # Is this comment from the post author (OP)?
             "parent_id": d.get("parent_id", ""),  # Parent comment ID for threading
         })
@@ -386,6 +431,50 @@ def is_tab_request(text: str) -> bool:
 
     return False
 
+def is_removal_reply(reply_text: str, comment_author: str) -> bool:
+    """
+    Check if host reply indicates user removal (unpaid/removed)
+    
+    Patterns:
+    1. Host posts: "Attention unpaid participants: your unpaid slots have been removed due to lack of payment."
+       Then replies: "u/username" (just the username)
+    2. Reply contains removal keywords + username mention
+    
+    ⚠️ CRITICAL: This should ONLY match actual removals, NOT confirmations that mention "removed" in instructions
+    """
+    if not reply_text:
+        return False
+    
+    reply_lower = reply_text.lower().strip()
+    
+    # ✅ SAFETY CHECK: If reply contains spot assignment, it's NOT a removal
+    # This prevents false positives like "You got 13, 26. Pay within 30 mins or slots will be removed"
+    if "you got" in reply_lower or re.search(r'/?u/\w+\s+got', reply_lower):
+        return False
+    
+    # Pattern 1: Reply is JUST a username mention (with optional /u/ prefix)
+    # Example: "u/dfresh1518" or "/u/dfresh1518"
+    username_only_pattern = r'^/?u/\w+$'
+    if re.match(username_only_pattern, reply_lower):
+        return True
+    
+    # Pattern 2: Reply contains removal keywords
+    removal_keywords = [
+        'removed',
+        'unpaid',
+        'slots have been removed',
+        'have been removed',
+        'slot has been removed',
+        'due to lack of payment',
+        'did not pay'
+    ]
+    
+    for keyword in removal_keywords:
+        if keyword in reply_lower:
+            return True
+    
+    return False
+
 def validate_parse_results(participants: List[Dict[str, Any]], total_spots: Optional[int]) -> List[Dict[str, Any]]:
     """Validate parsed results and flag potential errors for review"""
     if not participants:
@@ -466,11 +555,71 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
     comments, op_author = fetch_reddit_comments(post_url)
     participants = []
 
+    # ============ PHASE 1: Detect removals from host announcement ============
+    # ✅ ALWAYS scan for removal announcements (independent of raffle fill status)
+    # ✅ Scan ALL comments BEFORE filtering (removal announcements might be in already-processed comments)
+    removed_users = set()
+    
+    print(f"🔍 Scanning for unpaid participant removal announcements...", file=sys.stderr)
+    
+    for comment in comments:
+        author = comment.get("author", "")
+        body = comment.get("body", "")
+        all_replies = comment.get("all_replies", [])  # ✅ Use all_replies instead of op_replies
+        
+        # Check if this is the host's removal announcement
+        if author and author.lower() == (op_author.lower() if op_author else ""):
+            body_lower = body.lower().strip()
+            
+            # Pattern 1: Standard removal announcement
+            if "attention unpaid participants" in body_lower and "your unpaid slots have been removed due to lack of payment" in body_lower:
+                print(f"🚨 Found removal announcement from u/{author}", file=sys.stderr)
+                
+                # Check ALL replies to this announcement for usernames (not just OP replies)
+                for reply in all_replies:
+                    reply_author = reply.get("author", "")
+                    reply_body = reply.get("body", "").strip()
+                    
+                    # Only process replies from the host
+                    if reply_author.lower() == op_author.lower():
+                        # Check if reply is just a username mention
+                        username_match = re.match(r'^/?u/(\w+)$', reply_body, re.IGNORECASE)
+                        if username_match:
+                            removed_username = username_match.group(1)
+                            removed_users.add(removed_username.lower())
+                            print(f"🚫 Marked u/{removed_username} for removal (found in announcement replies)", file=sys.stderr)
+            
+            # Pattern 2: Alternative removal phrases
+            elif any(phrase in body_lower for phrase in [
+                "unpaid slots have been removed",
+                "slots have been removed due to lack of payment",
+                "removed due to non-payment",
+                "removed for non-payment"
+            ]):
+                print(f"🚨 Found removal announcement (alt format) from u/{author}", file=sys.stderr)
+                
+                # Check ALL replies for usernames
+                for reply in all_replies:
+                    reply_author = reply.get("author", "")
+                    reply_body = reply.get("body", "").strip()
+                    
+                    if reply_author.lower() == op_author.lower():
+                        username_match = re.match(r'^/?u/(\w+)$', reply_body, re.IGNORECASE)
+                        if username_match:
+                            removed_username = username_match.group(1)
+                            removed_users.add(removed_username.lower())
+                            print(f"🚫 Marked u/{removed_username} for removal (alt format)", file=sys.stderr)
+    
+    if removed_users:
+        print(f"📊 Found {len(removed_users)} users marked for removal: {', '.join(sorted(removed_users))}", file=sys.stderr)
+    else:
+        print(f"📊 No removal announcements found", file=sys.stderr)
+
     # Convert pending_tab_comment_ids to set for fast lookup
     pending_tab_ids = set(pending_tab_comment_ids) if pending_tab_comment_ids else set()
 
     # ✅ Filter out already-processed comments BEFORE parsing
-    # BUT keep comments that have tab_pending status (need to re-check for host replies)
+    # BUT keep comments that have tab_pending status (need to re-scan for host replies)
     if existing_comment_ids:
         existing_ids_set = set(existing_comment_ids)
         original_count = len(comments)
@@ -479,6 +628,7 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         filtered_count = original_count - len(comments)
         print(f"✅ Filtered out {filtered_count} already-processed comments. Keeping {len(pending_tab_ids)} tab_pending comments for re-scan. {len(comments)} total comments to parse.", file=sys.stderr)
 
+    # ============ PHASE 2: Parse participant comments ============
     for i, comment in enumerate(comments):
         author = comment.get("author", "")
         body = comment.get("body", "")
@@ -507,35 +657,166 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         # Look for OP's reply to this comment
         host_status = None
         spot_count = None
+        beneficiary_username = None
+        
+        # ✅ NEW: Track if we need to create multiple participants from one reply
+        # (e.g., "You got 1,2,3 u/username got 4,5,6")
+        participants_to_add = []
 
         if op_replies:
-            # Check each OP reply for "You got" format
+            # Check each OP reply
             for op_reply in op_replies:
                 reply_body = op_reply.get("body", "")
-                status, spots = parse_host_reply(reply_body)
+                
+                # Parse for spot assignment
+                status, spots, beneficiary = parse_host_reply(reply_body)
 
                 if status:
-                    host_status = status
-                    spot_count = spots
-                    print(f"✅ Found host reply for u/{author}: '{reply_body[:50]}...' → {spots} spots (status: {status})", file=sys.stderr)
-                    break
+                    # ✅ SPECIAL CASE: Check if reply contains BOTH "You got" AND "u/username got"
+                    # Example: "You got 1,2,3 u/username got 200"
+                    reply_lower = reply_body.lower()
+                    has_you_got = "you got" in reply_lower
+                    has_proxy_got = re.search(r'/?u/(\w+)\s+got', reply_body, re.IGNORECASE)
+                    
+                    if has_you_got and has_proxy_got:
+                        # This reply assigns spots to BOTH comment author AND proxy user
+                        print(f"🔄 Found DUAL assignment in one reply for u/{author}", file=sys.stderr)
+                        
+                        # Parse "You got" for comment author - manually extract to avoid parse_host_reply confusion
+                        you_got_index = reply_lower.find("you got")
+                        from_you_got = reply_body[you_got_index:]
+                        
+                        # Find where the proxy assignment starts (if exists)
+                        proxy_got_match = re.search(r'/?u/\w+\s+got', from_you_got, re.IGNORECASE)
+                        if proxy_got_match:
+                            # Extract only the "You got" section (before proxy assignment)
+                            you_section = from_you_got[:proxy_got_match.start()]
+                        else:
+                            you_section = from_you_got
+                        
+                        # Split at newline or common delimiters
+                        you_section = you_section.split('\n')[0]
+                        for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
+                            if delimiter in you_section:
+                                you_section = you_section.split(delimiter)[0]
+                                break
+                        
+                        # Extract numbers from "You got" section
+                        you_got_phrase = "you got"
+                        after_you_got = you_section[len(you_got_phrase):].strip()
+                        you_numbers = re.findall(r'\b\d+\b', after_you_got)
+                        
+                        if you_numbers:
+                            you_spots = len(you_numbers)
+                            cleaned_comment = clean_comment_text(body)
+                            actual_user = author
+                            
+                            # Check if user is in removal list
+                            user_status = "confirmed"
+                            user_spot_count = you_spots
+                            if actual_user.lower() in removed_users:
+                                print(f"🚫 User u/{actual_user} is in removal list - setting spots to 0 and status to 'removed'", file=sys.stderr)
+                                user_status = "removed"
+                                user_spot_count = 0
+                            
+                            participants_to_add.append({
+                                "redditUser": actual_user,
+                                "name": "",
+                                "comment": cleaned_comment[:100],
+                                "spots": user_spot_count if user_status == "confirmed" else 0,
+                                "requestedSpots": user_spot_count if user_status == "confirmed" else 0,
+                                "owed": (user_spot_count * cost_per_spot) if user_status == "confirmed" else 0,
+                                "paid": False,
+                                "created_utc": created_utc,
+                                "commentId": comment_id,
+                                "status": user_status
+                            })
+                            print(f"✅ Found 'You got' for u/{actual_user}: '{reply_body[:50]}...' → {user_spot_count} spots (status: {user_status})", file=sys.stderr)
+                        
+                        # Parse "u/username got" for proxy user
+                        # Extract proxy username and spots manually since parse_host_reply returns the FIRST match
+                        proxy_match = re.search(r'/?u/(\w+)\s+got', reply_body, re.IGNORECASE)
+                        if proxy_match:
+                            proxy_username = proxy_match.group(1)
+                            
+                            # Extract spot numbers from the part AFTER "got"
+                            got_index = reply_lower.find("got", proxy_match.start())
+                            from_got = reply_body[got_index:]
+                            
+                            # Split at newline or common delimiters
+                            spot_section = from_got.split('\n')[0]
+                            for delimiter in ["Please", "please", "Follow", "follow", "GL", "Gl", "Good luck", "good luck", "GLGL", "glgl"]:
+                                if delimiter in spot_section:
+                                    spot_section = spot_section.split(delimiter)[0]
+                                    break
+                            
+                            # Skip "got" text and extract numbers
+                            after_got = spot_section[3:].strip()  # "got" is 3 characters
+                            numbers = re.findall(r'\b\d+\b', after_got)
+                            
+                            if numbers:
+                                proxy_spots = len(numbers)
+                                cleaned_comment = clean_comment_text(body)
+                                
+                                # Check if proxy user is in removal list
+                                proxy_status = "confirmed"
+                                proxy_spot_count = proxy_spots
+                                if proxy_username.lower() in removed_users:
+                                    print(f"🚫 User u/{proxy_username} is in removal list - setting spots to 0 and status to 'removed'", file=sys.stderr)
+                                    proxy_status = "removed"
+                                    proxy_spot_count = 0
+                                
+                                participants_to_add.append({
+                                    "redditUser": proxy_username,
+                                    "name": "",
+                                    "comment": cleaned_comment[:100],
+                                    "spots": proxy_spot_count if proxy_status == "confirmed" else 0,
+                                    "requestedSpots": proxy_spot_count if proxy_status == "confirmed" else 0,
+                                    "owed": (proxy_spot_count * cost_per_spot) if proxy_status == "confirmed" else 0,
+                                    "paid": False,
+                                    "created_utc": created_utc,
+                                    "commentId": comment_id,
+                                    "status": proxy_status
+                                })
+                                print(f"✅ Found PROXY in dual assignment: u/{author} requested for u/{proxy_username}: '{reply_body[:50]}...' → {proxy_spot_count} spots (status: {proxy_status})", file=sys.stderr)
+                        
+                        break  # Found the assignment, stop checking replies
+                    else:
+                        # Normal case: single assignment
+                        host_status = status
+                        spot_count = spots
+                        beneficiary_username = beneficiary
+                        
+                        # Use beneficiary username if provided (proxy request), otherwise use comment author
+                        if beneficiary_username:
+                            print(f"✅ Found PROXY request: u/{author} requested for u/{beneficiary_username}: '{reply_body[:50]}...' → {spots} spots (status: {status})", file=sys.stderr)
+                        else:
+                            print(f"✅ Found host reply for u/{author}: '{reply_body[:50]}...' → {spots} spots (status: {status})", file=sys.stderr)
+                        break
+        else:
+            print(f"🔍 DEBUG: NO OP replies found for u/{author}", file=sys.stderr)
+
+        # ✅ If we have participants to add from dual assignment, add them now
+        if participants_to_add:
+            participants.extend(participants_to_add)
+            continue  # Skip normal processing since we already handled this comment
 
         # ✅ Handle tab/retab requests without host reply
         # If no host reply but comment contains tab/tabbed/retab, add with 0 spots
         if host_status is None:
             if is_tab_request(body):
-                # ✅ Wait 60 seconds before adding tab requests without host reply
+                # ✅ Wait 5 minutes (300 seconds) before adding tab requests without host reply
                 # This gives the host time to respond
                 current_time = time.time()
                 comment_age_seconds = current_time - created_utc
 
-                if comment_age_seconds >= 60:
+                if comment_age_seconds >= 300:
                     host_status = "tab_pending"
                     spot_count = 0
                     print(f"📋 Found TAB request without host reply for u/{author}: '{body[:50]}...' → 0 spots (pending, {int(comment_age_seconds)}s old)", file=sys.stderr)
                 else:
                     # Comment is too recent, skip for now (will be picked up on next scan)
-                    print(f"⏳ Skipping recent TAB request for u/{author} ({int(60 - comment_age_seconds)}s until eligible)", file=sys.stderr)
+                    print(f"⏳ Skipping recent TAB request for u/{author} ({int(300 - comment_age_seconds)}s until eligible)", file=sys.stderr)
                     continue
             else:
                 continue  # Skip this comment - don't add to participants
@@ -543,9 +824,19 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
         # Clean comment text (remove URLs and images) before storing
         cleaned_comment = clean_comment_text(body)
 
+        # Determine the actual Reddit user who gets the spots
+        # If beneficiary_username is set (proxy request), use that. Otherwise use comment author.
+        actual_reddit_user = beneficiary_username if beneficiary_username else author
+
+        # ✅ CHECK: Is this user in the removal list?
+        if actual_reddit_user.lower() in removed_users:
+            print(f"🚫 User u/{actual_reddit_user} is in removal list - setting spots to 0 and status to 'removed'", file=sys.stderr)
+            host_status = "removed"
+            spot_count = 0
+
         # Add participant with host confirmation status
         participants.append({
-            "redditUser": author,
+            "redditUser": actual_reddit_user,  # The user who gets the spots
             "name": "",  # Will be filled by name mapping
             "comment": cleaned_comment[:100],  # Keep original user comment for display
             "spots": spot_count if host_status == "confirmed" else 0,
@@ -554,7 +845,7 @@ def parse_reddit_post(post_url: str, cost_per_spot: float, total_spots: Optional
             "paid": False,
             "created_utc": created_utc,
             "commentId": comment_id,
-            "status": host_status  # "confirmed", "waitlist", or "tab_pending"
+            "status": host_status  # "confirmed", "waitlist", "removed", or "tab_pending"
         })
 
     # Sort by timestamp descending (newest first = oldest at bottom)

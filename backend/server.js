@@ -26,56 +26,6 @@ async function initializeDatabase() {
       )
     `);
     console.log('✅ Database initialized: settings table ready');
-    
-    // 🔧 FIX: Add user_id column to raffle_history if it doesn't exist
-    console.log('🔍 Checking if raffle_history has user_id column...');
-    
-    const columnCheck = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'raffle_history' 
-        AND column_name = 'user_id'
-    `);
-    
-    if (columnCheck.rows.length === 0) {
-      console.log('⚠️  user_id column missing, adding it now...');
-      await pool.query(`
-        ALTER TABLE raffle_history 
-        ADD COLUMN user_id INTEGER
-      `);
-      console.log('✅ Added user_id column to raffle_history');
-    } else {
-      console.log('✅ user_id column already exists');
-    }
-    
-    // 🔧 FIX: Populate missing user_id values in raffle_history
-    console.log('🔍 Checking raffle_history for missing user_id values...');
-    
-    const checkResult = await pool.query(`
-      SELECT COUNT(*) as missing_count
-      FROM raffle_history
-      WHERE user_id IS NULL
-    `);
-    
-    const missingCount = parseInt(checkResult.rows[0].missing_count);
-    
-    if (missingCount > 0) {
-      console.log(`⚠️  Found ${missingCount} raffles with missing user_id`);
-      console.log('🔧 Fixing by matching username to users table...');
-      
-      const updateResult = await pool.query(`
-        UPDATE raffle_history rh
-        SET user_id = u.id
-        FROM users u
-        WHERE rh.username = u.username
-          AND rh.user_id IS NULL
-      `);
-      
-      console.log(`✅ Updated ${updateResult.rowCount} raffle_history records with user_id`);
-    } else {
-      console.log('✅ All raffle_history records already have user_id');
-    }
-    
   } catch (error) {
     console.error('❌ Error initializing database:', error);
   }
@@ -127,9 +77,14 @@ app.get('/api/test', async (req, res) => {
 });
 
 // ============ ACTIVE RAFFLE ENDPOINTS ============
+
 // Save active raffle state
 app.post('/api/raffle/save', async (req, res) => {
   try {
+    console.log('🔵 POST /api/raffle/save - REQUEST RECEIVED');
+    console.log('🔵 Body keys:', Object.keys(req.body));
+    console.log('🔵 Participants count:', req.body.participants?.length);
+    
     const { redditLink, totalSpots, costPerSpot, pollingInterval, participants, fastRaffleEnabled, fastRaffleStartTime } = req.body;
 
     // Get username and user_id from headers (set by FastAPI proxy)
@@ -192,35 +147,22 @@ app.get('/api/raffle/load', async (req, res) => {
     // Get user_id from headers (set by FastAPI proxy)
     const userId = req.headers['x-user-id'];
     const username = req.headers['x-user-name'];
-    const raffleId = req.query.raffleId; // ✅ Add this line
 
     // DEBUG: Log headers
     console.log('🔍 GET /api/raffle/load - Headers:');
     console.log('  X-User-Name:', username);
     console.log('  X-User-Id:', userId);
-    console.log('  Raffle ID:', raffleId); // ✅ Add this line
 
     if (!userId) {
       console.error('❌ Missing user_id header!');
       return res.status(401).json({ ok: false, error: 'User not authenticated' });
     }
 
-    let result; // ✅ Change from const to let
-
-    // ✅ Add this if block
-    if (raffleId) {
-      // Load specific raffle by ID (still filtered by user_id for security)
-      result = await pool.query(
-        'SELECT * FROM active_raffle WHERE id = $1 AND user_id = $2',
-        [raffleId, userId]
-      );
-    } else {
-      // Get only THIS user's most recent active raffle
-      result = await pool.query(
-        'SELECT * FROM active_raffle WHERE user_id = $1 ORDER BY id DESC LIMIT 1',
-        [userId]
-      );
-    }
+    // Get only THIS user's active raffle (filter by user_id)
+    const result = await pool.query(
+      'SELECT * FROM active_raffle WHERE user_id = $1 ORDER BY id DESC LIMIT 1',
+      [userId]
+    );
 
     console.log('✅ Found', result.rows.length, 'raffle(s) for user_id:', userId);
 
@@ -229,66 +171,17 @@ app.get('/api/raffle/load', async (req, res) => {
     }
 
     const raffle = result.rows[0];
-
-    // Parse title from reddit_link (same logic as /api/raffles/active endpoint)
-    let reddit_title = `Raffle #${raffle.id}`;
-
-    if (raffle.reddit_link) {
-      // Try to fetch title from Reddit's public JSON API first
-      try {
-        const redditJsonUrl = raffle.reddit_link.endsWith('.json')
-          ? raffle.reddit_link
-          : `${raffle.reddit_link}.json`;
-
-        console.log('🔍 Fetching title from Reddit API:', redditJsonUrl);
-        const response = await fetch(redditJsonUrl);
-
-        if (response.ok) {
-          const json = await response.json();
-          const postData = json[0]?.data?.children?.[0]?.data;
-          if (postData?.title) {
-            reddit_title = postData.title;
-            console.log('✅ Fetched title from Reddit API:', reddit_title);
-          }
-        }
-      } catch (error) {
-        console.log('⚠️ Could not fetch from Reddit API, falling back to URL parsing');
-      }
-
-      // If Reddit API fetch failed, fall back to URL parsing
-      if (reddit_title === `Raffle #${raffle.id}`) {
-        const urlParts = raffle.reddit_link.split('/');
-        const commentsIndex = urlParts.findIndex(part => part === 'comments');
-
-        if (commentsIndex >= 0 && urlParts.length > commentsIndex + 2) {
-          const titleSlug = urlParts[commentsIndex + 2];
-
-          if (titleSlug) {
-            // Convert slug to readable title
-            reddit_title = titleSlug
-              .replace(/_/g, ' ')
-              .replace(/-/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-
-            console.log('✅ Parsed title from URL:', reddit_title);
-          }
-        }
-      }
-    }
-
     res.json({
       ok: true,
       data: {
-        id: raffle.id,
+        id: raffle.id,  // Include raffle ID
         redditLink: raffle.reddit_link,
         totalSpots: raffle.total_spots,
         costPerSpot: raffle.cost_per_spot,
         pollingInterval: raffle.polling_interval,
         participants: raffle.participants || [],
         fastRaffleEnabled: raffle.fast_raffle_enabled,
-        fastRaffleStartTime: raffle.fast_raffle_start_time,
-        reddit_title: reddit_title
+        fastRaffleStartTime: raffle.fast_raffle_start_time
       }
     });
   } catch (error) {
@@ -327,9 +220,9 @@ app.delete('/api/admin/raffle/:id', async (req, res) => {
     }
 
     console.log('🗑️  Admin deleting raffle ID:', raffleId);
-
+    
     const result = await pool.query('DELETE FROM active_raffle WHERE id = $1 RETURNING *', [raffleId]);
-
+    
     if (result.rows.length === 0) {
       return res.status(404).json({ ok: false, error: 'Raffle not found' });
     }
@@ -348,7 +241,7 @@ app.get('/api/raffles/active', async (req, res) => {
     // Get all active raffles with their current state (NO CACHING)
     // ✅ FIX: JOIN with users table to get the correct username
     const result = await pool.query(`
-      SELECT
+      SELECT 
         ar.*,
         u.username as actual_username
       FROM active_raffle ar
@@ -366,7 +259,7 @@ app.get('/api/raffles/active', async (req, res) => {
     }
 
     // Transform the data for the frontend
-    const raffles = await Promise.all(result.rows.map(async (raffle) => {
+    const raffles = result.rows.map(raffle => {
       // Parse participants - handle both JSON string and array
       let participants = [];
       try {
@@ -404,84 +297,51 @@ app.get('/api/raffles/active', async (req, res) => {
       let isFast = false;
 
       if (raffle.reddit_link) {
-        // Try to fetch title from Reddit's public JSON API first
-        try {
-          const redditJsonUrl = raffle.reddit_link.endsWith('.json')
-            ? raffle.reddit_link
-            : `${raffle.reddit_link}.json`;
-
-          const response = await fetch(redditJsonUrl);
-          if (response.ok) {
-            const json = await response.json();
-            const postData = json[0]?.data?.children?.[0]?.data;
-            if (postData?.title) {
-              raffleTitle = postData.title;
-              console.log(`✅ Fetched title from Reddit API: ${raffleTitle}`);
-            }
-          }
-        } catch (error) {
-          console.log('⚠️ Could not fetch from Reddit API, falling back to URL parsing');
+        // Try to extract title from Reddit URL
+        // Format: https://reddit.com/r/PokemonRaffles/comments/ID/title_slug/
+        // or just the path: /r/pokemonraffles/comments/.../nm_fast_charizard_vmax_rainbow_rare_psa_10_37/
+        
+        let titleSlug = '';
+        
+        // Extract the title slug from URL
+        const urlParts = raffle.reddit_link.split('/');
+        // Find the part after 'comments' and skip the ID
+        const commentsIndex = urlParts.findIndex(part => part === 'comments');
+        if (commentsIndex >= 0 && urlParts.length > commentsIndex + 2) {
+          titleSlug = urlParts[commentsIndex + 2];
         }
-
-        // If Reddit API fetch failed, fall back to URL parsing
-        if (raffleTitle === raffle.reddit_link || raffleTitle === 'Unknown Raffle') {
-          // Try to extract title from Reddit URL
-          // Format: https://reddit.com/r/PokemonRaffles/comments/ID/title_slug/
-          // or just the path: /r/pokemonraffles/comments/.../nm_fast_charizard_vmax_rainbow_rare_psa_10_37/
-
-          let titleSlug = '';
-
-          // Extract the title slug from URL
-          const urlParts = raffle.reddit_link.split('/');
-          // Find the part after 'comments' and skip the ID
-          const commentsIndex = urlParts.findIndex(part => part === 'comments');
-          if (commentsIndex >= 0 && urlParts.length > commentsIndex + 2) {
-            titleSlug = urlParts[commentsIndex + 2];
-          }
-
-          if (titleSlug) {
-            // Convert slug to readable title (replace underscores/dashes with spaces)
-            raffleTitle = titleSlug
-              .replace(/_/g, ' ')
-              .replace(/-/g, ' ')
-              .replace(/\s+/g, ' ')
-              .trim();
-
-            // Apply Title Case
-            raffleTitle = toTitleCase(raffleTitle);
-
-            // ✅ FIX: Force condition codes to UPPERCASE with brackets
-            raffleTitle = raffleTitle.replace(/\b(nm|bnib|nib|lnib|mint|used)\b/gi, (match) => {
-              return '[' + match.toUpperCase() + ']';
-            });
-
-            // Detect FAST raffle
-            isFast = /\bfast\b/i.test(raffleTitle);
-
-            // ✅ FIX: Extract FULL item name (don't truncate, just remove spot count)
-            let cleanedTitle = raffleTitle;
-
-            // Remove the spot count portion (e.g., "37 spots at $10ea" or "- X spots @ $Y/ea")
-            cleanedTitle = cleanedTitle.replace(/\s*-?\s*\d+\s*spots?\s*(at|@).*$/i, '');
-
-            // Also remove trailing numbers (like "37" at the end)
-            cleanedTitle = cleanedTitle.replace(/\s+\d+$/, '');
-
-            // Remove FAST keyword (it's shown as a badge instead)
-            cleanedTitle = cleanedTitle.replace(/\s*-?\s*Fast\s*/gi, '');
-
-            itemName = cleanedTitle.trim() || 'Unknown Item';
-          }
-        } else {
-          // We got a title from Reddit API, now process it
+        
+        if (titleSlug) {
+          // Convert slug to readable title (replace underscores/dashes with spaces)
+          raffleTitle = titleSlug
+            .replace(/_/g, ' ')
+            .replace(/-/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Apply Title Case
+          raffleTitle = toTitleCase(raffleTitle);
+          
+          // ✅ FIX: Force condition codes to UPPERCASE with brackets
+          raffleTitle = raffleTitle.replace(/\b(nm|bnib|nib|lnib|mint|used)\b/gi, (match) => {
+            return '[' + match.toUpperCase() + ']';
+          });
+          
           // Detect FAST raffle
           isFast = /\bfast\b/i.test(raffleTitle);
-
-          // Extract item name (remove spot count)
+          
+          // ✅ FIX: Extract FULL item name (don't truncate, just remove spot count)
           let cleanedTitle = raffleTitle;
+          
+          // Remove the spot count portion (e.g., "37 spots at $10ea" or "- X spots @ $Y/ea")
           cleanedTitle = cleanedTitle.replace(/\s*-?\s*\d+\s*spots?\s*(at|@).*$/i, '');
+          
+          // Also remove trailing numbers (like "37" at the end)
           cleanedTitle = cleanedTitle.replace(/\s+\d+$/, '');
+          
+          // Remove FAST keyword (it's shown as a badge instead)
           cleanedTitle = cleanedTitle.replace(/\s*-?\s*Fast\s*/gi, '');
+          
           itemName = cleanedTitle.trim() || 'Unknown Item';
         }
       }
@@ -510,7 +370,7 @@ app.get('/api/raffles/active', async (req, res) => {
         updatedAt: raffle.updated_at,
         participants: participants
       };
-    }));
+    });
 
     res.json({
       ok: true,
@@ -534,7 +394,7 @@ app.get('/api/admin/all-raffles', async (req, res) => {
 
     // Fetch all active raffles
     const activeResult = await pool.query(`
-      SELECT
+      SELECT 
         ar.id,
         ar.user_id,
         ar.reddit_link,
@@ -552,7 +412,7 @@ app.get('/api/admin/all-raffles', async (req, res) => {
 
     // Fetch all raffle history
     const historyResult = await pool.query(`
-      SELECT
+      SELECT 
         id,
         NULL as user_id,
         reddit_link,
@@ -727,10 +587,10 @@ app.post('/api/admin/finish-raffle', async (req, res) => {
 
     // Get the active raffle data with username from users table
     const raffleResult = await pool.query(
-      `SELECT ar.*, u.username
+      `SELECT ar.*, u.username 
        FROM active_raffle ar
        LEFT JOIN users u ON ar.user_id = u.id
-       WHERE ar.id = $1`,
+       WHERE ar.id = $1`, 
       [id]
     );
 
@@ -759,8 +619,8 @@ app.post('/api/admin/finish-raffle', async (req, res) => {
     // Move to raffle_history as "completed"
     await pool.query(
       `INSERT INTO raffle_history
-       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         raffle.raffle_date || new Date(),
         'completed',
@@ -771,8 +631,7 @@ app.post('/api/admin/finish-raffle', async (req, res) => {
         raffle.total_owed || 0,
         raffle.total_paid || 0,
         winnerData ? JSON.stringify(winnerData) : null,
-        raffle.username,
-        raffle.user_id
+        raffle.username
       ]
     );
 
@@ -811,10 +670,10 @@ app.post('/api/admin/cancel-raffle', async (req, res) => {
 
     // Get the active raffle data with username from users table
     const raffleResult = await pool.query(
-      `SELECT ar.*, u.username
+      `SELECT ar.*, u.username 
        FROM active_raffle ar
        LEFT JOIN users u ON ar.user_id = u.id
-       WHERE ar.id = $1`,
+       WHERE ar.id = $1`, 
       [id]
     );
 
@@ -837,8 +696,8 @@ app.post('/api/admin/cancel-raffle', async (req, res) => {
     // Move to raffle_history as "cancelled"
     await pool.query(
       `INSERT INTO raffle_history
-       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username, user_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         raffle.raffle_date || new Date(),
         'cancelled',
@@ -849,8 +708,7 @@ app.post('/api/admin/cancel-raffle', async (req, res) => {
         raffle.total_owed || 0,
         raffle.total_paid || 0,
         null, // No winner for cancelled raffles
-        raffle.username,
-        raffle.user_id
+        raffle.username
       ]
     );
 
@@ -865,95 +723,11 @@ app.post('/api/admin/cancel-raffle', async (req, res) => {
   }
 });
 
-// ============ PARTICIPANT ENDPOINTS ============
-
-// Update participant paid status
-app.patch('/api/participants/:id/paid', async (req, res) => {
-  try {
-    const participantId = parseInt(req.params.id);
-    const { paid } = req.body;
-    
-    // Get user_id from headers (set by FastAPI proxy)
-    const userId = req.headers['x-user-id'];
-    
-    if (!userId) {
-      return res.status(401).json({ ok: false, error: 'User not authenticated' });
-    }
-    
-    console.log(`💰 Updating participant ${participantId} paid status to:`, paid);
-    
-    // Get the active raffle for this user
-    const raffleResult = await pool.query(
-      'SELECT id, participants FROM active_raffle WHERE user_id = $1 ORDER BY id DESC LIMIT 1',
-      [userId]
-    );
-    
-    if (raffleResult.rows.length === 0) {
-      return res.status(404).json({ ok: false, error: 'Active raffle not found' });
-    }
-    
-    const raffle = raffleResult.rows[0];
-    
-    // Parse participants array
-    let participants = [];
-    try {
-      if (Array.isArray(raffle.participants)) {
-        participants = raffle.participants;
-      } else if (typeof raffle.participants === 'string') {
-        participants = JSON.parse(raffle.participants);
-      } else if (raffle.participants && typeof raffle.participants === 'object') {
-        participants = raffle.participants;
-      }
-    } catch (e) {
-      console.error('Error parsing participants:', e);
-      return res.status(500).json({ ok: false, error: 'Failed to parse participants' });
-    }
-    
-    // Find and update the participant
-    let participantFound = false;
-    participants = participants.map(p => {
-      if (p.id === participantId || p.participantId === participantId) {
-        participantFound = true;
-        return {
-          ...p,
-          paid: paid,
-          paidAt: paid ? new Date().toISOString() : null
-        };
-      }
-      return p;
-    });
-    
-    if (!participantFound) {
-      return res.status(404).json({ ok: false, error: 'Participant not found' });
-    }
-    
-    // Update the raffle with modified participants
-    await pool.query(
-      'UPDATE active_raffle SET participants = $1, updated_at = NOW() WHERE id = $2',
-      [JSON.stringify(participants), raffle.id]
-    );
-    
-    console.log(`✅ Updated participant ${participantId} paid status successfully`);
-    
-    res.json({ ok: true, message: 'Payment status updated' });
-  } catch (error) {
-    console.error('Error updating participant paid status:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
 // ============ RAFFLE HISTORY ENDPOINTS ============
 
 // Save raffle to history
 app.post('/api/raffle/history', async (req, res) => {
   try {
-    // Get user_id from headers (set by FastAPI proxy)
-    const userId = req.headers['x-user-id'];
-    
-    if (!userId) {
-      return res.status(401).json({ ok: false, error: 'Not authenticated' });
-    }
-
     const {
       raffleDate,
       status,
@@ -967,15 +741,12 @@ app.post('/api/raffle/history', async (req, res) => {
       username
     } = req.body;
 
-    console.log(`💾 POST /api/raffle/history - user_id: ${userId}, username: ${username}`);
-
     const result = await pool.query(
       `INSERT INTO raffle_history
-       (user_id, raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+       (raffle_date, status, reddit_link, total_spots, cost_per_spot, participants, total_owed, total_paid, winner, username)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
-        userId,
         raffleDate,
         status,
         redditLink,
@@ -999,27 +770,12 @@ app.post('/api/raffle/history', async (req, res) => {
 // Get raffle history
 app.get('/api/raffle/history', async (req, res) => {
   try {
-    // Get user_id from headers (set by FastAPI proxy)
-    const userId = req.headers['x-user-id'];
-    
-    console.log(`📜 GET /api/raffle/history - user_id: ${userId}`);
-    console.log(`📜 All headers:`, req.headers);
-    
-    if (!userId) {
-      return res.status(401).json({ ok: false, error: 'Not authenticated' });
-    }
-    
-    // Query only raffles belonging to this user
     const result = await pool.query(
-      'SELECT * FROM raffle_history WHERE user_id = $1 ORDER BY raffle_date DESC',
-      [userId]
+      'SELECT * FROM raffle_history ORDER BY raffle_date DESC'
     );
-
-    console.log(`📜 Found ${result.rows.length} raffles for user ${userId}`);
 
     const history = result.rows.map(row => ({
       id: row.id,
-      user_id: row.user_id,
       date: row.raffle_date,
       status: row.status,
       redditLink: row.reddit_link,
@@ -1159,13 +915,263 @@ app.delete('/api/activity/clear', async (req, res) => {
   }
 });
 
+// ============ WINNERS DASHBOARD ENDPOINT ============
+
+// Get all winners and their statistics
+app.get('/api/winners', async (req, res) => {
+  try {
+    // Helper function to convert title to Title Case
+    function toTitleCase(str) {
+      return str.replace(/\w\S*/g, function(txt) {
+        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+      });
+    }
+
+    // Helper function to extract title from Reddit URL
+    function extractTitleFromRedditLink(redditLink) {
+      if (!redditLink) return null;
+      
+      let titleSlug = '';
+      const urlParts = redditLink.split('/');
+      const commentsIndex = urlParts.findIndex(part => part === 'comments');
+      
+      if (commentsIndex >= 0 && urlParts.length > commentsIndex + 2) {
+        titleSlug = urlParts[commentsIndex + 2];
+      }
+      
+      if (titleSlug) {
+        let raffleTitle = titleSlug
+          .replace(/_/g, ' ')
+          .replace(/-/g, ' ')
+          .replace(/\s+/g, ' ')
+          .trim();
+        
+        raffleTitle = toTitleCase(raffleTitle);
+        
+        // Force condition codes to UPPERCASE with brackets
+        raffleTitle = raffleTitle.replace(/\b(nm|bnib|nib|lnib|mint|used)\b/gi, (match) => {
+          return '[' + match.toUpperCase() + ']';
+        });
+        
+        // Clean the title
+        let cleanedTitle = raffleTitle;
+        cleanedTitle = cleanedTitle.replace(/\s*-?\s*\d+\s*spots?\s*(at|@).*$/i, '');
+        cleanedTitle = cleanedTitle.replace(/\s+\d+$/, '');
+        cleanedTitle = cleanedTitle.replace(/\s*-?\s*Fast\s*/gi, '');
+        
+        return cleanedTitle.trim() || null;
+      }
+      
+      return null;
+    }
+
+    // Get all completed raffles with winners
+    const result = await pool.query(`
+      SELECT 
+        id,
+        raffle_date,
+        reddit_link,
+        total_spots,
+        cost_per_spot,
+        winner,
+        participants,
+        username
+      FROM raffle_history
+      WHERE status = 'completed' AND winner IS NOT NULL
+      ORDER BY raffle_date DESC
+    `);
+
+    // Group winners and calculate statistics
+    const winnersMap = new Map();
+    const rafflesJoinedMap = new Map(); // Track unique raffles each user joined
+    
+    // First pass: Track all raffles joined by each participant
+    result.rows.forEach(raffle => {
+      try {
+        const participants = Array.isArray(raffle.participants) ? raffle.participants : [];
+        participants.forEach(participant => {
+          if (!participant || !participant.redditUser) return;
+          
+          const redditUser = participant.redditUser;
+          if (!rafflesJoinedMap.has(redditUser)) {
+            rafflesJoinedMap.set(redditUser, new Set());
+          }
+          rafflesJoinedMap.get(redditUser).add(raffle.id);
+        });
+      } catch (e) {
+        console.warn(`Failed to parse participants for raffle ${raffle.id}:`, e);
+      }
+    });
+
+    // Second pass: Process winners
+    result.rows.forEach(raffle => {
+      let winnerData;
+      try {
+        winnerData = typeof raffle.winner === 'string' 
+          ? JSON.parse(raffle.winner) 
+          : raffle.winner;
+      } catch (e) {
+        console.warn(`Failed to parse winner data for raffle ${raffle.id}:`, e);
+        return;
+      }
+
+      if (!winnerData) return;
+
+      // Handle both single winner and multiple winners (array)
+      const winners = Array.isArray(winnerData) ? winnerData : [winnerData];
+
+      winners.forEach(singleWinner => {
+        if (!singleWinner || !singleWinner.username) return;
+
+        const redditUser = singleWinner.username;
+        const winningSpotNumber = parseInt(singleWinner.spot) || 0;
+        
+        // Look up how many spots the winner purchased in participants array
+        let spotsPurchased = 0;
+        try {
+          const participants = Array.isArray(raffle.participants) ? raffle.participants : [];
+          const winnerParticipant = participants.find(p => p.redditUser === redditUser);
+          if (winnerParticipant) {
+            spotsPurchased = parseInt(winnerParticipant.spots) || 0;
+          } else {
+            console.warn(`⚠️ Winner ${redditUser} not found in participants for raffle ${raffle.id}`);
+          }
+        } catch (e) {
+          console.warn(`Failed to find spots for winner ${redditUser} in raffle ${raffle.id}:`, e);
+        }
+        
+        const costPerSpot = parseFloat(raffle.cost_per_spot) || 0;
+        const value = costPerSpot * spotsPurchased;
+
+        if (!winnersMap.has(redditUser)) {
+          winnersMap.set(redditUser, {
+            redditUser,
+            avatar: redditUser.charAt(0).toUpperCase(),
+            totalWins: 0,
+            totalValue: 0,
+            totalSpots: 0,
+            firstWin: null,
+            lastWin: null,
+            winHistory: []
+          });
+        }
+
+        const winner = winnersMap.get(redditUser);
+        winner.totalWins++;
+        winner.totalValue += value;
+        winner.totalSpots += spotsPurchased;
+
+        const winDate = raffle.raffle_date;
+        if (!winner.firstWin || new Date(winDate) < new Date(winner.firstWin)) {
+          winner.firstWin = winDate;
+        }
+        if (!winner.lastWin || new Date(winDate) > new Date(winner.lastWin)) {
+          winner.lastWin = winDate;
+        }
+
+        // Extract title from Reddit link
+        const extractedTitle = extractTitleFromRedditLink(raffle.reddit_link);
+
+        winner.winHistory.push({
+          raffleId: `R-${raffle.id}`,
+          title: extractedTitle,
+          date: winDate,
+          redditLink: raffle.reddit_link,
+          value: value,
+          spots: spotsPurchased,
+          costPerSpot: parseFloat(raffle.cost_per_spot) || 0
+        });
+      });
+    });
+
+    // Convert to array and add calculated fields
+    const winners = Array.from(winnersMap.values()).map((winner, index) => ({
+      id: index + 1,
+      ...winner,
+      rafflesJoined: rafflesJoinedMap.has(winner.redditUser) ? rafflesJoinedMap.get(winner.redditUser).size : 0,
+      avgSpotsWon: winner.totalWins > 0 ? (winner.totalSpots / winner.totalWins).toFixed(1) : 0,
+      winRate: winner.totalWins > 0 ? ((winner.totalWins / result.rows.length) * 100).toFixed(1) : 0
+    }));
+
+    // Sort by total value descending
+    winners.sort((a, b) => b.totalValue - a.totalValue);
+
+    // Calculate summary stats
+    const summary = {
+      totalWinners: winners.length,
+      totalWins: result.rows.length,
+      totalValue: winners.reduce((sum, w) => sum + w.totalValue, 0),
+      avgWinsPerWinner: winners.length > 0 ? (result.rows.length / winners.length).toFixed(1) : 0
+    };
+
+    // Calculate wins over time (group by month)
+    const winsOverTime = {};
+    result.rows.forEach(raffle => {
+      const date = new Date(raffle.raffle_date);
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const monthLabel = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      if (!winsOverTime[monthKey]) {
+        winsOverTime[monthKey] = { month: monthLabel, wins: 0 };
+      }
+      winsOverTime[monthKey].wins++;
+    });
+
+    // Convert to sorted array (chronological order)
+    const winsOverTimeData = Object.keys(winsOverTime)
+      .sort()
+      .map(key => winsOverTime[key]);
+
+    // Calculate winner distribution (1 win, 2 wins, 3-4 wins, 5+ wins)
+    const distributionBuckets = {
+      '1': 0,
+      '2': 0,
+      '3-4': 0,
+      '5+': 0
+    };
+
+    winners.forEach(winner => {
+      if (winner.totalWins === 1) {
+        distributionBuckets['1']++;
+      } else if (winner.totalWins === 2) {
+        distributionBuckets['2']++;
+      } else if (winner.totalWins >= 3 && winner.totalWins <= 4) {
+        distributionBuckets['3-4']++;
+      } else if (winner.totalWins >= 5) {
+        distributionBuckets['5+']++;
+      }
+    });
+
+    const totalWinnersForDistribution = winners.length || 1; // Avoid division by zero
+    const winDistribution = [
+      { name: '1 Win', count: distributionBuckets['1'], percentage: Math.round((distributionBuckets['1'] / totalWinnersForDistribution) * 100) },
+      { name: '2 Wins', count: distributionBuckets['2'], percentage: Math.round((distributionBuckets['2'] / totalWinnersForDistribution) * 100) },
+      { name: '3-4 Wins', count: distributionBuckets['3-4'], percentage: Math.round((distributionBuckets['3-4'] / totalWinnersForDistribution) * 100) },
+      { name: '5+ Wins', count: distributionBuckets['5+'], percentage: Math.round((distributionBuckets['5+'] / totalWinnersForDistribution) * 100) }
+    ];
+
+    res.json({ 
+      ok: true, 
+      data: {
+        winners,
+        summary,
+        winsOverTime: winsOverTimeData,
+        winDistribution
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching winners:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // ============ SETTINGS ENDPOINTS ============
 
 // Save setting
 app.post('/api/settings', async (req, res) => {
   try {
     const { key, value } = req.body;
-
+    
     console.log(`💾 Saving setting: key="${key}", value="${value}"`);
 
     await pool.query(
@@ -1174,13 +1180,13 @@ app.post('/api/settings', async (req, res) => {
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
       [key, value]
     );
-
+    
     // Verify the save by reading it back
     const verifyResult = await pool.query(
       'SELECT value FROM settings WHERE key = $1',
       [key]
     );
-
+    
     console.log(`✅ Setting saved successfully`);
     console.log(`🔍 Verification: DB now contains value="${verifyResult.rows[0]?.value}"`);
 
@@ -1197,11 +1203,11 @@ app.get('/api/settings/get-all-name-mappings', async (req, res) => {
     // Get username from headers (set by FastAPI proxy)
     const username = req.headers['x-user-name'];
     const userId = req.headers['x-user-id'];
-
+    
     console.log('🔍 GET /api/settings/get-all-name-mappings - Headers:');
     console.log('  X-User-Name:', username);
     console.log('  X-User-Id:', userId);
-
+    
     if (!username || !userId) {
       return res.status(401).json({ ok: false, error: 'Not authenticated' });
     }
@@ -1230,7 +1236,7 @@ app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
   try {
     const username = req.headers['x-user-name'];
     const userId = req.headers['x-user-id'];
-
+    
     if (!username || !userId) {
       return res.status(401).json({ ok: false, error: 'Not authenticated' });
     }
@@ -1254,7 +1260,7 @@ app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
       } else {
         // Duplicate found
         const existingRow = seenLowercase[lowerUsername];
-
+        
         // If current row is lowercase and existing is not, delete existing and keep current
         if (row.reddit_username === lowerUsername && existingRow.reddit_username !== lowerUsername) {
           idsToDelete.push(existingRow.id);
@@ -1275,8 +1281,8 @@ app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
       console.log(`✅ Removed ${idsToDelete.length} duplicate database entries`);
     }
 
-    res.json({
-      ok: true,
+    res.json({ 
+      ok: true, 
       duplicatesRemoved: idsToDelete.length,
       message: `Removed ${idsToDelete.length} duplicate(s)`
     });
@@ -1290,7 +1296,7 @@ app.post('/api/settings/cleanup-duplicate-mappings', async (req, res) => {
 app.get('/api/settings/:key', async (req, res) => {
   try {
     console.log(`🔍 Getting setting: key="${req.params.key}"`);
-
+    
     const result = await pool.query(
       'SELECT value FROM settings WHERE key = $1',
       [req.params.key]
@@ -1326,7 +1332,7 @@ app.get('/api/settings-debug/all', async (req, res) => {
 
 app.post('/api/reddit/scan', async (req, res) => {
   try {
-    const { redditLink, costPerSpot, totalSpots, existingCommentIds, currentAssignedSpots } = req.body;
+    const { redditLink, costPerSpot, totalSpots, existingCommentIds, currentAssignedSpots, participantStatuses } = req.body;
 
     if (!redditLink || !costPerSpot) {
       return res.status(400).json({
@@ -1342,22 +1348,37 @@ app.post('/api/reddit/scan', async (req, res) => {
     console.log(`📊 Total spots: ${totalSpots || 'unlimited'}`);
     console.log(`📊 Current assigned spots: ${currentAssignedSpots || 0}`);
     console.log(`📊 Existing comment IDs to skip: ${existingCommentIds?.length || 0}`);
+    
+    // ⚡ CRITICAL FIX: Extract pending_tab_comment_ids from participantStatuses
+    const pendingTabCommentIds = [];
+    if (participantStatuses && typeof participantStatuses === 'object') {
+      for (const [commentId, status] of Object.entries(participantStatuses)) {
+        if (status === 'tab_pending') {
+          pendingTabCommentIds.push(commentId);
+        }
+      }
+    }
+    console.log(`📊 Tab pending comment IDs to re-scan: ${pendingTabCommentIds.length}`);
 
     // Build arguments for Python script
     const args = [pythonScript, redditLink, costPerSpot.toString()];
-
+    
     // Always add totalSpots to maintain consistent argument positions (use 'null' if not provided)
     args.push(totalSpots ? totalSpots.toString() : 'null');
-
+    
     // Add existingCommentIds as JSON string if provided, otherwise empty array
     args.push(existingCommentIds && existingCommentIds.length > 0 ? JSON.stringify(existingCommentIds) : '[]');
-
+    
     // Add currentAssignedSpots (use '0' if not provided)
     args.push(currentAssignedSpots !== undefined && currentAssignedSpots !== null ? currentAssignedSpots.toString() : '0');
+    
+    // ⚡ CRITICAL FIX: Add pendingTabCommentIds as 6th parameter for re-scanning
+    args.push(pendingTabCommentIds.length > 0 ? JSON.stringify(pendingTabCommentIds) : '[]');
 
-    // Spawn Python process
-    const python = spawn('python3', args, {
-      timeout: 300000  // Increased to 300 seconds (5 minutes) for OpenAI API calls
+    // Spawn Python process with unbuffered output
+    const python = spawn('python3', ['-u', ...args], {
+      timeout: 300000,  // Increased to 300 seconds (5 minutes) for OpenAI API calls
+      env: { ...process.env, PYTHONUNBUFFERED: '1' }
     });
 
     let stdout = '';
@@ -1398,6 +1419,17 @@ app.post('/api/reddit/scan', async (req, res) => {
       try {
         const result = JSON.parse(stdout.trim());
         console.log('Reddit scan result:', result.ok ? `Success - ${result.participants?.length || 0} participants` : result.error);
+        
+        // ⚡ DEBUG: Log stderr capture
+        console.log('🐍 Python stderr length:', stderr ? stderr.length : 0);
+        if (stderr) {
+          console.log('🐍 Python stderr preview:', stderr.substring(0, 200));
+        }
+        
+        // ⚡ DEBUG: ALWAYS include debug_logs in response (even if empty) for debugging
+        if (result.ok) {
+          result.debug_logs = stderr || 'NO STDERR CAPTURED';
+        }
 
         // FILTER OUT DUPLICATES - Get existing participants from DB
         if (result.ok && result.participants && result.participants.length > 0) {
@@ -1489,298 +1521,6 @@ app.get('/api/system/status', async (req, res) => {
     });
   } catch (error) {
     console.error('System status error:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-// ============ REDDIT TITLE PROXY ============
-// In-memory cache for Reddit titles (5 minute TTL)
-const titleCache = new Map();
-const TITLE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-
-// Proxy endpoint to fetch Reddit post titles (avoids CORS issues)
-// Using Python script with proxy rotation (same as parser)
-app.post('/api/reddit/title', async (req, res) => {
-  try {
-    const { url } = req.body;
-    
-    console.log('📰 Reddit title request received (POST)');
-    console.log('  URL parameter:', url);
-    
-    if (!url) {
-      console.error('❌ Missing URL parameter');
-      return res.status(400).json({ ok: false, error: 'URL parameter is required' });
-    }
-    
-    // Check cache first
-    const cached = titleCache.get(url);
-    if (cached && Date.now() - cached.timestamp < TITLE_CACHE_TTL) {
-      console.log('✅ Returning cached title:', cached.title);
-      return res.json({ ok: true, title: cached.title, cached: true });
-    }
-    
-    console.log('📰 Calling Python title fetcher...');
-    
-    // Call Python title fetcher script (uses same proxy rotation as parser)
-    // Store in same location as parser for consistency
-    const os = require('os');
-    const scriptPath = path.join(os.homedir(), 'takobot-electron', 'app', 'reddit_title_fetcher.py');
-    
-    const python = spawn('python3', [scriptPath, url]);
-    
-    let stdoutData = '';
-    let stderrData = '';
-    
-    python.stdout.on('data', (data) => {
-      stdoutData += data.toString();
-    });
-    
-    python.stderr.on('data', (data) => {
-      stderrData += data.toString();
-      console.log('🐍 Python stderr:', data.toString().trim());
-    });
-    
-    python.on('close', (code) => {
-      if (code !== 0) {
-        console.error('❌ Python script failed with code:', code);
-        console.error('❌ stderr:', stderrData);
-        return res.status(500).json({ 
-          ok: false, 
-          error: `Failed to fetch Reddit title: ${stderrData || 'Unknown error'}` 
-        });
-      }
-      
-      try {
-        const result = JSON.parse(stdoutData);
-        
-        if (result.ok && result.title) {
-          console.log('✅ Successfully fetched Reddit title:', result.title);
-          
-          // Cache the result
-          titleCache.set(url, { title: result.title, timestamp: Date.now() });
-          
-          return res.json({ ok: true, title: result.title });
-        } else {
-          console.error('❌ Python script returned error:', result.error);
-          return res.status(500).json({ 
-            ok: false, 
-            error: result.error || 'Failed to fetch Reddit title' 
-          });
-        }
-      } catch (parseError) {
-        console.error('❌ Failed to parse Python output:', parseError);
-        console.error('Raw output:', stdoutData);
-        return res.status(500).json({ 
-          ok: false, 
-          error: 'Failed to parse title fetcher response' 
-        });
-      }
-    });
-    
-    python.on('error', (error) => {
-      console.error('❌ Failed to spawn Python process:', error);
-      return res.status(500).json({ 
-        ok: false, 
-        error: 'Failed to execute title fetcher script' 
-      });
-    });
-    
-  } catch (error) {
-    console.error('❌ Error fetching Reddit title:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-// Reddit Parser Endpoint Mobile
-app.post('/api/reddit/parse', async (req, res) => {
-  try {
-    const { postUrl, costPerSpot, totalSpots, existingCommentIds, currentAssignedSpots } = req.body;
-
-    console.log('🔍 Parsing Reddit post:', {
-      postUrl,
-      costPerSpot,
-      totalSpots,
-      existingComments: existingCommentIds?.length || 0,
-      currentAssignedSpots: currentAssignedSpots || 0
-    });
-
-    // Call Python parser script
-    const { spawn } = require('child_process');
-    const path = require('path');
-    const os = require('os');
-
-    // Path to your parser in ~/takobot-electron/app
-    const parserPath = path.join(os.homedir(), 'takobot-electron', 'app', 'reddit_parser.py');
-
-    const python = spawn('python3', [
-      parserPath,
-      postUrl,
-      costPerSpot.toString(),
-      totalSpots ? totalSpots.toString() : 'null',
-      JSON.stringify(existingCommentIds || []),
-      (currentAssignedSpots || 0).toString()
-    ]);
-
-    let stdoutData = '';
-    let stderrData = '';
-
-    python.stdout.on('data', (data) => {
-      stdoutData += data.toString();
-    });
-
-    python.stderr.on('data', (data) => {
-      stderrData += data.toString();
-      console.log('🐍 Parser output:', data.toString());
-    });
-
-    python.on('close', (code) => {
-      if (code !== 0) {
-        console.error('🐍 Parser stderr:', stderrData);
-        return res.json({ ok: false, error: `Parser failed with code ${code}` });
-      }
-
-      try {
-        // Parse JSON output from Python script
-        const result = JSON.parse(stdoutData);
-
-        if (result.ok) {
-          console.log(`✅ Parsed ${result.participants.length} participants from Reddit`);
-          res.json({
-            ok: true,
-            participants: result.participants
-          });
-        } else {
-          console.error('❌ Parser error:', result.error);
-          res.json({ ok: false, error: result.error });
-        }
-      } catch (parseError) {
-        console.error('❌ Failed to parse Python output:', parseError);
-        console.error('Python stdout:', stdoutData);
-        res.json({ ok: false, error: 'Failed to parse parser output' });
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error calling Reddit parser:', error);
-    res.status(500).json({ ok: false, error: error.message });
-  }
-});
-
-// Scan Reddit and Save Participants to Database Mobile
-app.post('/api/raffle/scan-participants', async (req, res) => {
-  try {
-    const { raffleId, postUrl, costPerSpot, totalSpots, existingCommentIds, currentAssignedSpots } = req.body;
-
-    console.log('🔍 Scanning and saving participants for raffle:', raffleId);
-
-    // Call Python parser
-    const { spawn } = require('child_process');
-    const path = require('path');
-    const os = require('os');
-
-    const parserPath = path.join(os.homedir(), 'takobot-electron', 'app', 'reddit_parser.py');
-
-    console.log('🐍 Calling Python parser:', parserPath);
-
-    const python = spawn('python3', [
-      parserPath,
-      postUrl,
-      costPerSpot.toString(),
-      totalSpots ? totalSpots.toString() : 'null',
-      JSON.stringify(existingCommentIds || []),
-      (currentAssignedSpots || 0).toString()
-    ]);
-
-    let stdoutData = '';
-    let stderrData = '';
-
-    python.stdout.on('data', (data) => {
-      stdoutData += data.toString();
-    });
-
-    python.stderr.on('data', (data) => {
-      const output = data.toString();
-      stderrData += output;
-      // Only log important lines
-      if (output.includes('✅') || output.includes('❌') || output.includes('⚠️')) {
-        console.log('🐍', output.trim());
-      }
-    });
-
-    python.on('close', async (code) => {
-      if (code !== 0) {
-        console.error('❌ Parser failed with code:', code);
-        console.error('❌ stderr:', stderrData);
-        return res.json({ ok: false, error: `Parser failed with exit code ${code}` });
-      }
-
-      try {
-        // Parse ONLY the JSON line from stdout
-        const lines = stdoutData.split('\n').filter(line => line.trim());
-        let result = null;
-
-        // Find the JSON line (should be the last non-empty line)
-        for (let i = lines.length - 1; i >= 0; i--) {
-          try {
-            result = JSON.parse(lines[i]);
-            break;
-          } catch (e) {
-            continue;
-          }
-        }
-
-        if (!result) {
-          console.error('❌ No valid JSON found in Python output');
-          console.error('stdout:', stdoutData);
-          return res.json({ ok: false, error: 'No valid JSON output from parser' });
-        }
-
-        if (!result.ok) {
-          console.error('❌ Parser returned error:', result.error);
-          return res.json({ ok: false, error: result.error });
-        }
-
-        const newParticipants = result.participants || [];
-        console.log(`✅ Parsed ${newParticipants.length} new participants`);
-
-        // Fetch current participants from JSONB column
-        const raffleResult = await pool.query(
-          'SELECT participants FROM active_raffle WHERE id = $1',
-          [raffleId]
-        );
-
-        if (raffleResult.rows.length === 0) {
-          return res.json({ ok: false, error: 'Raffle not found' });
-        }
-
-        const currentParticipants = raffleResult.rows[0].participants || [];
-
-        // Merge new participants with existing ones
-        const updatedParticipants = [...currentParticipants, ...newParticipants];
-
-        // Update the JSONB participants column
-        await pool.query(
-          'UPDATE active_raffle SET participants = $1, updated_at = NOW() WHERE id = $2',
-          [JSON.stringify(updatedParticipants), raffleId]
-        );
-
-        console.log(`💾 Updated raffle ${raffleId} with ${newParticipants.length} new participants`);
-
-        res.json({
-          ok: true,
-          newParticipantsCount: newParticipants.length,
-          message: `Added ${newParticipants.length} new participants`
-        });
-
-      } catch (parseError) {
-        console.error('❌ Failed to parse Python output:', parseError);
-        console.error('❌ stdout was:', stdoutData);
-        res.json({ ok: false, error: 'Failed to parse parser output: ' + parseError.message });
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error scanning participants:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });
@@ -2000,7 +1740,7 @@ app.get('/api/admin/user-breakdown/:year/:month', async (req, res) => {
 
     raffles.forEach(raffle => {
       const user = raffle.username || 'Unknown';
-
+      
       if (!userStats[user]) {
         userStats[user] = {
           username: user,
@@ -2166,7 +1906,7 @@ app.get('/api/profile/response-times', async (req, res) => {
     // Get user's completed raffles (we don't track filled_at or completed_at timestamps yet)
     // For now, just return null for all metrics until we add timestamp tracking
     // TODO: Add created_at, filled_at, completed_at columns to raffle_history table
-
+    
     const raffles = await pool.query(
       `SELECT raffle_date, status FROM raffle_history WHERE username = $1`,
       [username]
@@ -2204,7 +1944,7 @@ app.get('/api/profile/retention', async (req, res) => {
 
     // Get all completed raffles for this user
     const raffleResult = await pool.query(
-      `SELECT participants FROM raffle_history
+      `SELECT participants FROM raffle_history 
        WHERE username = $1 AND status = 'completed'`,
       [username]
     );
@@ -2235,7 +1975,7 @@ app.get('/api/profile/retention', async (req, res) => {
     });
 
     const totalParticipants = Object.keys(participantCounts).length;
-
+    
     if (totalParticipants === 0) {
       return res.json({
         ok: true,
@@ -2251,19 +1991,19 @@ app.get('/api/profile/retention', async (req, res) => {
     // Calculate stats
     const returningParticipants = Object.values(participantCounts).filter(count => count > 1).length;
     const returnRate = Math.round((returningParticipants / totalParticipants) * 100);
-
+    
     const totalRaffleParticipations = Object.values(participantCounts).reduce((sum, count) => sum + count, 0);
     const avgRafflesPerParticipant = (totalRaffleParticipations / totalParticipants).toFixed(1);
-
+    
     const loyalParticipants = Object.values(participantCounts).filter(count => count >= 3).length;
 
     // Get new participants this month
     const thisMonth = new Date();
     thisMonth.setDate(1);
     thisMonth.setHours(0, 0, 0, 0);
-
+    
     const monthRaffles = await pool.query(
-      `SELECT participants FROM raffle_history
+      `SELECT participants FROM raffle_history 
        WHERE username = $1 AND status = 'completed' AND raffle_date >= $2`,
       [username, thisMonth]
     );
@@ -2299,7 +2039,7 @@ app.get('/api/profile/comparison', async (req, res) => {
 
     // Get current user's completion rate
     const userStats = await pool.query(
-      `SELECT
+      `SELECT 
         COUNT(*) as total,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed
        FROM raffle_history
@@ -2309,7 +2049,7 @@ app.get('/api/profile/comparison', async (req, res) => {
 
     const userTotal = parseInt(userStats.rows[0].total) || 0;
     const userCompleted = parseInt(userStats.rows[0].completed) || 0;
-
+    
     if (userTotal === 0) {
       // No data for this user yet
       return res.json({
